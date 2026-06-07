@@ -1,0 +1,280 @@
+name: PR Agent
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+  issue_comment:
+    types: [created]  # enables /review, /improve, /describe commands in PR comments
+
+concurrency:
+  group: pr-agent-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Automated review — runs on every PR push ──────────────────────────────
+  review:
+    name: PR Agent review (Groq / gpt-oss-120b)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: PR Agent describe
+        uses: Codium-ai/pr-agent@main
+        env:
+          OPENAI_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENAI.API_BASE: "https://api.groq.com/openai/v1"
+          CONFIG.MODEL: "groq/openai/gpt-oss-120b"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB.USER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          entryPoint: python
+          args: -m pr_agent.cli --pr_url=${{ github.event.pull_request.html_url }} describe
+
+      - name: PR Agent review
+        uses: Codium-ai/pr-agent@main
+        env:
+          OPENAI_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENAI.API_BASE: "https://api.groq.com/openai/v1"
+          CONFIG.MODEL: "groq/openai/gpt-oss-120b"
+          CONFIG.FALLBACK_MODELS: '["groq/llama-3.3-70b-versatile"]'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB.USER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          entryPoint: python
+          args: -m pr_agent.cli --pr_url=${{ github.event.pull_request.html_url }} review
+
+  # ── Conditional auto-approve ───────────────────────────────────────────────
+  # Runs after `review` (pull_request) or `commands` (issue_comment /review).
+  # Checks the PR author in both cases, not the commenter.
+  # Note: website branch protection requires 0 approvals + a `deploy` status check,
+  # so this is not a merge gate here — it provides a transparent review comment for
+  # consistency with the other repos.
+  auto-approve:
+    name: Auto-approve (founding team — no CRITICAL findings)
+    needs: [review, commands]
+    if: |
+      always() &&
+      (needs.review.result == 'success' || needs.review.result == 'skipped') &&
+      (needs.commands.result == 'success' || needs.commands.result == 'skipped') &&
+      (github.event_name == 'pull_request' || github.event_name == 'issue_comment') &&
+      (
+        contains(fromJson('["collin-austad", "wilsonparrish", "trirwin"]'), github.event.pull_request.user.login) ||
+        contains(fromJson('["collin-austad", "wilsonparrish", "trirwin"]'), github.event.issue.user.login)
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read          # needed by `gh pr diff` (harmless on public, required on private)
+      pull-requests: write
+
+    steps:
+      - name: Find and scan PR-Agent review comment
+        id: scan
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: |
+          REVIEW_BODY=$(gh api \
+            "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+            --jq '[.[] | select(.user.login == "github-actions[bot]")
+                       | select(.body | test("PR Reviewer|Score:\\s*[0-9]"; "i"))]
+                  | last | .body // ""')
+
+          if [ -z "$REVIEW_BODY" ]; then
+            echo "ERROR: No PR-Agent review comment found. Blocking as safety measure."
+            echo "has_critical=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "--- PR-Agent review (first 1500 chars) ---"
+          echo "$REVIEW_BODY" | head -c 1500
+          echo "--- end ---"
+
+          # Strip fenced code blocks before scanning for severity labels so that
+          # the word CRITICAL in a quoted code snippet doesn't trigger a false block.
+          REVIEW_TEXT=$(echo "$REVIEW_BODY" | awk '/^```/{toggle=!toggle; next} !toggle')
+
+          if echo "$REVIEW_TEXT" | grep -qiE '\bCRITICAL\b'; then
+            echo "has_critical=true" >> "$GITHUB_OUTPUT"
+            echo "CRITICAL finding(s) detected — blocking auto-approve."
+          else
+            echo "has_critical=false" >> "$GITHUB_OUTPUT"
+            echo "No CRITICAL findings — proceeding with auto-approve."
+          fi
+
+      # ── Merge-safety confidence ──────────────────────────────────────────────
+      # A dedicated gpt-oss-120b pass that judges how safe this change is to
+      # auto-merge (PR-Agent's own review template doesn't expose a usable score).
+      # Returns a 0–100 confidence + one-line rationale, surfaced in the decision.
+      - name: Assess merge-safety confidence
+        id: confidence
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: |
+          # Keep the payload small — Groq's free tier caps gpt-oss-120b at 8k TPM,
+          # and PR-Agent's describe+review already spend most of that budget.
+          DIFF=$(gh pr diff "$PR_NUMBER" --repo "${{ github.repository }}" 2>/dev/null | head -c 24000)
+          if [ -z "$DIFF" ]; then
+            echo "confidence=unknown" >> "$GITHUB_OUTPUT"
+            echo "reason=Could not read PR diff." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          SYS='You are a release-safety gatekeeper for the DVT website repo (Astro + Cloudflare Pages Functions + D1). Given a PR diff, reply with ONLY a JSON object: {"confidence": <integer 0-100>, "reason": "<one short sentence>"}. confidence = how sure you are this change is SAFE to merge automatically WITHOUT human review — low risk of breakage, security issues, data loss, or regressions. 100 = trivially safe (docs/comment/config typo); 0 = clearly unsafe. Be conservative: anything touching the handraise API, D1 schema, secrets, or build/deploy config should score lower unless obviously correct.'
+
+          CONF=""; REASON=""
+          for attempt in 1 2 3 4; do
+            # After two rate-limited gpt-oss attempts, fall back to llama (separate TPM bucket).
+            if [ "$attempt" -ge 3 ]; then MODEL="llama-3.3-70b-versatile"; else MODEL="openai/gpt-oss-120b"; fi
+            PAYLOAD=$(jq -n --arg model "$MODEL" --arg sys "$SYS" --arg diff "$DIFF" '{
+              model: $model,
+              temperature: 0,
+              response_format: {type: "json_object"},
+              messages: [ {role: "system", content: $sys}, {role: "user", content: $diff} ]
+            }')
+
+            RESP=$(curl -sS https://api.groq.com/openai/v1/chat/completions \
+              -H "Authorization: Bearer $GROQ_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d "$PAYLOAD")
+
+            if [ "$(echo "$RESP" | jq -r '.error.code // empty' 2>/dev/null)" = "rate_limit_exceeded" ]; then
+              WAIT=$(echo "$RESP" | grep -oE 'try again in [0-9.]+s' | grep -oE '[0-9.]+' | head -1)
+              WAIT=${WAIT%.*}; WAIT=${WAIT:-20}
+              echo "Attempt ${attempt} (${MODEL}): rate-limited, waiting $((WAIT + 2))s…"
+              sleep $((WAIT + 2))
+              continue
+            fi
+
+            CONTENT=$(echo "$RESP" | jq -r '.choices[0].message.content // ""')
+            echo "--- attempt ${attempt} (${MODEL}) raw content (first 300 chars) ---"
+            echo "$CONTENT" | head -c 300; echo; echo "--- end ---"
+
+            CONF=$(echo "$CONTENT" | jq -r '.confidence // empty' 2>/dev/null)
+            REASON=$(echo "$CONTENT" | jq -r '.reason // empty' 2>/dev/null)
+            # Fallback: if JSON parse failed, pull the first 0–100 integer from the text.
+            if [ -z "$CONF" ]; then CONF=$(echo "$CONTENT" | grep -oE '[0-9]{1,3}' | head -1); fi
+            [ -n "$CONF" ] && break
+            echo "Attempt ${attempt}: no parseable confidence, retrying…"; sleep 5
+          done
+
+          # Flatten the rationale to a single line so the step output stays well-formed.
+          REASON=$(echo "${REASON:-(no rationale returned)}" | tr '\n' ' ' | head -c 300)
+          echo "confidence=${CONF:-unknown}" >> "$GITHUB_OUTPUT"
+          echo "reason=${REASON}" >> "$GITHUB_OUTPUT"
+          echo "Merge-safety confidence: ${CONF:-unknown}/100 — ${REASON}"
+
+      # ── Decision ─────────────────────────────────────────────────────────────
+      # Auto-approve only if there are NO CRITICAL findings AND the merge-safety
+      # confidence is at or above the threshold. Anything else is blocked
+      # (request-changes) so a human reviews it. Non-numeric confidence fails safe.
+      - name: Decide
+        id: decide
+        env:
+          HAS_CRITICAL: ${{ steps.scan.outputs.has_critical }}
+          CONFIDENCE: ${{ steps.confidence.outputs.confidence }}
+        run: |
+          THRESHOLD=80
+          echo "threshold=${THRESHOLD}" >> "$GITHUB_OUTPUT"
+          CONF="$CONFIDENCE"
+          if ! echo "$CONF" | grep -qE '^[0-9]+$'; then CONF=0; fi
+
+          if [ "$HAS_CRITICAL" = "true" ]; then
+            echo "decision=block" >> "$GITHUB_OUTPUT"
+            echo "cause=critical" >> "$GITHUB_OUTPUT"
+            echo "CRITICAL findings present — blocking."
+          elif [ "$CONF" -ge "$THRESHOLD" ]; then
+            echo "decision=approve" >> "$GITHUB_OUTPUT"
+            echo "cause=ok" >> "$GITHUB_OUTPUT"
+            echo "No CRITICAL findings and confidence ${CONF} ≥ ${THRESHOLD} — approving."
+          else
+            echo "decision=block" >> "$GITHUB_OUTPUT"
+            echo "cause=low_confidence" >> "$GITHUB_OUTPUT"
+            echo "Confidence ${CONF} < ${THRESHOLD} — blocking for human review."
+          fi
+
+      - name: Approve — safe to auto-merge
+        if: steps.decide.outputs.decision == 'approve'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONFIDENCE: ${{ steps.confidence.outputs.confidence }}
+          REASON: ${{ steps.confidence.outputs.reason }}
+          THRESHOLD: ${{ steps.decide.outputs.threshold }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: |
+          printf -v BODY \
+            '✅ **Auto-approved** — merge-safety confidence %s/100 (threshold %s)\n\n_%s_\n\n**How this decision was made:**\n1. PR-Agent (Groq / gpt-oss-120b) reviewed the diff against `.pr_agent.toml`\n2. Review comment scanned for `CRITICAL` severity labels — none found\n3. A gpt-oss-120b safety check rated auto-merge confidence at %s/100 ≥ %s\n4. Auto-approved ✓\n\nAddress any HIGH or MEDIUM findings in the review comment above before merging.' \
+            "${CONFIDENCE}" "${THRESHOLD}" "${REASON}" "${CONFIDENCE}" "${THRESHOLD}"
+          gh pr review "${PR_NUMBER}" --approve --body "${BODY}" --repo "${{ github.repository }}"
+
+      - name: Block — not safe to auto-merge
+        if: steps.decide.outputs.decision == 'block'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONFIDENCE: ${{ steps.confidence.outputs.confidence }}
+          REASON: ${{ steps.confidence.outputs.reason }}
+          THRESHOLD: ${{ steps.decide.outputs.threshold }}
+          CAUSE: ${{ steps.decide.outputs.cause }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: |
+          if [ "$CAUSE" = "critical" ]; then
+            HEADER="one or more CRITICAL findings in the review"
+            # printf in $(...) expands \n to real newlines; %s later passes them through.
+            STEP=$(printf '2. Review comment scanned for `CRITICAL` severity labels — one or more found\n3. Merge blocked ✗ — resolve all CRITICAL issues in the review comment above, then push a new commit')
+          else
+            HEADER="merge-safety confidence ${CONFIDENCE}/100 is below the auto-merge threshold (${THRESHOLD})"
+            STEP=$(printf '2. A gpt-oss-120b safety check rated auto-merge confidence at %s/100 < %s\n3. Merge blocked ✗ — a human should review this change (or push a commit that raises confidence)' "${CONFIDENCE}" "${THRESHOLD}")
+          fi
+          printf -v BODY \
+            '🚫 **Auto-approve blocked** — %s\n\n_%s_\n\n**How this decision was made:**\n1. PR-Agent (Groq / gpt-oss-120b) reviewed the diff against `.pr_agent.toml`\n%s\n\nA human reviewer can dismiss this review to merge anyway.' \
+            "${HEADER}" "${REASON}" "${STEP}"
+          gh pr review "${PR_NUMBER}" --request-changes --body "${BODY}" --repo "${{ github.repository }}"
+
+  # ── /commands in PR comments ───────────────────────────────────────────────
+  commands:
+    name: PR Agent command
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request != null &&
+      startsWith(github.event.comment.body, '/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: PR Agent command
+        uses: Codium-ai/pr-agent@main
+        env:
+          OPENAI_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENAI.API_BASE: "https://api.groq.com/openai/v1"
+          CONFIG.MODEL: "groq/openai/gpt-oss-120b"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          command: ${{ github.event.comment.body }}
+
+# ── Setup required ─────────────────────────────────────────────────────────
+#
+# 1. GROQ_API_KEY — free at https://console.groq.com/keys
+#    Repo → Settings → Secrets → Actions → New repository secret
+#    Name:  GROQ_API_KEY   Value: gsk_...
+#    (This repo did NOT have the secret as of setup — add it before the first PR.)
+#
+# 2. Founding team: collin-austad, wilsonparrish, trirwin
+#
+# /commands available in any PR comment:
+#   /review    re-run the full review + auto-approve
+#   /improve   suggest code improvements
+#   /describe  update PR description
+#   /ask <q>   ask the agent a question about the diff
