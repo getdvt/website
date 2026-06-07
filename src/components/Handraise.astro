@@ -1,0 +1,160 @@
+---
+// Early-access handraise CTA.
+// Form POSTs to /api/handraise (Cloudflare Pages Function).
+---
+
+<section class="handraise" id="early-access">
+  <div class="container handraise-inner">
+    <div class="copy">
+      <h2>Follow the build</h2>
+      <p>
+        DVT is in founding research. Leave your email and we'll reach out
+        when there's something to see — no newsletters, no noise.
+      </p>
+    </div>
+
+    <form class="form" id="handraise-form" method="POST" action="/api/handraise">
+      <div class="field-row">
+        <input
+          type="email"
+          name="email"
+          id="email"
+          placeholder="you@yourcompany.com"
+          required
+          autocomplete="email"
+          aria-label="Your email address"
+        />
+        <button type="submit" class="btn-submit">Request access</button>
+      </div>
+      <p class="fine-print">No spam. We use this to reach out directly, nothing else.</p>
+      <p class="success-msg" id="success-msg" hidden>
+        ✓ Got it — we'll be in touch.
+      </p>
+      <p class="error-msg" id="error-msg" hidden>
+        Something went wrong. Email <a href="mailto:collin@dvt.dev">collin@dvt.dev</a> directly.
+      </p>
+    </form>
+  </div>
+</section>
+
+<script>
+  const form = document.getElementById('handraise-form') as HTMLFormElement | null;
+  const successMsg = document.getElementById('success-msg');
+  const errorMsg = document.getElementById('error-msg');
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = new FormData(form);
+
+    try {
+      const res = await fetch('/api/handraise', {
+        method: 'POST',
+        body: JSON.stringify({ email: data.get('email') }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (res.ok) {
+        form.style.display = 'none';
+        successMsg?.removeAttribute('hidden');
+      } else {
+        errorMsg?.removeAttribute('hidden');
+      }
+    } catch {
+      errorMsg?.removeAttribute('hidden');
+    }
+  });
+</script>
+
+<style>
+  .handraise {
+    padding: var(--space-16) 0;
+    background: var(--color-neutral-50);
+    border-top: 1px solid var(--color-neutral-200);
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+
+  .handraise-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-12);
+    align-items: center;
+  }
+
+  @media (max-width: 720px) {
+    .handraise-inner {
+      grid-template-columns: 1fr;
+      gap: var(--space-6);
+    }
+  }
+
+  h2 {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-3);
+  }
+
+  .copy p {
+    color: var(--color-neutral-700);
+    line-height: 1.6;
+  }
+
+  .field-row {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
+
+  input[type="email"] {
+    flex: 1;
+    min-width: 220px;
+    padding: 12px var(--space-4);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-md);
+    font-family: var(--font-ui);
+    font-size: var(--text-base);
+    color: var(--color-neutral-950);
+    background: var(--color-white);
+    transition: border-color var(--transition-fast);
+  }
+  input[type="email"]:focus {
+    outline: none;
+    border-color: var(--color-brand-mark);
+    box-shadow: 0 0 0 3px rgba(91, 191, 186, 0.15);
+  }
+
+  .btn-submit {
+    padding: 12px var(--space-6);
+    background: var(--color-brand-indigo);
+    color: var(--color-white);
+    border: none;
+    border-radius: var(--radius-md);
+    font-family: var(--font-ui);
+    font-size: var(--text-base);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+    white-space: nowrap;
+  }
+  .btn-submit:hover {
+    background: var(--color-brand-indigo-dark);
+  }
+
+  .fine-print {
+    margin-top: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--color-neutral-400);
+  }
+
+  .success-msg {
+    margin-top: var(--space-3);
+    color: var(--color-success);
+    font-weight: 500;
+  }
+
+  .error-msg {
+    margin-top: var(--space-3);
+    color: var(--color-error);
+    font-size: var(--text-sm);
+  }
+</style>

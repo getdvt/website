@@ -1,0 +1,68 @@
+---
+const year = new Date().getFullYear();
+---
+
+<footer>
+  <div class="container footer-inner">
+    <div class="left">
+      <!-- Compact icon-only mark -->
+      <a href="/" aria-label="DVT home">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" height="22" aria-hidden="true">
+          <polygon points="3,61 15,61 15,38 3,46" fill="#5BBFBA"/>
+          <polygon points="19,61 33,61 33,23 19,31" fill="#5BBFBA"/>
+          <polygon points="37,61 55,61 55,5 37,13" fill="#5BBFBA"/>
+        </svg>
+      </a>
+      <span class="copy">&copy; {year} Data Viz Tool. Apache-2.0 / FSL-1.1.</span>
+    </div>
+
+    <nav class="links" aria-label="Footer navigation">
+      <a href="https://github.com/getdvt/dvt" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://github.com/getdvt/dvt/tree/main/docs" target="_blank" rel="noopener noreferrer">Docs</a>
+      <a href="https://github.com/getdvt/dvt/blob/main/LICENSING.md" target="_blank" rel="noopener noreferrer">License</a>
+      <a href="mailto:collin@dvt.dev">Contact</a>
+    </nav>
+  </div>
+</footer>
+
+<style>
+  footer {
+    padding: var(--space-8) 0;
+    border-top: 1px solid var(--color-neutral-200);
+  }
+
+  .footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+  }
+
+  .left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .copy {
+    font-size: var(--text-sm);
+    color: var(--color-neutral-400);
+  }
+
+  .links {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+
+  .links a {
+    font-size: var(--text-sm);
+    color: var(--color-neutral-400);
+    transition: color var(--transition-fast);
+  }
+  .links a:hover {
+    color: var(--color-neutral-700);
+  }
+</style>

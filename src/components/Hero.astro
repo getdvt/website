@@ -1,0 +1,142 @@
+---
+// Hero: headline, sub, CTAs
+---
+
+<section class="hero">
+  <div class="container hero-inner">
+    <div class="stack-position">
+      <span>dlt loads it</span>
+      <span class="dot">·</span>
+      <span>dbt transforms it</span>
+      <span class="dot">·</span>
+      <span class="dvt-emphasis">DVT visualizes it</span>
+    </div>
+
+    <h1>The third leg of the<br class="br-desktop"> modern data stack.</h1>
+
+    <p class="sub">
+      DVT is an AI-native, open dashboarding platform where every dashboard
+      is a versioned JSON spec — authored by humans and AI agents alike,
+      reviewed in Git, and rendered faithfully down to the last pixel.
+    </p>
+
+    <div class="cta-row">
+      <a
+        href="https://github.com/getdvt/dvt"
+        class="btn-primary"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <svg height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.873 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/>
+        </svg>
+        Star on GitHub
+      </a>
+      <a
+        href="https://github.com/getdvt/dvt/tree/main/docs"
+        class="btn-secondary"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Read the vision →
+      </a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero {
+    padding: var(--space-24) 0 var(--space-16);
+    text-align: center;
+  }
+
+  .stack-position {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-neutral-400);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    margin-bottom: var(--space-8);
+  }
+
+  .dot {
+    color: var(--color-neutral-200);
+  }
+
+  .dvt-emphasis {
+    color: var(--color-brand-navy);
+    font-weight: 600;
+  }
+
+  h1 {
+    font-size: clamp(var(--text-4xl), 6vw, 64px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-6);
+  }
+
+  .sub {
+    max-width: 600px;
+    margin-inline: auto;
+    font-size: var(--text-lg);
+    color: var(--color-neutral-700);
+    line-height: 1.65;
+    margin-bottom: var(--space-8);
+  }
+
+  .cta-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 14px var(--space-6);
+    background: var(--color-brand-navy);
+    color: var(--color-white);
+    border-radius: var(--radius-md);
+    font-size: var(--text-base);
+    font-weight: 600;
+    transition: background var(--transition-fast);
+  }
+  .btn-primary:hover {
+    background: var(--color-neutral-700);
+    color: var(--color-white);
+  }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    padding: 14px var(--space-6);
+    background: transparent;
+    color: var(--color-neutral-700);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-md);
+    font-size: var(--text-base);
+    font-weight: 500;
+    transition: border-color var(--transition-fast), color var(--transition-fast);
+  }
+  .btn-secondary:hover {
+    border-color: var(--color-neutral-400);
+    color: var(--color-neutral-950);
+  }
+
+  .br-desktop {
+    display: none;
+  }
+  @media (min-width: 640px) {
+    .br-desktop { display: inline; }
+  }
+</style>

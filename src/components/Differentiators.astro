@@ -1,0 +1,101 @@
+---
+// Five differentiators from the README "What makes DVT different" table
+const items = [
+  {
+    title: 'Dashboards as Data',
+    abbr: 'DAD',
+    body: 'Every dashboard, page, and element is a versioned JSON document. Git-diff it, review it, roll it back, generate it with Claude.',
+  },
+  {
+    title: 'Everything is customizable',
+    body: 'No locked styles. Every visual property — down to the gap between an axis and its title — is an exposed, storable, spec-controlled parameter.',
+  },
+  {
+    title: 'AI-native from day one',
+    body: 'An MCP server lets Claude and other agents create, edit, and audit dashboards as first-class operations. Not a plugin — the architecture.',
+  },
+  {
+    title: 'Open spec, hosted convenience',
+    body: 'The dashboard spec format and client SDKs are Apache-2.0. Self-host freely. Let DVT Cloud run it for you when you\'d rather not.',
+  },
+  {
+    title: 'Code-native',
+    body: 'Dashboards live in your repo, travel through CI, and get reviewed like any other artifact.',
+  },
+];
+---
+
+<section class="differentiators">
+  <div class="container">
+    <h2>What makes DVT different</h2>
+    <div class="grid">
+      {items.map((item) => (
+        <div class="card">
+          <h3>
+            {item.abbr && <span class="abbr">{item.abbr}</span>}
+            {item.title}
+          </h3>
+          <p>{item.body}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .differentiators {
+    padding: var(--space-16) 0;
+    border-top: 1px solid var(--color-neutral-200);
+  }
+
+  h2 {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-8);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-4);
+  }
+
+  .card {
+    background: var(--color-neutral-50);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+  }
+  .card:hover {
+    border-color: var(--color-brand-mark);
+    box-shadow: 0 2px 12px rgba(91, 191, 186, 0.12);
+  }
+
+  h3 {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-2);
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+  }
+
+  .abbr {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--color-brand-mark);
+    background: rgba(91, 191, 186, 0.1);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+
+  p {
+    font-size: var(--text-sm);
+    color: var(--color-neutral-700);
+    line-height: 1.6;
+  }
+</style>

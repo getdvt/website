@@ -1,0 +1,20 @@
+# Cloudflare Pages / Workers config for dvt.dev
+# Pages Functions (functions/) deploy automatically with the site.
+# Local dev: `wrangler pages dev dist/` after `npm run build`
+
+name = "dvt-website"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 database binding for handraise capture
+# Create the DB first: wrangler d1 create dvt-handraises
+# Then run the schema: wrangler d1 execute dvt-handraises --file=schema.sql
+[[d1_databases]]
+binding = "DB"
+database_name = "dvt-handraises"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+# Environment variables (non-secret)
+# Secrets (RESEND_API_KEY, CF_BEACON_TOKEN) go in Pages → Settings → Environment variables
+[vars]
+NOTIFY_EMAIL = "collin@dvt.dev"
