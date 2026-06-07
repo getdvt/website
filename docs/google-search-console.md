@@ -64,8 +64,10 @@ Back in Search Console, click **"Verify"**.
 After verification, you're inside the Search Console dashboard for dvt.dev.
 
 1. Left sidebar → **"Sitemaps"**
-2. In the "Add a new sitemap" field enter: `sitemap-index.xml`
+2. In the "Add a new sitemap" field enter the full URL: `https://dvt.dev/sitemap-index.xml`
 3. Click **"Submit"**
+
+> Note: the relative path `sitemap-index.xml` is rejected with "Invalid sitemap address" on Domain properties. Use the full URL.
 
 The sitemap URL is `https://dvt.dev/sitemap-index.xml` — this is generated automatically
 by the `@astrojs/sitemap` integration and contains references to all pages. Astro
