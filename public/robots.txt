@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://dvt.dev/sitemap-index.xml
