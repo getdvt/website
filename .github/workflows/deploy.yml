@@ -46,7 +46,7 @@ jobs:
         with:
           apiToken:  ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command:   pages deploy dist/ --project-name dvt-website --branch main
+          command:   pages deploy dist/client/ --project-name dvt-website --branch main
         id: deploy-production
 
       # Preview deploy (pull requests) — posts the preview URL as a PR comment
@@ -56,7 +56,7 @@ jobs:
         with:
           apiToken:  ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command:   pages deploy dist/ --project-name dvt-website --branch ${{ github.head_ref }}
+          command:   pages deploy dist/client/ --project-name dvt-website --branch ${{ github.head_ref }}
         id: deploy-preview
 
       - name: Comment preview URL on PR
