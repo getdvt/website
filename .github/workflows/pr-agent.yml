@@ -70,6 +70,7 @@ jobs:
       )
     runs-on: ubuntu-latest
     permissions:
+      contents: read          # needed by `gh pr diff` (harmless on public, required on private)
       pull-requests: write
 
     steps:
