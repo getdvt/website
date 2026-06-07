@@ -88,21 +88,12 @@ jobs:
           if [ -z "$REVIEW_BODY" ]; then
             echo "ERROR: No PR-Agent review comment found. Blocking as safety measure."
             echo "has_critical=true" >> "$GITHUB_OUTPUT"
-            echo "score=not found" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           echo "--- PR-Agent review (first 1500 chars) ---"
           echo "$REVIEW_BODY" | head -c 1500
           echo "--- end ---"
-
-          # PR-Agent emits Score as HTML: <strong>Score</strong>: 92
-          # or plain text: Score: 5/5 — handle both.
-          SCORE=$(echo "$REVIEW_BODY" \
-            | grep -oiE '(Score</strong>: [0-9]+|Score: [0-9]+ ?/ ?[0-9]+)' \
-            | head -1 \
-            | grep -oE '[0-9].*' || true)
-          echo "score=${SCORE:-not found}" >> "$GITHUB_OUTPUT"
 
           # Strip fenced code blocks before scanning for severity labels so that
           # the word CRITICAL in a quoted code snippet doesn't trigger a false block.
@@ -116,28 +107,79 @@ jobs:
             echo "No CRITICAL findings — proceeding with auto-approve."
           fi
 
+      # ── Merge-safety confidence ──────────────────────────────────────────────
+      # A dedicated gpt-oss-120b pass that judges how safe this change is to
+      # auto-merge (PR-Agent's own review template doesn't expose a usable score).
+      # Returns a 0–100 confidence + one-line rationale, surfaced in the decision.
+      - name: Assess merge-safety confidence
+        id: confidence
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: |
+          DIFF=$(gh pr diff "$PR_NUMBER" --repo "${{ github.repository }}" 2>/dev/null | head -c 60000)
+          if [ -z "$DIFF" ]; then
+            echo "confidence=unknown" >> "$GITHUB_OUTPUT"
+            echo "reason=Could not read PR diff." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          SYS='You are a release-safety gatekeeper for the DVT website repo (Astro + Cloudflare Pages Functions + D1). Given a PR diff, reply with ONLY a JSON object: {"confidence": <integer 0-100>, "reason": "<one short sentence>"}. confidence = how sure you are this change is SAFE to merge automatically WITHOUT human review — low risk of breakage, security issues, data loss, or regressions. 100 = trivially safe (docs/comment/config typo); 0 = clearly unsafe. Be conservative: anything touching the handraise API, D1 schema, secrets, or build/deploy config should score lower unless obviously correct.'
+
+          PAYLOAD=$(jq -n --arg sys "$SYS" --arg diff "$DIFF" '{
+            model: "openai/gpt-oss-120b",
+            temperature: 0,
+            response_format: {type: "json_object"},
+            messages: [ {role: "system", content: $sys}, {role: "user", content: $diff} ]
+          }')
+
+          RESP=$(curl -sS https://api.groq.com/openai/v1/chat/completions \
+            -H "Authorization: Bearer $GROQ_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+
+          CONTENT=$(echo "$RESP" | jq -r '.choices[0].message.content // ""')
+          echo "--- model raw content (first 500 chars) ---"
+          echo "$CONTENT" | head -c 500
+          echo
+          echo "--- end ---"
+
+          CONF=$(echo "$CONTENT" | jq -r '.confidence // empty' 2>/dev/null)
+          REASON=$(echo "$CONTENT" | jq -r '.reason // empty' 2>/dev/null)
+          # Fallback: if JSON parse failed, pull the first 0–100 integer from the text.
+          if [ -z "$CONF" ]; then
+            CONF=$(echo "$CONTENT" | grep -oE '[0-9]{1,3}' | head -1)
+          fi
+
+          echo "confidence=${CONF:-unknown}" >> "$GITHUB_OUTPUT"
+          echo "reason=${REASON:-(no rationale returned)}" >> "$GITHUB_OUTPUT"
+          echo "Merge-safety confidence: ${CONF:-unknown}/100 — ${REASON}"
+
       - name: Approve — review passed
         if: steps.scan.outputs.has_critical == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SCORE: ${{ steps.scan.outputs.score }}
+          CONFIDENCE: ${{ steps.confidence.outputs.confidence }}
+          REASON: ${{ steps.confidence.outputs.reason }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
         run: |
           printf -v BODY \
-            '✅ **Auto-approved** — %s\n\n**How this decision was made:**\n1. PR-Agent (Groq / gpt-oss-120b) reviewed the diff against `.pr_agent.toml`\n2. Review comment scanned for `CRITICAL` severity labels — none found\n3. Auto-approved ✓\n\nAddress any HIGH or MEDIUM findings in the review comment above before merging.' \
-            "${SCORE}"
+            '✅ **Auto-approved** — merge-safety confidence %s/100\n\n_%s_\n\n**How this decision was made:**\n1. PR-Agent (Groq / gpt-oss-120b) reviewed the diff against `.pr_agent.toml`\n2. Review comment scanned for `CRITICAL` severity labels — none found\n3. A gpt-oss-120b safety check rated auto-merge confidence at %s/100\n4. Auto-approved ✓\n\nAddress any HIGH or MEDIUM findings in the review comment above before merging.' \
+            "${CONFIDENCE}" "${REASON}" "${CONFIDENCE}"
           gh pr review "${PR_NUMBER}" --approve --body "${BODY}" --repo "${{ github.repository }}"
 
       - name: Block — CRITICAL findings present
         if: steps.scan.outputs.has_critical == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SCORE: ${{ steps.scan.outputs.score }}
+          CONFIDENCE: ${{ steps.confidence.outputs.confidence }}
+          REASON: ${{ steps.confidence.outputs.reason }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
         run: |
           printf -v BODY \
-            '🚫 **Auto-approve blocked** — %s\n\n**How this decision was made:**\n1. PR-Agent (Groq / gpt-oss-120b) reviewed the diff against `.pr_agent.toml`\n2. Review comment scanned for `CRITICAL` severity labels — one or more found\n3. Merge blocked ✗\n\nResolve all CRITICAL issues in the review comment above and push a new commit to re-trigger.' \
-            "${SCORE}"
+            '🚫 **Auto-approve blocked** — merge-safety confidence %s/100\n\n_%s_\n\n**How this decision was made:**\n1. PR-Agent (Groq / gpt-oss-120b) reviewed the diff against `.pr_agent.toml`\n2. Review comment scanned for `CRITICAL` severity labels — one or more found\n3. Merge blocked ✗\n\nResolve all CRITICAL issues in the review comment above and push a new commit to re-trigger.' \
+            "${CONFIDENCE}" "${REASON}"
           gh pr review "${PR_NUMBER}" --request-changes --body "${BODY}" --repo "${{ github.repository }}"
 
   # ── /commands in PR comments ───────────────────────────────────────────────
