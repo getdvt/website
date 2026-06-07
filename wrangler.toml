@@ -12,7 +12,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "dvt-handraises"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "37155907-6089-4112-ba22-3ebba2db3549"
 
 # Environment variables (non-secret)
 # Secrets (RESEND_API_KEY, CF_BEACON_TOKEN) go in Pages → Settings → Environment variables
