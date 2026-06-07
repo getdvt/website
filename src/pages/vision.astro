@@ -31,8 +31,8 @@ export const prerender = true;
         <div class="thesis-block">
           <p class="thesis-quote">
             "Dashboards should be declarative data that AI agents and humans
-            co-author, that live in version control, and where <em>every</em> visual
-            property is a stored, customizable parameter — not a design
+            co-author — stored in a database, updated via API, where <em>every</em> visual
+            property is a named, customizable parameter — not a design
             constraint imposed by the tool."
           </p>
         </div>
@@ -56,8 +56,11 @@ export const prerender = true;
             that analytics engineers already use everywhere else.
           </p>
           <p>
-            <strong>DVT completes the trio.</strong> It is to dashboards what dbt is
-            to SQL transforms — declarative, version-controlled, and AI-first.
+            <strong>DVT completes the trio.</strong> The right analogy is Figma or Notion,
+            not dbt: dashboard specs are live data in the cloud, updated instantly via
+            API or MCP — not files committed to a repo every time a chart color changes.
+            The spec <em>format</em> is open and version-controlled (like dbt's model
+            definition). Individual dashboards are mutable records (like a Figma file).
           </p>
         </div>
         <div class="col-stack">
@@ -94,10 +97,11 @@ export const prerender = true;
             <p>
               Already using dbt and dlt. Think in SQL. Use git. Care about reproducibility.
               Want to build dashboards programmatically — not click-and-drag. Comfortable
-              with JSON specs. Would rather express a dashboard as code than wrestle with a GUI.
+              with JSON specs. Would rather author a dashboard via API or let Claude write
+              the spec than wrestle with a GUI.
             </p>
             <p class="persona-signal">
-              "I already version-control my dbt models. Why can't I do the same with my dashboards?"
+              "I want programmatic control over my dashboards — and the option to put them in git when it makes sense."
             </p>
           </div>
           <div class="persona-card">

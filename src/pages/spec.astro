@@ -128,7 +128,7 @@ const example3Spec = `// Claude receives this prompt via the DVT MCP server:
 
 <Base
   title="Spec — DVT"
-  description="The DVT dashboard spec: versioned JSON documents that define every dashboard, panel, and visual property. Authored by humans and AI agents alike."
+  description="The DVT dashboard spec: versioned JSON documents stored in DVT's database, updated via REST API or MCP. Authored by humans and AI agents alike — no deploy pipeline required."
 >
   <Nav />
   <main>
@@ -139,8 +139,8 @@ const example3Spec = `// Claude receives this prompt via the DVT MCP server:
         <h1>A dashboard is a JSON document.</h1>
         <p class="lead">
           Every DVT dashboard — its theme, layout, panels, and visual properties —
-          lives as a versioned JSON spec. Stored in your database, committed to your repo,
-          authored by humans and AI agents alike.
+          lives as a versioned JSON spec in DVT's database. Update it via API or MCP call.
+          No deploy pipeline for a chart color change.
         </p>
       </div>
     </section>
@@ -151,9 +151,9 @@ const example3Spec = `// Claude receives this prompt via the DVT MCP server:
         <h2>Dashboards as Data (DAD)</h2>
         <div class="dad-grid">
           <div class="dad-item">
-            <div class="dad-icon">⎇</div>
-            <h3>Version-controlled</h3>
-            <p>Every change is a revision. Git-diff it, roll it back, review it in a PR. Dashboards travel through the same workflow as your dbt models.</p>
+            <div class="dad-icon">◎</div>
+            <h3>Live, not deployed</h3>
+            <p>Dashboard specs are database records — update one via REST API or MCP and it's live instantly. DVT tracks every revision server-side. Export to git if you want GitOps; it's never required.</p>
           </div>
           <div class="dad-item">
             <div class="dad-icon">⚡</div>
@@ -168,7 +168,7 @@ const example3Spec = `// Claude receives this prompt via the DVT MCP server:
           <div class="dad-item">
             <div class="dad-icon">✓</div>
             <h3>Deterministic</h3>
-            <p>Same spec → same pixels, every time. Validate a spec before saving it. Preview changes before applying them. AI agents get a preview loop before committing.</p>
+            <p>Same spec → same pixels, every time. Validate a spec before saving it. Preview changes before applying them. AI agents get a preview loop before persisting.</p>
           </div>
         </div>
       </div>
