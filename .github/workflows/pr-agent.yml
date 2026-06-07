@@ -151,35 +151,76 @@ jobs:
           if [ -z "$CONF" ]; then
             CONF=$(echo "$CONTENT" | grep -oE '[0-9]{1,3}' | head -1)
           fi
+          # Flatten the rationale to a single line so the step output stays well-formed.
+          REASON=$(echo "${REASON:-(no rationale returned)}" | tr '\n' ' ' | head -c 300)
 
           echo "confidence=${CONF:-unknown}" >> "$GITHUB_OUTPUT"
-          echo "reason=${REASON:-(no rationale returned)}" >> "$GITHUB_OUTPUT"
+          echo "reason=${REASON}" >> "$GITHUB_OUTPUT"
           echo "Merge-safety confidence: ${CONF:-unknown}/100 — ${REASON}"
 
-      - name: Approve — review passed
-        if: steps.scan.outputs.has_critical == 'false'
+      # ── Decision ─────────────────────────────────────────────────────────────
+      # Auto-approve only if there are NO CRITICAL findings AND the merge-safety
+      # confidence is at or above the threshold. Anything else is blocked
+      # (request-changes) so a human reviews it. Non-numeric confidence fails safe.
+      - name: Decide
+        id: decide
+        env:
+          HAS_CRITICAL: ${{ steps.scan.outputs.has_critical }}
+          CONFIDENCE: ${{ steps.confidence.outputs.confidence }}
+        run: |
+          THRESHOLD=80
+          echo "threshold=${THRESHOLD}" >> "$GITHUB_OUTPUT"
+          CONF="$CONFIDENCE"
+          if ! echo "$CONF" | grep -qE '^[0-9]+$'; then CONF=0; fi
+
+          if [ "$HAS_CRITICAL" = "true" ]; then
+            echo "decision=block" >> "$GITHUB_OUTPUT"
+            echo "cause=critical" >> "$GITHUB_OUTPUT"
+            echo "CRITICAL findings present — blocking."
+          elif [ "$CONF" -ge "$THRESHOLD" ]; then
+            echo "decision=approve" >> "$GITHUB_OUTPUT"
+            echo "cause=ok" >> "$GITHUB_OUTPUT"
+            echo "No CRITICAL findings and confidence ${CONF} ≥ ${THRESHOLD} — approving."
+          else
+            echo "decision=block" >> "$GITHUB_OUTPUT"
+            echo "cause=low_confidence" >> "$GITHUB_OUTPUT"
+            echo "Confidence ${CONF} < ${THRESHOLD} — blocking for human review."
+          fi
+
+      - name: Approve — safe to auto-merge
+        if: steps.decide.outputs.decision == 'approve'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CONFIDENCE: ${{ steps.confidence.outputs.confidence }}
           REASON: ${{ steps.confidence.outputs.reason }}
+          THRESHOLD: ${{ steps.decide.outputs.threshold }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
         run: |
           printf -v BODY \
-            '✅ **Auto-approved** — merge-safety confidence %s/100\n\n_%s_\n\n**How this decision was made:**\n1. PR-Agent (Groq / gpt-oss-120b) reviewed the diff against `.pr_agent.toml`\n2. Review comment scanned for `CRITICAL` severity labels — none found\n3. A gpt-oss-120b safety check rated auto-merge confidence at %s/100\n4. Auto-approved ✓\n\nAddress any HIGH or MEDIUM findings in the review comment above before merging.' \
-            "${CONFIDENCE}" "${REASON}" "${CONFIDENCE}"
+            '✅ **Auto-approved** — merge-safety confidence %s/100 (threshold %s)\n\n_%s_\n\n**How this decision was made:**\n1. PR-Agent (Groq / gpt-oss-120b) reviewed the diff against `.pr_agent.toml`\n2. Review comment scanned for `CRITICAL` severity labels — none found\n3. A gpt-oss-120b safety check rated auto-merge confidence at %s/100 ≥ %s\n4. Auto-approved ✓\n\nAddress any HIGH or MEDIUM findings in the review comment above before merging.' \
+            "${CONFIDENCE}" "${THRESHOLD}" "${REASON}" "${CONFIDENCE}" "${THRESHOLD}"
           gh pr review "${PR_NUMBER}" --approve --body "${BODY}" --repo "${{ github.repository }}"
 
-      - name: Block — CRITICAL findings present
-        if: steps.scan.outputs.has_critical == 'true'
+      - name: Block — not safe to auto-merge
+        if: steps.decide.outputs.decision == 'block'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CONFIDENCE: ${{ steps.confidence.outputs.confidence }}
           REASON: ${{ steps.confidence.outputs.reason }}
+          THRESHOLD: ${{ steps.decide.outputs.threshold }}
+          CAUSE: ${{ steps.decide.outputs.cause }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
         run: |
+          if [ "$CAUSE" = "critical" ]; then
+            HEADER="one or more CRITICAL findings in the review"
+            STEP="2. Review comment scanned for \`CRITICAL\` severity labels — one or more found\n3. Merge blocked ✗ — resolve all CRITICAL issues in the review comment above, then push a new commit"
+          else
+            HEADER="merge-safety confidence ${CONFIDENCE}/100 is below the auto-merge threshold (${THRESHOLD})"
+            STEP="2. A gpt-oss-120b safety check rated auto-merge confidence at ${CONFIDENCE}/100 < ${THRESHOLD}\n3. Merge blocked ✗ — a human should review this change (or push a commit that raises confidence)"
+          fi
           printf -v BODY \
-            '🚫 **Auto-approve blocked** — merge-safety confidence %s/100\n\n_%s_\n\n**How this decision was made:**\n1. PR-Agent (Groq / gpt-oss-120b) reviewed the diff against `.pr_agent.toml`\n2. Review comment scanned for `CRITICAL` severity labels — one or more found\n3. Merge blocked ✗\n\nResolve all CRITICAL issues in the review comment above and push a new commit to re-trigger.' \
-            "${CONFIDENCE}" "${REASON}"
+            '🚫 **Auto-approve blocked** — %s\n\n_%s_\n\n**How this decision was made:**\n1. PR-Agent (Groq / gpt-oss-120b) reviewed the diff against `.pr_agent.toml`\n%s\n\nA human reviewer can dismiss this review to merge anyway.' \
+            "${HEADER}" "${REASON}" "${STEP}"
           gh pr review "${PR_NUMBER}" --request-changes --body "${BODY}" --repo "${{ github.repository }}"
 
   # ── /commands in PR comments ───────────────────────────────────────────────
