@@ -175,6 +175,73 @@ export const prerender = true;
       </div>
     </section>
 
+    <!-- Semantic layer section -->
+    <section class="section section-alt">
+      <div class="container">
+        <h2>The semantic layer you already have</h2>
+        <p class="section-lead">
+          The modern data stack is being told it needs another abstraction: a semantic layer
+          between the warehouse and every downstream tool. DVT's answer is different.
+        </p>
+        <div class="sem-split">
+          <div class="sem-problem">
+            <h3>The promise</h3>
+            <p>
+              Define your business metrics once — ARR, churn, pipeline — in a central governed
+              schema. Every tool queries them consistently. No more competing definitions.
+              No more "which churn rate is the real one?"
+            </p>
+            <p>
+              The problem: this requires another grammar to learn, another service to run, and
+              organizational buy-in that rarely materializes. Definitions still drift. The
+              governance problem doesn't go away — it just moves.
+            </p>
+          </div>
+          <div class="sem-answer">
+            <h3>DVT's answer</h3>
+            <p>
+              When Claude authors a DVT dashboard, metric definitions come with it — embedded in
+              the spec, stored in the database, queryable over the same REST API. You don't define
+              your metrics before building dashboards. The definitions emerge from the dashboards
+              themselves.
+            </p>
+          </div>
+        </div>
+        <div class="sem-usecases">
+          <div class="sem-case">
+            <div class="sem-case-q">"Where is the sales forecast?"</div>
+            <p>
+              Ask DVT's search API. It returns the dashboard Claude built — with the business
+              context it wrote, the data source it used, and how often the team views it. No
+              separate metadata catalog. No manual documentation step.
+            </p>
+          </div>
+          <div class="sem-case">
+            <div class="sem-case-q">"How do we define churn — and do we have competing versions?"</div>
+            <p>
+              Query all panels that reference churn-related metrics. DVT surfaces every
+              definition in use, who created each one (human or AI agent), and which version
+              the team actually looks at. Usage frequency becomes a proxy for canonical truth.
+            </p>
+          </div>
+          <div class="sem-case">
+            <div class="sem-case-q">"What data is the executive revenue dashboard built on?"</div>
+            <p>
+              Every panel in a DVT spec records its data source, metric reference, and the
+              description Claude wrote for it. Full lineage is in the spec. No separate lineage
+              tool required.
+            </p>
+          </div>
+        </div>
+        <p class="sem-caveat">
+          DVT doesn't replace a semantic layer at the warehouse layer — if you need
+          ad-hoc metric queries against raw tables, MetricFlow or Cube still do that well.
+          But for visualization-layer governance — where is this metric shown, how is it
+          defined in context, who built it, who uses it — DVT's catalog is already there.
+        </p>
+      </div>
+    </section>
+
     <!-- The long game -->
     <section class="section">
       <div class="container long-game">
@@ -426,4 +493,82 @@ export const prerender = true;
     transition: color var(--transition-fast);
   }
   .btn-spec-link:hover { color: var(--color-brand-mark); }
+
+  /* Semantic layer section */
+  .sem-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-8);
+    margin-bottom: var(--space-8);
+  }
+  @media (max-width: 768px) {
+    .sem-split { grid-template-columns: 1fr; }
+  }
+
+  .sem-problem, .sem-answer {
+    padding: var(--space-6);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-neutral-200);
+  }
+  .sem-problem { background: var(--color-white); }
+  .sem-answer {
+    background: rgba(91, 191, 186, 0.06);
+    border-color: rgba(91, 191, 186, 0.3);
+  }
+
+  .sem-problem h3, .sem-answer h3 {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: var(--space-3);
+  }
+  .sem-problem h3 { color: var(--color-neutral-400); }
+  .sem-answer h3 { color: var(--color-brand-mark); }
+
+  .sem-problem p, .sem-answer p {
+    font-size: var(--text-sm);
+    color: var(--color-neutral-600);
+    line-height: 1.65;
+    margin-bottom: var(--space-3);
+  }
+  .sem-problem p:last-child, .sem-answer p:last-child { margin-bottom: 0; }
+
+  .sem-usecases {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin-bottom: var(--space-6);
+  }
+
+  .sem-case {
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5) var(--space-6);
+    background: var(--color-white);
+  }
+
+  .sem-case-q {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    font-style: italic;
+    color: var(--color-neutral-700);
+    margin-bottom: var(--space-2);
+  }
+
+  .sem-case p {
+    font-size: var(--text-sm);
+    color: var(--color-neutral-600);
+    line-height: 1.65;
+    margin: 0;
+  }
+
+  .sem-caveat {
+    font-size: var(--text-sm);
+    color: var(--color-neutral-400);
+    line-height: 1.65;
+    border-top: 1px solid var(--color-neutral-200);
+    padding-top: var(--space-4);
+    margin-top: var(--space-2);
+  }
 </style>
