@@ -4,7 +4,7 @@ Repo-specific merge-safety guidance for the auto-approve confidence judge in
 gatekeeper system prompt, so the workflow itself stays identical across repos
 and each repo tunes its own risk rules here. Keep it short and concrete.
 -->
-This repository is the DVT website (dvt.dev): Astro front end with Cloudflare
+This repository is the dvt website (dvt.dev): Astro front end with Cloudflare
 Pages Functions and a D1 database. Trivially safe (high confidence): copy/docs,
 comments, or a config typo.
 

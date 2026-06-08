@@ -71,11 +71,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'DVT Handraise <noreply@dvt.dev>',
+          from: 'dvt Handraise <noreply@dvt.dev>',
           to: [notifyEmail],
-          subject: `DVT handraise: ${email}`,
+          subject: `dvt handraise: ${email}`,
           text: [
-            `New early-access request for DVT.`,
+            `New early-access request for dvt.`,
             ``,
             `Email:    ${email}`,
             `Referrer: ${referrer || '(direct)'}`,

@@ -1,4 +1,4 @@
-# dvt.dev — Data Viz Tool landing page
+# dvt.dev — data viz tool landing page
 
 Astro site serving [dvt.dev](https://dvt.dev). Deploys via Cloudflare Pages.
 

@@ -8,8 +8,8 @@ export const prerender = true;
 ---
 
 <Base
-  title="Vision — DVT"
-  description="Why DVT exists: dashboards as declarative data, AI-native authorship, and completing the modern data stack."
+  title="Vision — dvt"
+  description="Why dvt exists: dashboards as declarative data, AI-native authorship, and completing the modern data stack."
 >
   <Nav />
   <main>
@@ -20,7 +20,7 @@ export const prerender = true;
         <h1>Dashboards should be data.</h1>
         <p class="lead">
           The modern data stack has world-class tools for loading and transforming data.
-          The visualization layer is still a GUI product. DVT changes that.
+          The visualization layer is still a GUI product. dvt changes that.
         </p>
       </div>
     </section>
@@ -45,7 +45,7 @@ export const prerender = true;
         <div class="col-text">
           <h2>The gap in the modern data stack</h2>
           <p>
-            <strong>dlt</strong> (Data Load Tool) extracts and loads raw data into your warehouse.
+            <strong>dlt</strong> (data load tool) extracts and loads raw data into your warehouse.
             <strong>dbt</strong> transforms and models it into analytics-ready tables.
             What comes next — visualization — has remained a solved-but-messy layer.
           </p>
@@ -56,7 +56,7 @@ export const prerender = true;
             that analytics engineers already use everywhere else.
           </p>
           <p>
-            <strong>DVT completes the trio.</strong> The right analogy is Figma or Notion,
+            <strong>dvt completes the trio.</strong> The right analogy is Figma or Notion,
             not dbt: dashboard specs are live data in the cloud, updated instantly via
             API or MCP — not files committed to a repo every time a chart color changes.
             The spec <em>format</em> is open and version-controlled (like dbt's model
@@ -90,7 +90,7 @@ export const prerender = true;
     <!-- Who it's for -->
     <section class="section">
       <div class="container">
-        <h2>Who DVT is for</h2>
+        <h2>Who dvt is for</h2>
         <div class="persona-grid">
           <div class="persona-card">
             <h3>Analytics engineers &amp; data scientists</h3>
@@ -108,7 +108,7 @@ export const prerender = true;
             <h3>Data analysts who use AI heavily</h3>
             <p>
               May not write much code, but work in environments where Claude or another agent
-              drafts analytical artifacts. For this user, DVT's AI-native authoring means
+              drafts analytical artifacts. For this user, dvt's AI-native authoring means
               describing what they want — and an agent builds it, with every detail editable
               through a structured editor backed by the same open spec.
             </p>
@@ -181,7 +181,7 @@ export const prerender = true;
         <h2>The semantic layer you already have</h2>
         <p class="section-lead">
           The modern data stack is being told it needs another abstraction: a semantic layer
-          between the warehouse and every downstream tool. DVT's answer is different.
+          between the warehouse and every downstream tool. dvt's answer is different.
         </p>
         <div class="sem-split">
           <div class="sem-problem">
@@ -198,9 +198,9 @@ export const prerender = true;
             </p>
           </div>
           <div class="sem-answer">
-            <h3>DVT's answer</h3>
+            <h3>dvt's answer</h3>
             <p>
-              When Claude authors a DVT dashboard, metric definitions come with it — embedded in
+              When Claude authors a dvt dashboard, metric definitions come with it — embedded in
               the spec, stored in the database, queryable over the same REST API. You don't define
               your metrics before building dashboards. The definitions emerge from the dashboards
               themselves.
@@ -211,7 +211,7 @@ export const prerender = true;
           <div class="sem-case">
             <div class="sem-case-q">"Where is the sales forecast?"</div>
             <p>
-              Ask DVT's search API. It returns the dashboard Claude built — with the business
+              Ask dvt's search API. It returns the dashboard Claude built — with the business
               context it wrote, the data source it used, and how often the team views it. No
               separate metadata catalog. No manual documentation step.
             </p>
@@ -219,7 +219,7 @@ export const prerender = true;
           <div class="sem-case">
             <div class="sem-case-q">"How do we define churn — and do we have competing versions?"</div>
             <p>
-              Query all panels that reference churn-related metrics. DVT surfaces every
+              Query all panels that reference churn-related metrics. dvt surfaces every
               definition in use, who created each one (human or AI agent), and which version
               the team actually looks at. Usage frequency becomes a proxy for canonical truth.
             </p>
@@ -227,17 +227,17 @@ export const prerender = true;
           <div class="sem-case">
             <div class="sem-case-q">"What data is the executive revenue dashboard built on?"</div>
             <p>
-              Every panel in a DVT spec records its data source, metric reference, and the
+              Every panel in a dvt spec records its data source, metric reference, and the
               description Claude wrote for it. Full lineage is in the spec. No separate lineage
               tool required.
             </p>
           </div>
         </div>
         <p class="sem-caveat">
-          DVT doesn't replace a semantic layer at the warehouse layer — if you need
+          dvt doesn't replace a semantic layer at the warehouse layer — if you need
           ad-hoc metric queries against raw tables, MetricFlow or Cube still do that well.
           But for visualization-layer governance — where is this metric shown, how is it
-          defined in context, who built it, who uses it — DVT's catalog is already there.
+          defined in context, who built it, who uses it — dvt's catalog is already there.
         </p>
       </div>
     </section>
@@ -247,7 +247,7 @@ export const prerender = true;
       <div class="container long-game">
         <h2>The long game</h2>
         <p>
-          DVT's long-term moat is the <strong>spec format becoming an industry standard</strong> —
+          dvt's long-term moat is the <strong>spec format becoming an industry standard</strong> —
           the thing every AI agent emits when building dashboards, the thing that travels
           between tools, the thing that analytics engineers put in their repos.
         </p>

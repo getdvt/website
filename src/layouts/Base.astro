@@ -8,8 +8,8 @@ interface Props {
 }
 
 const {
-  title = 'DVT — Dashboards as Versioned JSON Specs',
-  description = 'The third leg of the modern data stack. AI-native, fully-customizable, open dashboarding platform — dashboards as versioned JSON specs.',
+  title = 'dvt — Dashboards as Versioned JSON Specs',
+  description = 'Dashboards as data. AI-native, fully-customizable, open dashboarding platform — dashboards as versioned JSON specs.',
   ogImage = '/og-image.png',
 } = Astro.props;
 
@@ -57,7 +57,7 @@ const ogImageURL = new URL(ogImage, Astro.site);
       "@graph": [
         {
           "@type": "Organization",
-          "name": "DVT",
+          "name": "dvt",
           "url": "https://dvt.dev",
           "logo": "https://dvt.dev/logo.svg",
           "description": "Open, AI-native dashboarding platform — dashboards as versioned JSON specs.",
@@ -65,7 +65,7 @@ const ogImageURL = new URL(ogImage, Astro.site);
         },
         {
           "@type": "SoftwareApplication",
-          "name": "DVT",
+          "name": "dvt",
           "url": "https://dvt.dev",
           "applicationCategory": "BusinessApplication",
           "operatingSystem": "Web",
