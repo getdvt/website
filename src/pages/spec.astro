@@ -6,6 +6,10 @@ import Footer from '../components/Footer.astro';
 
 export const prerender = true;
 
+// The DVT app hosts the live Spec Builder — the open, backend-free demo at
+// demo.dvt.dev (app.dvt.dev is reserved for the eventual authenticated product).
+const BUILDER_URL = 'https://demo.dvt.dev/builder';
+
 const example1Spec = `{
   "schemaVersion": 1,
   "meta": { "title": "Monthly Revenue" },
@@ -141,6 +145,14 @@ const example3Spec = `// Claude receives this prompt via the DVT MCP server:
           Every DVT dashboard — its theme, layout, panels, and visual properties —
           lives as a versioned JSON spec in DVT's database. Update it via API or MCP call.
           No deploy pipeline for a chart color change.
+        </p>
+        <div class="hero-cta-row">
+          <a href={BUILDER_URL} class="hero-cta-primary">Open the live builder →</a>
+          <a href="/dvt-spec-authoring-skill.md" class="hero-cta-secondary" download>Download the AI authoring skill</a>
+        </div>
+        <p class="hero-cta-note">
+          Edit the raw JSON and watch it render — like Slack's Block Kit Builder, for dashboards.
+          Bring your own AI: the skill teaches any harness to write DVT specs.
         </p>
       </div>
     </section>
@@ -703,4 +715,43 @@ const example3Spec = `// Claude receives this prompt via the DVT MCP server:
     transition: color var(--transition-fast);
   }
   .btn-access-inline:hover { color: var(--color-brand-mark); }
+
+  .hero-cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: var(--space-6);
+  }
+  .hero-cta-primary {
+    display: inline-flex;
+    align-items: center;
+    padding: 12px var(--space-6);
+    background: var(--color-brand-navy);
+    color: var(--color-white);
+    border-radius: var(--radius-md);
+    font-size: var(--text-base);
+    font-weight: 600;
+    transition: background var(--transition-fast);
+  }
+  .hero-cta-primary:hover { background: var(--color-neutral-700); color: var(--color-white); }
+  .hero-cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    padding: 12px var(--space-6);
+    background: transparent;
+    color: var(--color-neutral-700);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-md);
+    font-size: var(--text-base);
+    font-weight: 500;
+    transition: border-color var(--transition-fast), color var(--transition-fast);
+  }
+  .hero-cta-secondary:hover { border-color: var(--color-neutral-400); color: var(--color-neutral-950); }
+  .hero-cta-note {
+    margin-top: var(--space-4);
+    color: var(--color-neutral-600);
+    font-size: var(--text-sm);
+    line-height: 1.7;
+    max-width: 48ch;
+  }
 </style>
