@@ -89,12 +89,16 @@ CRITICAL: No secrets, API keys, tokens, or PII in the diff — not even in
   comments, examples, or fixtures.
 """
 
+# keep_original_user_title + add_original_user_description preserve the author's
+# hand-written title and body so documented rationale survives (PR-Agent's
+# AI-generated summary is still posted, as a comment) and reaches both the review
+# tool and the merge-safety confidence judge.
 [pr_description]
 publish_labels                 = false
 generate_ai_title              = true
-keep_original_user_title       = false
+keep_original_user_title       = true
 publish_description_as_comment = true
-add_original_user_description  = false
+add_original_user_description  = true
 
 [pr_code_suggestions]
 summarize = true
