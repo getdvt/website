@@ -99,7 +99,7 @@ immediately rather than waiting for the next crawl cycle.
 In Search Console:
 
 - **Performance → Search results**: which queries are driving impressions/clicks.
-  Look for the `JSON dashboard spec`, `dbt dashboarding`, and `DVT` brand terms
+  Look for the `JSON dashboard spec`, `dbt dashboarding`, and `dvt` brand terms
   appearing. Click volume will be low at first — impressions are the signal to watch.
 - **Coverage**: any pages with errors (redirects, 404s, noindex flags). Should be clean.
 - **Core Web Vitals**: flag any LCP or CLS regressions. dvt.dev is a static Astro

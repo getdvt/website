@@ -1,4 +1,4 @@
--- DVT handraises D1 schema
+-- dvt handraises D1 schema
 -- Run once with: wrangler d1 execute dvt-handraises --file=schema.sql
 -- Or via Cloudflare dashboard: D1 → dvt-handraises → Console → run this
 

@@ -6,7 +6,7 @@ import Footer from '../components/Footer.astro';
 
 export const prerender = true;
 
-// The DVT app hosts the live Spec Builder — the open, backend-free demo at
+// The dvt app hosts the live Spec Builder — the open, backend-free demo at
 // demo.dvt.dev (app.dvt.dev is reserved for the eventual authenticated product).
 const BUILDER_URL = 'https://demo.dvt.dev/builder';
 
@@ -85,7 +85,7 @@ const example2Spec = `{
   ]
 }`;
 
-const example3Spec = `// Claude receives this prompt via the DVT MCP server:
+const example3Spec = `// Claude receives this prompt via the dvt MCP server:
 // "Create a funnel dashboard showing signup → activation → paid
 //  conversion for the last 30 days. Use our brand colors."
 
@@ -131,8 +131,8 @@ const example3Spec = `// Claude receives this prompt via the DVT MCP server:
 ---
 
 <Base
-  title="The DVT JSON Dashboard Spec — open format, REST API + MCP"
-  description="Every DVT dashboard is a versioned JSON spec — stored as a database record, updated via REST API or MCP, authored by humans and AI agents alike. Open format. No deploy pipeline."
+  title="The dvt JSON Dashboard Spec — open format, REST API + MCP"
+  description="Every dvt dashboard is a versioned JSON spec — stored as a database record, updated via REST API or MCP, authored by humans and AI agents alike. Open format. No deploy pipeline."
 >
   <Nav />
   <main>
@@ -142,8 +142,8 @@ const example3Spec = `// Claude receives this prompt via the DVT MCP server:
         <div class="eyebrow">Spec</div>
         <h1>A dashboard is a JSON document.</h1>
         <p class="lead">
-          Every DVT dashboard — its theme, layout, panels, and visual properties —
-          lives as a versioned JSON spec in DVT's database. Update it via API or MCP call.
+          Every dvt dashboard — its theme, layout, panels, and visual properties —
+          lives as a versioned JSON spec in dvt's database. Update it via API or MCP call.
           No deploy pipeline for a chart color change.
         </p>
         <div class="hero-cta-row">
@@ -152,7 +152,7 @@ const example3Spec = `// Claude receives this prompt via the DVT MCP server:
         </div>
         <p class="hero-cta-note">
           Edit the raw JSON and watch it render — like Slack's Block Kit Builder, for dashboards.
-          Bring your own AI: the skill teaches any harness to write DVT specs.
+          Bring your own AI: the skill teaches any harness to write dvt specs.
         </p>
       </div>
     </section>
@@ -165,12 +165,12 @@ const example3Spec = `// Claude receives this prompt via the DVT MCP server:
           <div class="dad-item">
             <div class="dad-icon">◎</div>
             <h3>Live, not deployed</h3>
-            <p>Dashboard specs are database records — update one via REST API or MCP and it's live instantly. DVT tracks every revision server-side. Export to git if you want GitOps; it's never required.</p>
+            <p>Dashboard specs are database records — update one via REST API or MCP and it's live instantly. dvt tracks every revision server-side. Export to git if you want GitOps; it's never required.</p>
           </div>
           <div class="dad-item">
             <div class="dad-icon">⚡</div>
             <h3>AI-authored</h3>
-            <p>Claude can POST a valid spec to the DVT MCP server and the dashboard appears — no GUI clicks, no screenshots, no copy-pasting JSON by hand.</p>
+            <p>Claude can POST a valid spec to the dvt MCP server and the dashboard appears — no GUI clicks, no screenshots, no copy-pasting JSON by hand.</p>
           </div>
           <div class="dad-item">
             <div class="dad-icon">⊞</div>
@@ -342,13 +342,13 @@ const example3Spec = `// Claude receives this prompt via the DVT MCP server:
           <span class="example-num">Example 3</span>
           <h2>AI-authored via MCP</h2>
           <p>
-            Claude receives a natural-language prompt through the DVT MCP server,
+            Claude receives a natural-language prompt through the dvt MCP server,
             generates a valid spec, and applies it directly — no copy-paste, no GUI.
           </p>
         </div>
         <div class="example-layout">
           <div class="code-pane">
-            <div class="code-label">Claude + DVT MCP</div>
+            <div class="code-label">Claude + dvt MCP</div>
             <pre class="code-block"><code>{example3Spec}</code></pre>
           </div>
           <div class="preview-pane">
@@ -405,10 +405,10 @@ const example3Spec = `// Claude receives this prompt via the DVT MCP server:
       <div class="container schema-note">
         <h2>Open spec, published schema</h2>
         <p>
-          The DVT spec format is Apache-2.0 licensed and will ship with a published
+          The dvt spec format is Apache-2.0 licensed and will ship with a published
           JSON Schema — enabling validation, editor autocompletion, and AI self-correction
           without needing to query a running server. The spec travels with your data,
-          not with DVT's infrastructure.
+          not with dvt's infrastructure.
         </p>
         <p>
           The schema is in active design. The examples above reflect the current working
