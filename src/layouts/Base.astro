@@ -51,6 +51,9 @@ const ogImageURL = new URL(ogImage, Astro.site);
     <!-- Sitemap -->
     <link rel="sitemap" href="/sitemap-index.xml" />
 
+    <!-- RSS autodiscovery -->
+    <link rel="alternate" type="application/rss+xml" title="dvt blog" href="/rss.xml" />
+
     <!-- Structured data -->
     <script type="application/ld+json" set:html={JSON.stringify({
       "@context": "https://schema.org",
