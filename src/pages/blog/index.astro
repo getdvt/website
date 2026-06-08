@@ -1,0 +1,139 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Nav from '../../components/Nav.astro';
+import Footer from '../../components/Footer.astro';
+
+export const prerender = true;
+
+const posts = (await getCollection('blog', ({ data }) => import.meta.env.PROD ? !data.draft : true))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const formatDate = (d: Date) =>
+  d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+---
+
+<Base
+  title="Blog — dvt"
+  description="Notes on dvt — where the visualization layer fits in the modern data stack, and the design decisions behind dashboards as versioned specs."
+>
+  <Nav />
+  <main>
+    <section class="page-hero">
+      <div class="container">
+        <div class="eyebrow">Blog</div>
+        <h1>Notes on the build</h1>
+        <p class="lead">
+          Where dvt fits, why we draw the lines we draw, and the thinking behind
+          dashboards as versioned specs.
+        </p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        {posts.length === 0 ? (
+          <p class="empty">No posts yet — check back soon.</p>
+        ) : (
+          <ul class="post-list">
+            {posts.map((post) => (
+              <li class="post-item">
+                <a href={`/blog/${post.id}`} class="post-link">
+                  <time class="post-date" datetime={post.data.pubDate.toISOString()}>
+                    {formatDate(post.data.pubDate)}
+                  </time>
+                  <h2 class="post-title">{post.data.title}</h2>
+                  <p class="post-desc">{post.data.description}</p>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .page-hero {
+    padding: var(--space-16) 0 var(--space-12);
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+
+  .eyebrow {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-brand-mark);
+    margin-bottom: var(--space-4);
+  }
+
+  .page-hero h1 {
+    font-size: clamp(var(--text-3xl), 5vw, 56px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-5);
+  }
+
+  .lead {
+    font-size: var(--text-lg);
+    color: var(--color-neutral-700);
+    line-height: 1.65;
+    max-width: 600px;
+  }
+
+  .section { padding: var(--space-12) 0 var(--space-16); }
+
+  .empty {
+    color: var(--color-neutral-400);
+    font-size: var(--text-lg);
+  }
+
+  .post-list {
+    list-style: none;
+    max-width: 760px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .post-item {
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+
+  .post-link {
+    display: block;
+    padding: var(--space-6) 0;
+    color: inherit;
+  }
+  .post-link:hover { color: inherit; }
+  .post-link:hover .post-title { color: var(--color-brand-navy); }
+
+  .post-date {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-neutral-400);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .post-title {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: var(--color-neutral-900);
+    margin: var(--space-2) 0 var(--space-3);
+    transition: color var(--transition-fast);
+  }
+
+  .post-desc {
+    font-size: var(--text-base);
+    color: var(--color-neutral-700);
+    line-height: 1.6;
+    max-width: 640px;
+  }
+</style>

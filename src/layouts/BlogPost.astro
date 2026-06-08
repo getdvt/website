@@ -1,0 +1,186 @@
+---
+import Base from './Base.astro';
+import Nav from '../components/Nav.astro';
+import Handraise from '../components/Handraise.astro';
+import Footer from '../components/Footer.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  pubDate: Date;
+  author?: string;
+  ogImage?: string;
+}
+
+const { title, description, pubDate, author = 'Collin Austad', ogImage } = Astro.props;
+
+const formattedDate = pubDate.toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+const isoDate = pubDate.toISOString();
+---
+
+<Base title={`${title} — dvt`} description={description} ogImage={ogImage}>
+  <Nav />
+  <main>
+    <article>
+      <header class="post-header">
+        <div class="container">
+          <a href="/blog" class="eyebrow">← Blog</a>
+          <h1>{title}</h1>
+          <p class="byline">
+            {author} · <time datetime={isoDate}>{formattedDate}</time>
+          </p>
+        </div>
+      </header>
+
+      <div class="container">
+        <div class="prose">
+          <slot />
+        </div>
+      </div>
+    </article>
+
+    <Handraise />
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .post-header {
+    padding: var(--space-16) 0 var(--space-8);
+    border-bottom: 1px solid var(--color-neutral-200);
+    margin-bottom: var(--space-12);
+  }
+
+  .eyebrow {
+    display: inline-block;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-brand-mark);
+    margin-bottom: var(--space-4);
+  }
+  .eyebrow:hover { color: var(--color-brand-navy); }
+
+  .post-header h1 {
+    font-size: clamp(var(--text-3xl), 5vw, 48px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-4);
+    max-width: 760px;
+  }
+
+  .byline {
+    font-size: var(--text-sm);
+    color: var(--color-neutral-400);
+  }
+
+  /* ── Prose ─────────────────────────────────────────────────────── */
+  .prose {
+    max-width: 720px;
+    font-size: var(--text-lg);
+    line-height: 1.75;
+    color: var(--color-neutral-700);
+    padding-bottom: var(--space-16);
+  }
+
+  .prose :global(h2) {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--color-neutral-900);
+    margin-top: var(--space-12);
+    margin-bottom: var(--space-4);
+  }
+
+  .prose :global(h3) {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    color: var(--color-neutral-900);
+    margin-top: var(--space-8);
+    margin-bottom: var(--space-3);
+  }
+
+  .prose :global(p) {
+    margin-bottom: var(--space-5);
+  }
+
+  .prose :global(ul),
+  .prose :global(ol) {
+    margin: 0 0 var(--space-5);
+    padding-left: var(--space-6);
+  }
+
+  .prose :global(li) {
+    margin-bottom: var(--space-2);
+  }
+
+  .prose :global(li::marker) {
+    color: var(--color-neutral-400);
+  }
+
+  .prose :global(strong) {
+    font-weight: 600;
+    color: var(--color-neutral-900);
+  }
+
+  .prose :global(em) {
+    font-style: italic;
+  }
+
+  .prose :global(a) {
+    color: var(--color-brand-indigo);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-thickness: 1px;
+    text-decoration-color: var(--color-brand-indigo-light);
+  }
+  .prose :global(a:hover) {
+    color: var(--color-brand-indigo-dark);
+    text-decoration-color: currentColor;
+  }
+
+  .prose :global(blockquote) {
+    border-left: 3px solid var(--color-brand-mark);
+    padding-left: var(--space-6);
+    margin: var(--space-6) 0;
+    color: var(--color-neutral-700);
+    font-style: italic;
+  }
+
+  .prose :global(code) {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--color-neutral-50);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-sm);
+    padding: 0.1em 0.35em;
+  }
+
+  .prose :global(pre) {
+    background: var(--color-neutral-50);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    overflow-x: auto;
+    margin-bottom: var(--space-5);
+  }
+  .prose :global(pre code) {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: var(--text-sm);
+  }
+
+  .prose :global(hr) {
+    border: none;
+    border-top: 1px solid var(--color-neutral-200);
+    margin: var(--space-12) 0;
+  }
+</style>
