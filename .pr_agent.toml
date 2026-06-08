@@ -1,0 +1,107 @@
+# PR-Agent configuration for the getdvt/website repository
+# Docs: https://pr-agent-docs.codium.ai/usage-guide/configuration_options/
+
+[config]
+git_provider = "github"
+
+[pr_reviewer]
+require_focused_review   = true
+require_score_review     = true
+require_tests_review     = false
+require_security_review  = true
+num_code_suggestions     = 4
+inline_code_comments     = true
+
+extra_instructions = """
+This is the getdvt/website repository — the dvt.dev landing page. Stack: Astro
+(SSR) deployed to Cloudflare Pages, Cloudflare Pages Functions (functions/) for the
+API, a Cloudflare D1 database for handraise (early-access) signups, and Resend for
+email. Design tokens live in src/styles/tokens.css.
+
+## Review format
+
+IMPORTANT: Your review must be specific to THIS diff — not generic boilerplate.
+Name the actual files, components, and functions changed in this PR. If you do not
+demonstrate you have read the diff, the review fails its purpose. Do not use vague
+language like "the changes look correct" without backing it up with specific
+examples from the diff.
+
+Open every review with a structured header block:
+
+### What changed
+Bullet-list the specific files/components added, modified, or removed, with a
+concrete description of each change (use actual names from the diff).
+
+### Impact
+One paragraph: what real-world effect does this have for visitors or the deploy
+pipeline (Cloudflare Pages build, D1, the handraise API)? What breaks if it's wrong?
+
+### Score: X / 5
+  5 — correct, complete, no issues
+  4 — correct with minor style/naming issues
+  3 — functionally correct but missing best practices
+  2 — has HIGH findings that should be fixed before merge
+  1 — has CRITICAL findings; do not merge
+
+Then list findings under headings by severity (omit empty sections).
+
+Severity levels:
+  CRITICAL — secret exposure, injection, data loss, production-breaking
+  HIGH     — correctness bug, security gap, XSS, broken build/deploy
+  MEDIUM   — missing best practice that could become a bug
+  LOW      — style, naming, minor inefficiency, accessibility nit
+
+─── Cloudflare Pages Functions (functions/) ─────────────────────────────────
+
+CRITICAL: D1 queries must use prepared statements with bound parameters
+  (env.DB.prepare(...).bind(...)) — never string concatenation or template
+  literals that interpolate user input into SQL (SQL injection).
+
+CRITICAL: Secrets (RESEND_API_KEY, etc.) must be read from the Env bindings
+  (the env argument), never hardcoded, logged, or returned in a response.
+
+HIGH: Validate and bound-check every request body field before any D1 write or
+  outbound API call (the handraise email path is unauthenticated and public).
+
+MEDIUM: Return RFC-correct status codes (400 on bad input, 405 on wrong method,
+  500 on unexpected failure) and never leak internal error details to the client.
+
+─── Astro / frontend (src/) ─────────────────────────────────────────────────
+
+HIGH: No secrets or private API keys in client-rendered code. Only PUBLIC_-
+  prefixed env vars may reach the browser; server-only secrets must stay in
+  Functions / server code.
+
+HIGH: XSS — never use set:html with unsanitized or user-derived input.
+
+MEDIUM: Colors, spacing, and type should reference the design tokens in
+  src/styles/tokens.css rather than hardcoded hex values, for brand consistency.
+
+MEDIUM: Accessibility — interactive elements need accessible names, images need
+  alt text, and pages should use semantic landmarks.
+
+LOW: Prefer Astro components and zero/minimal client JS; flag unnecessary
+  client-side hydration directives (client:*) added without need.
+
+─── Security (all files) ────────────────────────────────────────────────────
+
+CRITICAL: No secrets, API keys, tokens, or PII in the diff — not even in
+  comments, examples, or fixtures.
+"""
+
+# keep_original_user_title + add_original_user_description preserve the author's
+# hand-written title and body so documented rationale survives (PR-Agent's
+# AI-generated summary is still posted, as a comment) and reaches both the review
+# tool and the merge-safety confidence judge.
+[pr_description]
+publish_labels                 = false
+generate_ai_title              = true
+keep_original_user_title       = true
+publish_description_as_comment = true
+add_original_user_description  = true
+
+[pr_code_suggestions]
+summarize = true
+
+[github]
+publish_inline_comments = true

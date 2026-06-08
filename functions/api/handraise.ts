@@ -55,10 +55,16 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   // ── Email notification via Resend ────────────────────────────────────────────
+  // Email is best-effort: the D1 insert above is the source of truth, so a send
+  // failure never fails the request. But failures MUST be logged loudly — a
+  // silently-skipped notification (e.g. missing API key) is how a real signup
+  // once went unnoticed. Check Cloudflare Pages → Functions → Logs to debug.
   const notifyEmail = env.NOTIFY_EMAIL ?? 'collin@dvt.dev';
-  if (env.RESEND_API_KEY) {
+  if (!env.RESEND_API_KEY) {
+    console.error(`Handraise notification SKIPPED: RESEND_API_KEY not set. Captured signup ${email} in D1 but sent no email.`);
+  } else {
     try {
-      await fetch('https://api.resend.com/emails', {
+      const resendRes = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${env.RESEND_API_KEY}`,
@@ -80,8 +86,13 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
           ].join('\n'),
         }),
       });
+      if (!resendRes.ok) {
+        // 4xx/5xx don't throw on fetch — surface the status + body so auth
+        // (401), unverified-domain (403), and validation errors are visible.
+        const body = await resendRes.text().catch(() => '(unreadable)');
+        console.error(`Resend send failed for ${email}: ${resendRes.status} ${body}`);
+      }
     } catch (err) {
-      // Don't fail the response if email fails — email is best-effort
       console.error('Resend error:', err);
     }
   }
