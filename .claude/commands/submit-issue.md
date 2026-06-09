@@ -16,6 +16,7 @@ If $ARGUMENTS is empty, ask: "What's the issue? One sentence is enough."
 ### 1. Classify
 
 From the description, determine the issue type:
+
 - **bug** — something is broken or wrong
 - **feature** — new capability, content, or user-facing change
 - **task** — chore, refactor, maintenance, or infra change
@@ -23,6 +24,7 @@ From the description, determine the issue type:
 ### 2. Draft
 
 Write a candidate issue with:
+
 - **Title**: specific and scannable (not "fix bug" — say what broke and where). 60 chars max.
 - **Body**: fill in the appropriate template fields from `.github/ISSUE_TEMPLATE/` for this repo. Keep answers terse — one sentence per field is enough.
 - **Label**: bug / feature / task
@@ -34,6 +36,7 @@ Do not proceed to step 3 until the founder confirms.
 ### 3. File
 
 Run:
+
 ```
 gh issue create --title "<title>" --body "<body>" --label "<label>" --assignee "@me"
 ```
