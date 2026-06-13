@@ -1,0 +1,61 @@
+name: Spec-skill drift check
+
+# The dvt spec-authoring skill is authored canonically in getdvt/dvt
+# (web/public/dvt-spec-authoring-skill.md) and VENDORED into this repo at
+# public/dvt-spec-authoring-skill.md so /spec can offer it as a download.
+# This job fails if the two copies drift apart.
+#
+# Upstream is demo.dvt.dev (the public deploy of the dvt app) because getdvt/dvt
+# is private and CI has no token to read it. Caveat: demo.dvt.dev reflects the last
+# dvt DEPLOY, so immediately after a dvt-side change this check can lag until dvt
+# redeploys. To fix drift locally: ./scripts/sync-spec-skill.sh (then commit + push).
+#
+# Coverage split: the PR trigger catches a hand-edit of THIS repo's copy (its `paths`
+# filter only fires when the vendored file changes). UPSTREAM drift — the canonical
+# file changing in getdvt/dvt while our copy stays put — produces no website PR, so it
+# is caught by the weekly `schedule` sweep, not by PRs. Don't promote this to a
+# required status check without accounting for that path-filtered/skipped semantics.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'public/dvt-spec-authoring-skill.md'
+      - '.github/workflows/spec-skill-drift.yml'
+  schedule:
+    - cron: '17 13 * * 1'   # Mondays 13:17 UTC — weekly upstream-drift sweep
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    name: spec-skill-drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch canonical copy from demo.dvt.dev
+        run: |
+          # --retry absorbs transient demo.dvt.dev / Cloudflare blips so the weekly
+          # sweep doesn't go red on a momentary fetch failure (vs. a real drift).
+          curl -fsSL --retry 3 --retry-all-errors --retry-delay 5 \
+            -H 'Cache-Control: no-cache' \
+            https://demo.dvt.dev/dvt-spec-authoring-skill.md -o /tmp/canonical.md
+          # Guard against a soft-404 (SPA HTML fallback) masquerading as the file:
+          # the real skill file starts with its YAML frontmatter delimiter.
+          if ! head -1 /tmp/canonical.md | grep -q '^---$'; then
+            echo "::error::demo.dvt.dev did not return the skill markdown (HTML fallback?). Cannot verify drift."
+            head -3 /tmp/canonical.md
+            exit 1
+          fi
+
+      - name: Compare against vendored copy
+        run: |
+          if ! diff -u /tmp/canonical.md public/dvt-spec-authoring-skill.md; then
+            echo "::error::public/dvt-spec-authoring-skill.md has drifted from the canonical copy in getdvt/dvt."
+            echo "Fix: run ./scripts/sync-spec-skill.sh (with the dvt repo checked out as a sibling), commit, and push."
+            exit 1
+          fi
+          echo "OK — vendored skill matches the canonical copy on demo.dvt.dev."

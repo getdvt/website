@@ -1,0 +1,4 @@
+# Lock the vendored spec-authoring skill to LF + a single trailing newline so an
+# editor's autocrlf can't normalize it out from under the byte-exact drift check
+# (.github/workflows/spec-skill-drift.yml). See README → "Vendored content".
+public/dvt-spec-authoring-skill.md text eol=lf
