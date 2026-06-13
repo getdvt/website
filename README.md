@@ -74,3 +74,19 @@ wrangler.toml                ← Cloudflare config
 
 Source SVGs live in `assets/brand/` in [`getdvt/dvt`](https://github.com/getdvt/dvt).
 The `public/` copies are the subset needed for the site.
+
+## Vendored content
+
+`public/dvt-spec-authoring-skill.md` is a **vendored mirror** — the canonical copy
+lives in the dvt product repo at `getdvt/dvt → web/public/dvt-spec-authoring-skill.md`
+and is served here so [/spec](https://dvt.dev/spec) can offer it as a download.
+
+**Do not hand-edit the website copy.** Edit it in the dvt repo, then re-sync:
+
+```bash
+./scripts/sync-spec-skill.sh        # copies from ../dvt/web/public/
+```
+
+CI (`.github/workflows/spec-skill-drift.yml`) fails if the two copies drift apart.
+It compares against `demo.dvt.dev` (the public dvt deploy), so right after a dvt-side
+change the check can lag until dvt redeploys.
