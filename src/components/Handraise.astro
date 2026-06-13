@@ -1,6 +1,10 @@
 ---
 // Early-access handraise CTA.
 // Form POSTs to /api/handraise (Cloudflare Pages Function).
+// Bot protection: an always-on honeypot, plus a Cloudflare Turnstile widget that
+// renders only when PUBLIC_TURNSTILE_SITE_KEY is set at build time (server-side
+// verification is gated on TURNSTILE_SECRET_KEY in functions/api/handraise.ts).
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY;
 ---
 
 <section class="handraise" id="early-access">
@@ -26,6 +30,22 @@
         />
         <button type="submit" class="btn-submit">Request access</button>
       </div>
+
+      {/* Honeypot — off-screen, never shown to humans; bots fill it and get dropped. */}
+      <div class="hp-field" aria-hidden="true">
+        <label for="company">Company (leave this empty)</label>
+        <input type="text" name="company" id="company" tabindex="-1" autocomplete="off" />
+      </div>
+
+      {turnstileSiteKey && (
+        <div
+          class="cf-turnstile"
+          data-sitekey={turnstileSiteKey}
+          data-action="handraise"
+          data-size="flexible"
+        />
+      )}
+
       <p class="fine-print">No spam. We use this to reach out directly, nothing else.</p>
       <p class="success-msg" id="success-msg" hidden>
         ✓ Got it — we'll be in touch.
@@ -37,6 +57,15 @@
   </div>
 </section>
 
+{turnstileSiteKey && (
+  <script
+    is:inline
+    src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+    async
+    defer
+  />
+)}
+
 <script>
   const form = document.getElementById('handraise-form') as HTMLFormElement | null;
   const successMsg = document.getElementById('success-msg');
@@ -45,11 +74,19 @@
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = new FormData(form);
+    // Turnstile injects a hidden `cf-turnstile-response` input into the form when
+    // the widget is present; empty string when the widget isn't rendered.
+    const turnstileToken =
+      (form.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement | null)?.value ?? '';
 
     try {
       const res = await fetch('/api/handraise', {
         method: 'POST',
-        body: JSON.stringify({ email: data.get('email') }),
+        body: JSON.stringify({
+          email: data.get('email'),
+          company: data.get('company'),
+          turnstileToken,
+        }),
         headers: { 'Content-Type': 'application/json' },
       });
 
@@ -103,6 +140,19 @@
     display: flex;
     gap: var(--space-2);
     flex-wrap: wrap;
+  }
+
+  /* Honeypot: removed from layout and the accessibility tree, off-screen. */
+  .hp-field {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
+  .cf-turnstile {
+    margin-top: var(--space-3);
   }
 
   input[type="email"] {
