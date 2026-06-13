@@ -16,9 +16,9 @@ const example1Spec = `{
   "theme": {
     "tokens": {
       "semantic": {
-        "chart.series.1": "#5BBFBA",
-        "chart.axis.label.color": "#6b7280",
-        "chart.grid.line.color": "#f3f4f6"
+        "chart.series.1": "#4F46E5",
+        "chart.axis.label.color": "#71717A",
+        "chart.grid.line.color": "#F4F4F5"
       }
     }
   },
@@ -206,33 +206,33 @@ const example3Spec = `// Claude receives this prompt via the dvt MCP server:
               <!-- SVG bar chart mockup -->
               <svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" class="chart-svg">
                 <!-- Grid lines -->
-                <line x1="48" y1="20"  x2="390" y2="20"  stroke="#f3f4f6" stroke-width="1"/>
-                <line x1="48" y1="60"  x2="390" y2="60"  stroke="#f3f4f6" stroke-width="1"/>
-                <line x1="48" y1="100" x2="390" y2="100" stroke="#f3f4f6" stroke-width="1"/>
-                <line x1="48" y1="140" x2="390" y2="140" stroke="#f3f4f6" stroke-width="1"/>
+                <line x1="48" y1="20"  x2="390" y2="20"  stroke="#F4F4F5" stroke-width="1"/>
+                <line x1="48" y1="60"  x2="390" y2="60"  stroke="#F4F4F5" stroke-width="1"/>
+                <line x1="48" y1="100" x2="390" y2="100" stroke="#F4F4F5" stroke-width="1"/>
+                <line x1="48" y1="140" x2="390" y2="140" stroke="#F4F4F5" stroke-width="1"/>
                 <!-- X axis -->
-                <line x1="48" y1="160" x2="390" y2="160" stroke="#e5e7eb" stroke-width="1"/>
+                <line x1="48" y1="160" x2="390" y2="160" stroke="#E4E4E7" stroke-width="1"/>
                 <!-- Y axis labels -->
-                <text x="40" y="23"  text-anchor="end" font-size="9" fill="#9ca3af">$400k</text>
-                <text x="40" y="63"  text-anchor="end" font-size="9" fill="#9ca3af">$300k</text>
-                <text x="40" y="103" text-anchor="end" font-size="9" fill="#9ca3af">$200k</text>
-                <text x="40" y="143" text-anchor="end" font-size="9" fill="#9ca3af">$100k</text>
+                <text x="40" y="23"  text-anchor="end" font-size="9" fill="#A1A1AA">$400k</text>
+                <text x="40" y="63"  text-anchor="end" font-size="9" fill="#A1A1AA">$300k</text>
+                <text x="40" y="103" text-anchor="end" font-size="9" fill="#A1A1AA">$200k</text>
+                <text x="40" y="143" text-anchor="end" font-size="9" fill="#A1A1AA">$100k</text>
                 <!-- Bars (Jan–Jun with ascending trend + variation) -->
-                <rect x="60"  y="128" width="36" height="32" rx="3" fill="#5BBFBA" opacity="0.85"/>
-                <rect x="115" y="112" width="36" height="48" rx="3" fill="#5BBFBA" opacity="0.85"/>
-                <rect x="170" y="96"  width="36" height="64" rx="3" fill="#5BBFBA" opacity="0.9"/>
-                <rect x="225" y="80"  width="36" height="80" rx="3" fill="#5BBFBA" opacity="0.9"/>
-                <rect x="280" y="60"  width="36" height="100" rx="3" fill="#5BBFBA"/>
-                <rect x="335" y="40"  width="36" height="120" rx="3" fill="#5BBFBA"/>
+                <rect x="60"  y="128" width="36" height="32" rx="3" fill="#4F46E5" opacity="0.85"/>
+                <rect x="115" y="112" width="36" height="48" rx="3" fill="#4F46E5" opacity="0.85"/>
+                <rect x="170" y="96"  width="36" height="64" rx="3" fill="#4F46E5" opacity="0.9"/>
+                <rect x="225" y="80"  width="36" height="80" rx="3" fill="#4F46E5" opacity="0.9"/>
+                <rect x="280" y="60"  width="36" height="100" rx="3" fill="#4F46E5"/>
+                <rect x="335" y="40"  width="36" height="120" rx="3" fill="#4F46E5"/>
                 <!-- X axis labels -->
-                <text x="78"  y="175" text-anchor="middle" font-size="9" fill="#9ca3af">Jan</text>
-                <text x="133" y="175" text-anchor="middle" font-size="9" fill="#9ca3af">Feb</text>
-                <text x="188" y="175" text-anchor="middle" font-size="9" fill="#9ca3af">Mar</text>
-                <text x="243" y="175" text-anchor="middle" font-size="9" fill="#9ca3af">Apr</text>
-                <text x="298" y="175" text-anchor="middle" font-size="9" fill="#9ca3af">May</text>
-                <text x="353" y="175" text-anchor="middle" font-size="9" fill="#9ca3af">Jun</text>
+                <text x="78"  y="175" text-anchor="middle" font-size="9" fill="#A1A1AA">Jan</text>
+                <text x="133" y="175" text-anchor="middle" font-size="9" fill="#A1A1AA">Feb</text>
+                <text x="188" y="175" text-anchor="middle" font-size="9" fill="#A1A1AA">Mar</text>
+                <text x="243" y="175" text-anchor="middle" font-size="9" fill="#A1A1AA">Apr</text>
+                <text x="298" y="175" text-anchor="middle" font-size="9" fill="#A1A1AA">May</text>
+                <text x="353" y="175" text-anchor="middle" font-size="9" fill="#A1A1AA">Jun</text>
                 <!-- Y axis title -->
-                <text x="10" y="100" text-anchor="middle" font-size="9" fill="#9ca3af" transform="rotate(-90 10 100)">Revenue ($k)</text>
+                <text x="10" y="100" text-anchor="middle" font-size="9" fill="#A1A1AA" transform="rotate(-90 10 100)">Revenue ($k)</text>
               </svg>
             </div>
           </div>
@@ -282,50 +282,50 @@ const example3Spec = `// Claude receives this prompt via the dvt MCP server:
                   <svg viewBox="0 0 220 100" xmlns="http://www.w3.org/2000/svg" class="chart-svg-sm">
                     <defs>
                       <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#5BBFBA" stop-opacity="0.2"/>
-                        <stop offset="100%" stop-color="#5BBFBA" stop-opacity="0"/>
+                        <stop offset="0%" stop-color="#4F46E5" stop-opacity="0.2"/>
+                        <stop offset="100%" stop-color="#4F46E5" stop-opacity="0"/>
                       </linearGradient>
                     </defs>
-                    <line x1="20" y1="10" x2="210" y2="10" stroke="#f3f4f6" stroke-width="1"/>
-                    <line x1="20" y1="35" x2="210" y2="35" stroke="#f3f4f6" stroke-width="1"/>
-                    <line x1="20" y1="60" x2="210" y2="60" stroke="#f3f4f6" stroke-width="1"/>
-                    <line x1="20" y1="80" x2="210" y2="80" stroke="#e5e7eb" stroke-width="1"/>
+                    <line x1="20" y1="10" x2="210" y2="10" stroke="#F4F4F5" stroke-width="1"/>
+                    <line x1="20" y1="35" x2="210" y2="35" stroke="#F4F4F5" stroke-width="1"/>
+                    <line x1="20" y1="60" x2="210" y2="60" stroke="#F4F4F5" stroke-width="1"/>
+                    <line x1="20" y1="80" x2="210" y2="80" stroke="#E4E4E7" stroke-width="1"/>
                     <path d="M25,70 C45,65 55,55 70,50 S95,38 110,35 S135,28 150,22 S175,16 195,12"
-                          stroke="#5BBFBA" stroke-width="2" fill="none" stroke-linecap="round"/>
+                          stroke="#4F46E5" stroke-width="2" fill="none" stroke-linecap="round"/>
                     <path d="M25,70 C45,65 55,55 70,50 S95,38 110,35 S135,28 150,22 S175,16 195,12 L195,80 L25,80 Z"
                           fill="url(#areaGrad)"/>
-                    <text x="25"  y="92" font-size="7" fill="#9ca3af" text-anchor="middle">W1</text>
-                    <text x="72"  y="92" font-size="7" fill="#9ca3af" text-anchor="middle">W4</text>
-                    <text x="120" y="92" font-size="7" fill="#9ca3af" text-anchor="middle">W8</text>
-                    <text x="168" y="92" font-size="7" fill="#9ca3af" text-anchor="middle">W12</text>
+                    <text x="25"  y="92" font-size="7" fill="#A1A1AA" text-anchor="middle">W1</text>
+                    <text x="72"  y="92" font-size="7" fill="#A1A1AA" text-anchor="middle">W4</text>
+                    <text x="120" y="92" font-size="7" fill="#A1A1AA" text-anchor="middle">W8</text>
+                    <text x="168" y="92" font-size="7" fill="#A1A1AA" text-anchor="middle">W12</text>
                   </svg>
                 </div>
                 <!-- Stacked bar mockup -->
                 <div class="mini-panel">
                   <div class="mini-panel-title">Revenue by Plan</div>
                   <svg viewBox="0 0 160 100" xmlns="http://www.w3.org/2000/svg" class="chart-svg-sm">
-                    <line x1="20" y1="80" x2="150" y2="80" stroke="#e5e7eb" stroke-width="1"/>
+                    <line x1="20" y1="80" x2="150" y2="80" stroke="#E4E4E7" stroke-width="1"/>
                     <!-- Stacked bars: Starter (light teal) + Pro (teal) + Enterprise (navy) -->
-                    <rect x="28" y="60" width="20" height="20" rx="2" fill="#5BBFBA" opacity="0.4"/>
-                    <rect x="28" y="44" width="20" height="16" rx="2" fill="#5BBFBA" opacity="0.7"/>
+                    <rect x="28" y="60" width="20" height="20" rx="2" fill="#4F46E5" opacity="0.4"/>
+                    <rect x="28" y="44" width="20" height="16" rx="2" fill="#4F46E5" opacity="0.7"/>
                     <rect x="28" y="34" width="20" height="10" rx="2" fill="#16263A" opacity="0.6"/>
 
-                    <rect x="56" y="55" width="20" height="25" rx="2" fill="#5BBFBA" opacity="0.4"/>
-                    <rect x="56" y="36" width="20" height="19" rx="2" fill="#5BBFBA" opacity="0.7"/>
+                    <rect x="56" y="55" width="20" height="25" rx="2" fill="#4F46E5" opacity="0.4"/>
+                    <rect x="56" y="36" width="20" height="19" rx="2" fill="#4F46E5" opacity="0.7"/>
                     <rect x="56" y="24" width="20" height="12" rx="2" fill="#16263A" opacity="0.6"/>
 
-                    <rect x="84" y="48" width="20" height="32" rx="2" fill="#5BBFBA" opacity="0.4"/>
-                    <rect x="84" y="28" width="20" height="20" rx="2" fill="#5BBFBA" opacity="0.7"/>
+                    <rect x="84" y="48" width="20" height="32" rx="2" fill="#4F46E5" opacity="0.4"/>
+                    <rect x="84" y="28" width="20" height="20" rx="2" fill="#4F46E5" opacity="0.7"/>
                     <rect x="84" y="14" width="20" height="14" rx="2" fill="#16263A" opacity="0.6"/>
 
-                    <rect x="112" y="42" width="20" height="38" rx="2" fill="#5BBFBA" opacity="0.4"/>
-                    <rect x="112" y="22" width="20" height="20" rx="2" fill="#5BBFBA" opacity="0.7"/>
+                    <rect x="112" y="42" width="20" height="38" rx="2" fill="#4F46E5" opacity="0.4"/>
+                    <rect x="112" y="22" width="20" height="20" rx="2" fill="#4F46E5" opacity="0.7"/>
                     <rect x="112" y="10" width="20" height="12" rx="2" fill="#16263A" opacity="0.6"/>
 
-                    <text x="38"  y="92" font-size="7" fill="#9ca3af" text-anchor="middle">Q1</text>
-                    <text x="66"  y="92" font-size="7" fill="#9ca3af" text-anchor="middle">Q2</text>
-                    <text x="94"  y="92" font-size="7" fill="#9ca3af" text-anchor="middle">Q3</text>
-                    <text x="122" y="92" font-size="7" fill="#9ca3af" text-anchor="middle">Q4</text>
+                    <text x="38"  y="92" font-size="7" fill="#A1A1AA" text-anchor="middle">Q1</text>
+                    <text x="66"  y="92" font-size="7" fill="#A1A1AA" text-anchor="middle">Q2</text>
+                    <text x="94"  y="92" font-size="7" fill="#A1A1AA" text-anchor="middle">Q3</text>
+                    <text x="122" y="92" font-size="7" fill="#A1A1AA" text-anchor="middle">Q4</text>
                   </svg>
                 </div>
               </div>
@@ -360,13 +360,13 @@ const example3Spec = `// Claude receives this prompt via the dvt MCP server:
                   <div class="mini-panel-title">Conversion Funnel</div>
                   <svg viewBox="0 0 180 130" xmlns="http://www.w3.org/2000/svg" class="chart-svg-sm">
                     <!-- Funnel steps -->
-                    <polygon points="20,15 160,15 145,42 35,42" fill="#5BBFBA" opacity="0.9"/>
+                    <polygon points="20,15 160,15 145,42 35,42" fill="#4F46E5" opacity="0.9"/>
                     <text x="90" y="33" text-anchor="middle" font-size="8" fill="white" font-weight="600">Signup — 10,000</text>
 
-                    <polygon points="35,47 145,47 130,74 50,74" fill="#5BBFBA" opacity="0.7"/>
+                    <polygon points="35,47 145,47 130,74 50,74" fill="#4F46E5" opacity="0.7"/>
                     <text x="90" y="65" text-anchor="middle" font-size="8" fill="white" font-weight="600">Activated — 6,200</text>
 
-                    <polygon points="50,79 130,79 115,106 65,106" fill="#5BBFBA" opacity="0.5"/>
+                    <polygon points="50,79 130,79 115,106 65,106" fill="#4F46E5" opacity="0.5"/>
                     <text x="90" y="97" text-anchor="middle" font-size="8" fill="#16263A" font-weight="600">Trial — 2,400</text>
 
                     <polygon points="65,111 115,111 105,125 75,125" fill="#16263A" opacity="0.7"/>
@@ -377,16 +377,16 @@ const example3Spec = `// Claude receives this prompt via the dvt MCP server:
                 <div class="mini-panel">
                   <div class="mini-panel-title">Paid CVR (trailing 90d)</div>
                   <svg viewBox="0 0 220 100" xmlns="http://www.w3.org/2000/svg" class="chart-svg-sm">
-                    <line x1="20" y1="15" x2="210" y2="15" stroke="#f3f4f6" stroke-width="1"/>
-                    <line x1="20" y1="40" x2="210" y2="40" stroke="#f3f4f6" stroke-width="1"/>
-                    <line x1="20" y1="65" x2="210" y2="65" stroke="#f3f4f6" stroke-width="1"/>
-                    <line x1="20" y1="80" x2="210" y2="80" stroke="#e5e7eb" stroke-width="1"/>
+                    <line x1="20" y1="15" x2="210" y2="15" stroke="#F4F4F5" stroke-width="1"/>
+                    <line x1="20" y1="40" x2="210" y2="40" stroke="#F4F4F5" stroke-width="1"/>
+                    <line x1="20" y1="65" x2="210" y2="65" stroke="#F4F4F5" stroke-width="1"/>
+                    <line x1="20" y1="80" x2="210" y2="80" stroke="#E4E4E7" stroke-width="1"/>
                     <!-- CVR line with slight upward trend and dip -->
                     <path d="M25,68 C40,65 55,60 75,62 S105,58 120,52 S155,44 175,40 S195,36 205,32"
                           stroke="#4F46E5" stroke-width="2" fill="none" stroke-linecap="round"/>
-                    <text x="8"  y="18" font-size="7" fill="#9ca3af">12%</text>
-                    <text x="8"  y="43" font-size="7" fill="#9ca3af">9%</text>
-                    <text x="8"  y="68" font-size="7" fill="#9ca3af">6%</text>
+                    <text x="8"  y="18" font-size="7" fill="#A1A1AA">12%</text>
+                    <text x="8"  y="43" font-size="7" fill="#A1A1AA">9%</text>
+                    <text x="8"  y="68" font-size="7" fill="#A1A1AA">6%</text>
                   </svg>
                 </div>
               </div>
@@ -405,8 +405,8 @@ const example3Spec = `// Claude receives this prompt via the dvt MCP server:
       <div class="container schema-note">
         <h2>Open spec, published schema</h2>
         <p>
-          The dvt spec format is Apache-2.0 licensed and will ship with a published
-          JSON Schema — enabling validation, editor autocompletion, and AI self-correction
+          The dvt spec format is Apache-2.0 licensed, and a published JSON Schema is
+          on the way — enabling validation, editor autocompletion, and AI self-correction
           without needing to query a running server. The spec travels with your data,
           not with dvt's infrastructure.
         </p>
@@ -626,8 +626,8 @@ const example3Spec = `// Claude receives this prompt via the dvt MCP server:
     font-size: 10px;
     font-weight: 500;
   }
-  .kpi-delta--up { color: #059669; }
-  .kpi-delta--down { color: #dc2626; }
+  .kpi-delta--up { color: var(--color-success); }
+  .kpi-delta--down { color: var(--color-error); }
 
   .chart-row {
     display: grid;

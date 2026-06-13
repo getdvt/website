@@ -23,19 +23,59 @@ interface Env {
   DB: D1Database;
   RESEND_API_KEY: string;
   NOTIFY_EMAIL?: string;
+  // Set this (plus PUBLIC_TURNSTILE_SITE_KEY at build time) to switch on the
+  // Cloudflare Turnstile challenge. Until it's set, the honeypot below is the
+  // always-on baseline and the form keeps working unprotected-by-Turnstile.
+  TURNSTILE_SECRET_KEY?: string;
 }
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   // ── Parse body ──────────────────────────────────────────────────────────────
   let email: string;
+  let honeypot = '';
+  let turnstileToken = '';
   try {
-    const body = await request.json<{ email?: unknown }>();
+    const body = await request.json<{ email?: unknown; company?: unknown; turnstileToken?: unknown }>();
     if (typeof body.email !== 'string' || !body.email.includes('@')) {
       return Response.json({ error: 'Invalid email address.' }, { status: 400 });
     }
     email = body.email.trim().toLowerCase().slice(0, 254);
+    honeypot = typeof body.company === 'string' ? body.company.trim() : '';
+    turnstileToken = typeof body.turnstileToken === 'string' ? body.turnstileToken : '';
   } catch {
     return Response.json({ error: 'Invalid request body.' }, { status: 400 });
+  }
+
+  // ── Honeypot ──────────────────────────────────────────────────────────────
+  // `company` is a hidden field no human ever sees or fills. If it's populated
+  // the request is a bot — return a normal-looking success (so the bot gets no
+  // signal to adapt) but store nothing. Zero external dependencies, always on.
+  if (honeypot) {
+    return Response.json({ ok: true }, { status: 201 });
+  }
+
+  // ── Turnstile challenge ─────────────────────────────────────────────────────
+  // Activates the moment TURNSTILE_SECRET_KEY is present on the deployment.
+  // Fail-closed once enabled: a missing or invalid token is rejected.
+  if (env.TURNSTILE_SECRET_KEY) {
+    if (!turnstileToken) {
+      return Response.json({ error: 'Bot challenge missing — please retry.' }, { status: 400 });
+    }
+    const verify = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        secret: env.TURNSTILE_SECRET_KEY,
+        response: turnstileToken,
+        remoteip: request.headers.get('CF-Connecting-IP') ?? '',
+      }),
+    });
+    const outcome = await verify
+      .json<{ success?: boolean }>()
+      .catch(() => ({ success: false }));
+    if (!outcome.success) {
+      return Response.json({ error: 'Bot challenge failed — please retry.' }, { status: 400 });
+    }
   }
 
   const referrer = request.headers.get('Referer') ?? '';

@@ -9,7 +9,7 @@ interface Props {
 
 const {
   title = 'dvt — Dashboards as Versioned JSON Specs',
-  description = 'Dashboards as data. AI-native, fully-customizable, open dashboarding platform — dashboards as versioned JSON specs.',
+  description = 'Dashboards as data. AI-native, fully-customizable, open data viz tool — dashboards as versioned JSON specs.',
   ogImage = '/og-image.png',
 } = Astro.props;
 
@@ -63,8 +63,7 @@ const ogImageURL = new URL(ogImage, Astro.site);
           "name": "dvt",
           "url": "https://dvt.dev",
           "logo": "https://dvt.dev/logo.svg",
-          "description": "Open, AI-native dashboarding platform — dashboards as versioned JSON specs.",
-          "sameAs": ["https://github.com/getdvt/dvt"]
+          "description": "Open, AI-native data viz tool — dashboards as versioned JSON specs."
         },
         {
           "@type": "SoftwareApplication",
@@ -72,14 +71,7 @@ const ogImageURL = new URL(ogImage, Astro.site);
           "url": "https://dvt.dev",
           "applicationCategory": "BusinessApplication",
           "operatingSystem": "Web",
-          "description": "Open dashboarding platform where every dashboard is a versioned JSON spec — authored by humans and AI agents alike via REST API or MCP.",
-          "license": "https://opensource.org/licenses/Apache-2.0",
-          "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "USD",
-            "description": "Free to self-host"
-          }
+          "description": "Open data viz tool where every dashboard is a versioned JSON spec — authored by humans and AI agents alike via REST API or MCP."
         }
       ]
     })} />
