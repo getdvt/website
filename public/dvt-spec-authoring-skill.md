@@ -40,6 +40,9 @@ Builder (`/builder`) to see it render live.
   reading order — author `sm`/`xs` items (with `layout.breakpoints`) only when you
   want to hand-tune that narrow view; they win over the automatic stack. (`md` is
   not consulted for narrow stacking.)
+- **`layout.mode`** defaults to `"grid"` (the 24-column grid above). Set
+  `"mode": "canvas"` for an immersive, full-bleed, scroll-driven layout (sections +
+  free-form blocks + motion) — see **Canvas mode** below. One spec, two layout shapes.
 
 ## Panel types
 
@@ -229,6 +232,83 @@ geometry). `orientation` (`horizontal | vertical`, default horizontal); `thickne
 (px, default 1); `style` (`solid | dashed | dotted`); `color`; `inset` (px, shortens
 the rule from both ends).
 
+## Canvas mode — immersive, full-bleed, scroll-driven layouts
+
+Set **`layout.mode: "canvas"`** (the default is `"grid"`) to author a full-bleed,
+free-form, scroll-driven dashboard instead of the 24-column grid — a scrollytelling
+report or a kiosk/presentation view rather than a tile grid (ADR-0027). The **same
+spec, panels, theme, data binding, and blocks** apply; only the layout shape changes.
+Humans and agents author it identically — an agent can generate a canvas spec exactly
+like a grid one.
+
+```json
+"layout": {
+  "mode": "canvas",
+  "fullBleed": true,
+  "sections": [
+    {
+      "id": "hero",
+      "background": "radial-gradient(circle at 30% 20%, #1E1B4B 0%, #0B0B0F 60%)",
+      "width": 1440, "height": 810,
+      "scroll": "none",
+      "blocks": [
+        { "ref": "hero-title", "x": 120, "y": 280, "w": 900, "h": 220, "z": 1,
+          "motion": { "type": "rise", "trigger": "load", "duration": 600 } },
+        { "ref": "headline-stat", "x": 120, "y": 540, "w": 1100, "h": 140, "z": 2,
+          "motion": { "type": "count-up", "trigger": "in-view", "duration": 1200 } }
+      ]
+    }
+  ]
+}
+```
+
+**The model (a slide deck that scrolls):**
+
+- A canvas layout is an ordered list of **`sections`**. The page scrolls top-to-bottom
+  between them; each is a fixed **design-space rectangle** (`width`×`height`, default
+  **1440×810**) the renderer **scales to fit the viewport width** — author once at
+  1440-wide and it reads at any size (no per-breakpoint map).
+- **`blocks`** are absolutely positioned *inside* a section, in design-space units:
+  `{ "ref": panelId, "x", "y", "w", "h", "z?", "motion?" }`. `ref` points at a
+  `panels[]` id (exactly like grid `items[].i`) — **content lives in `panels[]`,
+  placement lives in blocks.** Blocks may overlap and layer by `z` (default 0); a panel
+  may appear in more than one block.
+- **`section.background`** takes any CSS background (solid / gradient / a token ref like
+  `{page.background}`) — **sanitized** (no remote `url()`); use `media` blocks for images.
+- **`fullBleed: true`** is a render hint to drop app chrome (edge-to-edge / kiosk /
+  presentation). Open a canvas dashboard, then click **Present** for the chrome-less
+  viewer at `/present/:id`.
+
+**Scroll behaviors** (`section.scroll`):
+
+- `none` (default) — the section scrolls normally.
+- `pin` — sticks to the top while later sections scroll up over it (stacked scrollytelling).
+- `reveal` — its blocks rise/fade in as the section enters view (a default entrance for
+  blocks that declare no `motion` of their own).
+
+**Motion** (`block.motion`) — a declarative entrance animation compiled at render (data,
+not functions — ADR-0016):
+
+- `type`: `none | fade | rise | scale | count-up`. `count-up` rolls a `stat`/`metric-strip`/`kpi`
+  number up on entrance (on any other panel it degrades to a plain fade); the others animate the block.
+- `trigger`: `in-view` (default — plays when scrolled into view) or `load` (on first paint).
+- `delay`, `duration` (ms; defaults 0 / 600).
+- Motion always respects `prefers-reduced-motion` and is **off in static renders** (a
+  headless capture lands on the final frame), so it never blocks or races a render.
+
+**When to use canvas:** a flagship/executive narrative, a launch or quarterly report you
+want to feel bespoke and full-bleed, a scrollytelling walk-through, a kiosk/presentation.
+Use **grid** for an everyday analytical dashboard of tiles. The rich blocks
+(`hero`/`stat`/`media`/`divider`) shine in canvas but work in either.
+
+**Authoring tips:** open with a `hero` over a gradient `section.background`; use `stat`
+blocks with `count-up` motion for headline figures; give each section **one idea**
+(scrollytelling = one message per section, the canvas analogue of one-question-per-page);
+keep blocks on a tidy implied grid inside the 1440×810 space and don't overlap text
+illegibly; a `divider` or generous empty geometry gives breathing room. Verify the same
+way (§4) — render at desktop width and read it; motion is off in the capture so you see
+the final frame.
+
 ## Theme & tokens (the customization engine)
 
 Tokens are a 3-tier tree (`primitive` → `semantic` → `component`). Any value may be
@@ -287,6 +367,7 @@ Prefer cuts with real variance — **time series, distributions, comparisons of 
 - **Reserve color for signal** — the primary series, a delta, an outlier. Everything else stays neutral. Keep series colors as `{chart.series.N}` so the theme drives them.
 - **Make the headline preattentive:** put the number that matters at the top, larger, with the one accent color; supporting charts recede.
 - **Group and align** related panels; keep ≤ ~8–12 per page. Don't crowd — the renderer adapts label density to panel width automatically, so trust it instead of cramming.
+- **For a narrative showpiece, reach for canvas mode** (`layout.mode: "canvas"`): one idea per scrolling section, a `hero` + `stat` opener, motion on entrance. Scrollytelling (Segel & Heer, author-driven) is the canvas analogue of answer-first paging — see Canvas mode.
 
 ### 4. Build, then SEE it — verify and iterate
 
