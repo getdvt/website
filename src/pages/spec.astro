@@ -34,7 +34,7 @@ const example1Spec = `{
     "title": "Monthly Revenue",
     "data": {
       "sourceId": "warehouse-prod",
-      "query": "SELECT month, SUM(revenue) AS revenue FROM sales GROUP BY month"
+      "query": "SELECT month, SUM(revenue) AS revenue FROM analytics.public.sales GROUP BY month"
     },
     "spec": {
       "xAxis": { "type": "category", "name": "Month" },
