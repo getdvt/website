@@ -70,10 +70,15 @@ Builder (`/builder`) to see it render live.
 | `chart:map` | ECharts map (advanced) | `series[].map` names a registered map asset (bundled: `USA`); (name, value) rows bind automatically, `labelField`/`valueField` override; `visualMap` min/max auto-fill from bound values — **`series[].map` must name a registered map asset (ADR-0023). dvt bundles `USA` (US states + DC + Puerto Rico); other names need host-side registerMapAsset and render an explicit error until registered.** |
 | `chart:custom` | ECharts custom (advanced) | `series[].renderItem` must be a registered `$dvtRef` — **Requires a renderItem function, which must be a registered $dvtRef (ADR-0016); raw functions cannot be expressed in a spec.** |
 <!-- END generated chart-type table -->
-| `metric-strip` | KPI scorecards | `metrics[]` (see below) |
-| `table` | Data table (dvt-native, portable) | `columns[]` — each `{ field, label?, format?, align? }`; omit for every query column in result order. Ordering is the SQL `ORDER BY`; `format` uses the shared format objects |
+| `metric-strip` | Row of KPI metric tiles | `metrics[]` (see below) |
+| `kpi` | Single-value scorecard (one headline number + comparison + sparkline) | `valueField` (required), `agg`, `format`, `label`, `caption`, `comparison{…}`, `sparkline{…}` (see below) |
+| `table` | Data table (dvt-native, portable) | `columns[]` — each `{ field, label?, format?, align?, sortable?, filterable? }`; omit for every query column in result order. `defaultSort{ field, direction }` seeds an initial sort; click-to-sort + per-column filter run client-side over the fetched rows (`sortable`/`filterable` default true). Row order follows the query `ORDER BY` unless `defaultSort` overrides it; `format` uses the shared format objects |
 | `text` | Markdown narrative | `markdown`, `variant` (`plain`\|`callout`), `align` |
 | `html` | Sanitized HTML/CSS escape hatch | `html` (see below) |
+| `stat` | Big-number tile (hero-scale single value) | `valueField` (required), `agg`, `format`, `label`, `caption`, `delta`, `sparkline`, `align` (see below) |
+| `hero` | Headline block (eyebrow + headline + subhead) | `headline` (required), `eyebrow`, `subhead`, `align`, `size` (`sm`\|`md`\|`lg`\|`xl`); text fields support `{{ … }}` variables (see below) |
+| `media` | Image block (ADR-0014 escape hatch) | `src` (required, sanitized), `alt`, `fit` (`cover`\|`contain`\|`fill`), `rounded`, `caption` (see below) |
+| `divider` | Visible rule line | `orientation`, `thickness`, `color`, `style` (`solid`\|`dashed`\|`dotted`), `inset` (see below) |
 
 ### Data binding
 
@@ -113,6 +118,26 @@ Keep `query` alongside `rows` so the SQL inspector still shows real SQL:
 `agg`: `sum | avg | last | first | min | max | count | delta`. The strip shows the
 headline number, a ▲/▼ delta vs. the prior row, and a sparkline.
 
+### kpi  ← single-value scorecard
+
+A `kpi` is one headline number with an explicit period-over-period comparison and an
+optional inline sparkline — the grid-native scorecard (the metric-strip tile, scaled
+up and given a real comparison binding):
+
+```json
+{ "type": "kpi", "title": "Revenue",
+  "data": { "sourceId": "db", "query": "SELECT month, SUM(amount) AS revenue, LAG(SUM(amount)) OVER (ORDER BY month) AS revenue_prev FROM analytics.public.orders GROUP BY 1 ORDER BY 1" },
+  "spec": { "valueField": "revenue", "agg": "last",
+    "format": { "type": "currency", "currency": "USD", "compact": true },
+    "comparison": { "field": "revenue_prev", "mode": "percent", "improvement": "up" },
+    "sparkline": { "field": "revenue" } } }
+```
+
+- **`valueField`** (required) + `agg` reduce the column to the headline (default `sum`).
+- **`comparison`**: `{ field?, agg?, mode?, improvement? }`. With `field`, the comparison value is that column; omit `field` to compare the last two points of the value series. `mode`: `percent | delta | both` (default `percent`). `improvement`: `up` (default) or `down` — set `down` for metrics where lower is better (cost, churn) so the chip colors green/red semantically.
+- **`sparkline`**: `{ field?, color? }` — needs ≥2 rows; `field` defaults to `valueField`. Omit for no trend line.
+- `label`, `caption`, `color`, `align` (`left | center`) trim the chrome.
+
 ### text panels + narrative variables  ← dvt's differentiator
 
 Text panels render markdown and **interpolate live values** from the panel's own
@@ -151,6 +176,58 @@ The theme is exposed to your CSS as variables: `var(--accent)`, `var(--accent-2)
 `var(--ink)`, `var(--muted)` — use them so escape-hatch markup stays on-palette.
 text/html panels are **bare** (transparent) by default so they paint their own
 surface; set `overrides["panel.background"]` if you want a card behind them.
+
+### canvas blocks — `stat` · `hero` · `media` · `divider`
+
+Composition blocks for richer layouts (designed for `layout.mode: "canvas"`
+sections, but valid in a grid too). All dvt Core (renderer-neutral) except `media`
+(an ADR-0014 escape hatch). All are **bare** by default.
+
+**`stat`** — a big-number tile (the hero-scale sibling of a metric-strip tile, same
+count-up + delta primitive). Use it for a single headline figure that needs to read
+large. The DVT-133 `kpi` is the grid scorecard with an explicit comparison binding;
+reach for `stat` when you just want the number big.
+
+```json
+{ "type": "stat", "title": "",
+  "data": { "sourceId": "db", "query": "SELECT month, SUM(amount) AS revenue FROM analytics.public.orders GROUP BY 1 ORDER BY 1" },
+  "spec": { "label": "Revenue", "valueField": "revenue", "agg": "sum",
+    "format": { "type": "currency", "currency": "USD", "compact": true },
+    "delta": true, "sparkline": true, "align": "center" } }
+```
+
+`valueField` (required) + `agg` (default `sum`); `delta`/`sparkline` are booleans
+(need ≥2 rows); `label`, `caption`, `color`, `align` (`left | center`).
+
+**`hero`** — a headline block (eyebrow + headline + subhead) to open a canvas section.
+The three text fields interpolate `{{ field | agg | format }}` variables.
+
+```json
+{ "type": "hero", "title": "",
+  "data": { "sourceId": "db", "query": "SELECT SUM(amount) AS revenue FROM analytics.public.orders" },
+  "spec": { "eyebrow": "FY25", "headline": "{{ revenue | sum | currency }} in revenue",
+    "subhead": "Up and to the right.", "align": "center", "size": "xl" } }
+```
+
+`headline` (required); `eyebrow`, `subhead`; `align` (`left | center | right`);
+`size` (`sm | md | lg | xl`, default `lg`).
+
+**`media`** — an image block (escape hatch). `src` is **sanitized** (media-safety):
+a same-origin relative path, a dvt-hosted `https` asset, or a raster `data:` URI —
+anything else is rejected.
+
+```json
+{ "type": "media", "title": "",
+  "spec": { "src": "/assets/logo.png", "alt": "Company logo", "fit": "contain", "rounded": 12 } }
+```
+
+`src` (required); `alt`; `fit` (`cover | contain | fill`, default `cover`);
+`rounded` (`true` → 12px, a number → px, `false` → square); `caption`.
+
+**`divider`** — a visible rule line (a pure spacer needs no block — just leave empty
+geometry). `orientation` (`horizontal | vertical`, default horizontal); `thickness`
+(px, default 1); `style` (`solid | dashed | dotted`); `color`; `inset` (px, shortens
+the rule from both ends).
 
 ## Theme & tokens (the customization engine)
 
