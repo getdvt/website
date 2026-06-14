@@ -82,6 +82,13 @@ returned column is the category/label axis; subsequent columns are bound by
 `series[].dataField` (chart) or `valueField` (metric/stacked). Charts that take an
 explicit field mapping (scatter/heatmap) name their columns via `xField`/`yField`/etc.
 
+**Always fully-qualify table names** as `database.schema.table` (e.g.
+`SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.ORDERS`). A connection may carry no default
+database/schema — Snowflake service connections don't — so an unqualified
+`FROM orders` fails; fully-qualified names are also deterministic regardless of
+session/connection context and role defaults on every warehouse. Never rely on an
+implicit current database/schema.
+
 **Backend-free specs:** add `data.rows` (an array of row objects) and the panel
 renders from those directly — **no engine, no warehouse, no live query.** This makes
 a spec fully self-contained (great for demos, the `/builder`, and static hosting).
@@ -113,7 +120,7 @@ Text panels render markdown and **interpolate live values** from the panel's own
 
 ```json
 { "type": "text", "title": "",
-  "data": { "sourceId": "db", "query": "SELECT month, SUM(amount) AS revenue FROM orders GROUP BY 1 ORDER BY 1" },
+  "data": { "sourceId": "db", "query": "SELECT month, SUM(amount) AS revenue FROM analytics.public.orders GROUP BY 1 ORDER BY 1" },
   "spec": { "variant": "callout",
     "markdown": "Revenue reached **{{ revenue | sum | currency }}**, {{ revenue | delta | percent }} vs. last month." } }
 ```
@@ -135,7 +142,7 @@ numbers.
 
 ```json
 { "type": "html", "title": "",
-  "data": { "sourceId": "db", "query": "SELECT SUM(amount) AS revenue FROM orders",
+  "data": { "sourceId": "db", "query": "SELECT SUM(amount) AS revenue FROM analytics.public.orders",
             "rows": [ { "revenue": 2803054.22 } ] },
   "spec": { "html": "<div style=\"height:100%;display:flex;align-items:center;justify-content:space-between;padding:24px 30px;border-radius:16px;background:linear-gradient(120deg,#EEF0FF,#E9F7F5);\"><div style=\"font-size:26px;font-weight:800;color:var(--ink);\">Revenue Overview</div><div style=\"font-size:42px;font-weight:800;color:var(--accent);\">{{ revenue | sum | currency }}</div></div>" } }
 ```
@@ -184,5 +191,6 @@ Place them where a value is rendered, e.g. `"axisLabel": { "format": {...} }` or
 - Every `layout.items[*].i` must match a panel `id`.
 - Keep series colors as `{chart.series.N}` refs so the theme stays consistent.
 - Prefer `pages` for anything with more than ~8 panels.
+- Always fully-qualify table names in `data.query` as `database.schema.table` — connections may carry no default database/schema.
 
 The machine-readable JSON Schema lives at `spec/schema/dashboard.schema.json` in the dvt repo — validate against it when in doubt.
