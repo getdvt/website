@@ -1,6 +1,6 @@
 ---
 name: dvt-spec-author
-description: Author and edit dvt dashboard specs (JSON). Use when a user wants to create, modify, or theme a dvt dashboard, or convert a question/data into a dashboard.
+description: Author and edit dvt dashboard specs (JSON). Use when a user wants to create, modify, or theme a dvt dashboard, or convert a question/data into a dashboard. Covers the authoring method — audit the data for variance, find one answer-first key message, design encodings/layout, then build and render-verify — not just spec syntax.
 ---
 
 # dvt Spec Authoring Skill
@@ -177,13 +177,46 @@ gradient `pages[].background` plus a shared dark `overrides` block on each card.
 `format` objects compile to number formatters: `{ "type": "currency"|"percentage"|"number"|"compact"|"date", "currency": "USD", "decimals": 0, "compact": true }`.
 Place them where a value is rendered, e.g. `"axisLabel": { "format": {...} }` or on a metric.
 
-## Authoring workflow
+## Authoring method — audit, narrate, design, verify
 
-1. Decide the **key message** (set `meta.brief`) and the 2–4 questions the dashboard answers.
-2. Lead with a `text` panel stating the thesis with live `{{ }}` variables, then KPIs, then supporting charts.
-3. Bind each panel to a `query`; keep ≤ ~12 elements per page; put primary KPIs at the top.
-4. Theme with tokens; reserve color for signal (deltas, the primary series).
-5. Paste into the **dvt Spec Builder** to validate and preview, then save via the API / MCP.
+Don't jump straight to charts. A dashboard that just "plots the data" reads flat and
+forgettable. Work in four passes; each one constrains the next. **The first pass is
+analytical, not visual** — that's what separates a compelling dashboard from a
+technically-correct but boring one.
+
+### 1. Audit the data first — what's actually interesting?
+
+Before choosing a single chart, profile the source so you build on signal, not noise.
+Run small profiling queries (always fully-qualified — `database.schema.table`):
+
+- **Shape & variance:** `SELECT count(*), count(distinct <dim>), min(<m>), max(<m>), avg(<m>), stddev(<m>) FROM …`. A dimension whose categories all carry ~equal measures has **no story** — a bar chart of it is flat. (TPC-H is uniformly distributed this way: orders per nation/segment barely differ. Notice that and do **not** lead with it.)
+- **Distribution & outliers:** percentiles or a histogram-bucket query. Skew, long tails, and concentration ARE the story.
+- **Time:** if there's a date column, pull the trend and the period-over-period delta — time series almost always has shape.
+- **Concentration:** top-N share / Pareto (does ~20% of X drive ~80% of Y?).
+- **Quality caveats:** null rates, tiny-N categories, a partial current period. Note them; never silently chart misleading numbers.
+
+Prefer cuts with real variance — **time series, distributions, comparisons of unlike things, concentration, and change** — over flat categoricals. If the only available cut is uniform, **reframe the question** rather than drawing a boring bar.
+
+### 2. Narrative — one key message, answer-first
+
+- State the **single key message** in `meta.brief`: one sentence that is the *answer*, not the topic. If you can't write it, you don't understand the data yet — go back to step 1.
+- **Answer-first (Minto / SCQA):** lead with the conclusion, then the support. The first page and the top-left panel carry the headline; detail comes after.
+- **One question per page.** Order pages and panels so a reader gets the answer in the first few seconds and can drill into "why" below.
+- Open each page with a `text` panel stating that page's takeaway, using live `{{ field | agg | format }}` variables so the prose moves with the data.
+
+### 3. Design — encoding and layout in service of the message
+
+- **Match the chart to the analytical task,** not to variety: trend → line/area; comparison → bar; distribution → histogram/box; relationship → scatter; part-to-whole → a few bars or a single donut (not a wall of pies); flow → sankey; concentration → sorted bar / Pareto. (See Panel types; avoid passthrough types that need inline data when binding a live query.)
+- **Reserve color for signal** — the primary series, a delta, an outlier. Everything else stays neutral. Keep series colors as `{chart.series.N}` so the theme drives them.
+- **Make the headline preattentive:** put the number that matters at the top, larger, with the one accent color; supporting charts recede.
+- **Group and align** related panels; keep ≤ ~8–12 per page. Don't crowd — the renderer adapts label density to panel width automatically, so trust it instead of cramming.
+
+### 4. Build, then SEE it — verify and iterate
+
+1. Write the spec (mechanics above). Bind each panel to a fully-qualified `query`.
+2. Validate with `dvt_spec_validate` — fix field errors and heed `warnings` (typos, and panels that will render EMPTY).
+3. **Render and actually look at it:** `dvt_dashboard_render_inline` at desktop (`width` ~1280–1440) AND mobile (`width` ~390–414), for each `page`. Read the image: is there a clear headline? Any unreadable text, squished labels, empty panels, flat bars? Does it answer the question?
+4. Iterate on what you saw, then save via the API / MCP. **Don't ship a dashboard you haven't looked at.**
 
 ## Rules
 
