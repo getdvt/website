@@ -82,6 +82,9 @@ Builder (`/builder`) to see it render live.
 | `hero` | Headline block (eyebrow + headline + subhead) | `headline` (required), `eyebrow`, `subhead`, `align`, `size` (`sm`\|`md`\|`lg`\|`xl`); text fields support `{{ … }}` variables (see below) |
 | `media` | Image block (ADR-0014 escape hatch) | `src` (required, sanitized), `alt`, `fit` (`cover`\|`contain`\|`fill`), `rounded`, `caption` (see below) |
 | `divider` | Visible rule line | `orientation`, `thickness`, `color`, `style` (`solid`\|`dashed`\|`dotted`), `inset` (see below) |
+| `filter` | Interactive control whose selected value re-queries target panels | `param` (required), `valueField` (required), `labelField`, `control` (`select`\|`date-range`\|`number-range`\|`search`), `valueType`, `targets`, `values`, `default` (see Filters & drill-downs) |
+
+Any panel can also carry a `drill` object (not a `type`) for click-to-navigate drill-downs — see **Filters & drill-downs**.
 
 ### Data binding
 
@@ -231,6 +234,64 @@ anything else is rejected.
 geometry). `orientation` (`horizontal | vertical`, default horizontal); `thickness`
 (px, default 1); `style` (`solid | dashed | dotted`); `color`; `inset` (px, shortens
 the rule from both ends).
+
+### Filters & drill-downs — interactive parameter binding (ADR-0028)
+
+Both make a dashboard interactive by binding a value into target panels **by name**:
+the value overwrites a matching `data.params` entry — it is **never** interpolated
+into the SQL string and never a column/identifier. So the contract is the same for
+both, and a target panel must declare **two** things:
+
+1. a **named placeholder** `%(param)s` in its `data.query`, and
+2. a matching **`data.params`** default for that key (the slot the value overwrites).
+
+A binding whose param no target panel declares is wired to nothing — it renders fine
+but does nothing at runtime, and `dvt_spec_validate` warns about it. Multi-select
+(array binding) is deferred; filter controls are scalar in v1.
+
+**`filter`** — a dashboard-level control (its own panel). The selectable options come
+from the panel's own `data` (a `SELECT DISTINCT` value query, or baked `data.rows`),
+or from a static `values` list. Selecting a value re-queries the target panels.
+
+```json
+{ "id": "region-filter", "type": "filter", "title": "Region",
+  "data": { "sourceId": "db", "query": "SELECT DISTINCT region FROM demo.public.orders ORDER BY 1" },
+  "spec": { "param": "region", "valueField": "region", "control": "select",
+            "valueType": "string", "targets": "all", "default": "NA" } }
+```
+
+```json
+{ "id": "rev-by-month", "type": "chart:bar", "title": "Revenue by Month",
+  "data": { "sourceId": "db",
+            "query": "SELECT month, SUM(amount) AS rev FROM demo.public.orders WHERE region = %(region)s GROUP BY 1 ORDER BY 1",
+            "params": { "region": "NA" } },
+  "spec": { "series": [{ "type": "bar", "dataField": "rev" }] } }
+```
+
+`param` (required) — the params key this filter sets. `valueField` (required) — the
+value-source column holding each option's bound value; `labelField` defaults to it.
+`control`: `select` (default) | `date-range` | `number-range` | `search`. `valueType`:
+`string` (default) | `number` | `date` | `boolean`. `targets`: `"all"` (default — every
+panel on the page that declares the key) or an explicit `["panelId", …]`; a panel that
+doesn't declare the key is never re-fetched. `values` — a static `[value | { value, label }]`
+list (the fallback when there's no value query/rows). `default` — the initial selection.
+
+**`drill`** — a property on **any** panel (not a `type`). Clicking a mark/row navigates
+to `targetPage` with the clicked value bound, by name, into that page's panels — the same
+value→query contract as a filter.
+
+```json
+{ "id": "rev-by-region", "type": "chart:bar", "title": "Revenue by Region",
+  "data": { "sourceId": "db", "query": "SELECT region, SUM(amount) AS rev FROM demo.public.orders GROUP BY 1" },
+  "drill": { "targetPage": "region-detail", "param": "region", "valueFrom": "category", "valueType": "string" },
+  "spec": { "series": [{ "type": "bar", "dataField": "rev" }] } }
+```
+
+The `region-detail` page's panels declare `%(region)s` + a `data.params` `region` default,
+exactly like the filter targets above. `targetPage` (required) — a `pages[].id`. `param`
+(required) — the params key set on the target page's panels. `valueFrom`: `category`
+(default) | `value` | `seriesName` | a field name from the clicked row (use a field name
+for tables). `valueType` — as above.
 
 ## Canvas mode — immersive, full-bleed, scroll-driven layouts
 
