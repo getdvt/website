@@ -25,12 +25,35 @@ Builder (`/builder`) to see it render live.
   "panels": [ /* Panel[] for the default page */ ],
   "pages": [ { "id": "...", "title": "...", "layout": {...}, "panels": [...],
               "background": "linear-gradient(135deg,#1E1B4B,#0D9488)" } ],
-  "tabBar": { "position": "top", "layout": "horizontal", "alignment": "start", "size": "md" }
+  "tabBar": { "position": "top", "layout": "horizontal", "alignment": "start", "size": "md" },
+  "cache": { "ttlSeconds": 600, "enabled": true }
 }
 ```
 
 - Use **`pages`** for multi-tab dashboards; each page has its own `layout` + `panels`.
   (If you use `pages`, the top-level `panels`/`layout` can be empty.)
+- **`tabBar`** (optional) configures the page-tab navigation control for a multi-page
+  dashboard — declaratively, no callbacks. It renders in the editor, the chrome-less
+  `/present` viewer, and full-bleed **canvas** dashboards; single-page dashboards render
+  **no tab chrome**. Fields (all optional, sensible defaults):
+  - **`position`** — `top` (default) · `bottom` · `left` · `right` · `free`. `left`/`right`
+    dock a vertical rail; `free` **floats** the bar over the content at `placement` (the
+    natural choice for a full-bleed canvas dashboard, which reserves no edge gutter).
+  - **`layout`** — `horizontal` (default, a row) · `vertical` (a column) · `stacked`
+    (a row that wraps onto multiple lines when the tabs overflow).
+  - **`alignment`** — `start` (default) · `center` · `end` · `justify`.
+  - **`size`** — `sm` · `md` (default) · `lg`.
+  - **`placement`** — `{ "x": 0-100, "y": 0-100 }`, a percentage offset from the top-left
+    of the viewport. Only used when `position: "free"`; ignored otherwise.
+  Example (a centered floating bar for a canvas deck):
+  `"tabBar": { "position": "free", "layout": "stacked", "alignment": "center", "size": "md", "placement": { "x": 50, "y": 4 } }`
+- **`cache`** (optional) tunes how long this dashboard's query results may be reused
+  before re-querying the warehouse. `ttlSeconds` is the freshness window (e.g. `600`
+  = up to 10 min stale); `0` or `"enabled": false` means **always live**. Omit it to
+  use the org default (10 min). Results are cached per `(source, query, params,
+  viewer-role)` and never shared across identities; viewers can always force a live
+  refresh from a panel's refresh control. Raise it for slow/expensive dashboards that
+  don't need to be real-time; set it live for operational dashboards.
 - **`page.background`** (per page) takes any CSS background — a solid, a `linear-gradient(...)`,
   a `radial-gradient(...)`, or an image. Use it to make each page its own visual "world."
 - **`layout.items`** is keyed by breakpoint (`lg`, `md`, `sm`, `xs`). Each item:
@@ -70,19 +93,20 @@ Builder (`/builder`) to see it render live.
 | `chart:pictorial-bar` | ECharts pictorialBar (passthrough) | `series[].symbol` per category, `symbolRepeat`, `symbolSize` |
 | `chart:theme-river` | ECharts themeRiver (passthrough) | `singleAxis` (time) + inline `series[].data: [[date, value, stream], …]` |
 | `chart:chord` | ECharts chord (passthrough) | inline `series[].data` (nodes) + `series[].links` with values |
-| `chart:map` | ECharts map (advanced) | `series[].map` names a registered map asset (bundled: `USA`); (name, value) rows bind automatically, `labelField`/`valueField` override; `visualMap` min/max auto-fill from bound values — **`series[].map` must name a registered map asset (ADR-0023). dvt bundles `USA` (US states + DC + Puerto Rico); other names need host-side registerMapAsset and render an explicit error until registered.** |
+| `chart:map` | ECharts map (advanced) | `series[].map` names a registered map asset (bundled: `USA`, `world`); (name, value) rows bind automatically, `labelField`/`valueField` override; `visualMap` min/max auto-fill from bound values — **`series[].map` must name a registered map asset (ADR-0023). dvt bundles `USA` (US states + DC + Puerto Rico) and `world` (country boundaries, region name on `properties.name`); other names need host-side registerMapAsset and render an explicit error until registered.** |
 | `chart:custom` | ECharts custom (advanced) | `series[].renderItem` must be a registered `$dvtRef` — **Requires a renderItem function, which must be a registered $dvtRef (ADR-0016); raw functions cannot be expressed in a spec.** |
 <!-- END generated chart-type table -->
 | `metric-strip` | Row of KPI metric tiles | `metrics[]` (see below) |
 | `kpi` | Single-value scorecard (one headline number + comparison + sparkline) | `valueField` (required), `agg`, `format`, `label`, `caption`, `comparison{…}`, `sparkline{…}` (see below) |
-| `table` | Data table (dvt-native, portable) | `columns[]` — each `{ field, label?, format?, align?, sortable?, filterable? }`; omit for every query column in result order. `defaultSort{ field, direction }` seeds an initial sort; click-to-sort + per-column filter run client-side over the fetched rows (`sortable`/`filterable` default true). Row order follows the query `ORDER BY` unless `defaultSort` overrides it; `format` uses the shared format objects |
+| `table` | Data table (dvt-native, portable) | `columns[]` — each `{ field, label?, format?, align?, sortable?, filterable? }`; omit for every query column in result order. `defaultSort{ field, direction }` seeds an initial sort; click-to-sort + per-column filter run client-side over the fetched rows (`sortable`/`filterable` default true). Row order follows the query `ORDER BY` unless `defaultSort` overrides it; `format` uses the shared format objects. `grouping{ groupBy[], aggregations[]{field,agg}, subtotals?, grandTotal?, defaultExpanded? }` collapses rows into a grouped tree with subtotal/grand-total rows — computed client-side over the fetched rows (no re-query, no SQL rewrite), `groupBy` order = nesting levels, `agg` ∈ sum/avg/min/max/count (default sum) |
 | `text` | Markdown narrative | `markdown`, `variant` (`plain`\|`callout`), `align` |
 | `html` | Sanitized HTML/CSS escape hatch | `html` (see below) |
 | `stat` | Big-number tile (hero-scale single value) | `valueField` (required), `agg`, `format`, `label`, `caption`, `delta`, `sparkline`, `align` (see below) |
 | `hero` | Headline block (eyebrow + headline + subhead) | `headline` (required), `eyebrow`, `subhead`, `align`, `size` (`sm`\|`md`\|`lg`\|`xl`); text fields support `{{ … }}` variables (see below) |
 | `media` | Image block (ADR-0014 escape hatch) | `src` (required, sanitized), `alt`, `fit` (`cover`\|`contain`\|`fill`), `rounded`, `caption` (see below) |
 | `divider` | Visible rule line | `orientation`, `thickness`, `color`, `style` (`solid`\|`dashed`\|`dotted`), `inset` (see below) |
-| `filter` | Interactive control whose selected value re-queries target panels | `param` (required), `valueField` (required), `labelField`, `control` (`select`\|`date-range`\|`number-range`\|`search`), `valueType`, `targets`, `values`, `default` (see Filters & drill-downs) |
+| `filter` | Interactive control whose selected value re-queries target panels | `param` (required), `valueField` (required), `labelField`, `control` (`select`\|`multiselect`\|`date-range`\|`number-range`\|`search`), `valueType`, `targets`, `values`, `default` (see Filters & drill-downs) |
+| `container` | Tabbed container — one page region holding several panel sets behind tabs (layout primitive, not a chart) | `spec.layout: "tabs"` (required), `tabs[]` (required) each `{ id, label, panels:[childId…], layout }`, `defaultTab?`. **Children stay real elements in `panels[]`** referenced by id (never inlined); each tab carries its own mini 24-col `layout`, and the container itself occupies one cell in the page grid. Children are NOT in the page grid. Single level only (no tabs-in-tabs). NOT the same as page-level tabs (`pages[]`+`tabBar`). The semantic validator rejects missing refs / a child placed twice / a child also in the page grid / nesting / a bad `defaultTab` / a tab id that collides with a panel id |
 
 Any panel can also carry a `drill` object (not a `type`) for click-to-navigate drill-downs — see **Filters & drill-downs**.
 
@@ -99,6 +123,30 @@ database/schema — Snowflake service connections don't — so an unqualified
 `FROM orders` fails; fully-qualified names are also deterministic regardless of
 session/connection context and role defaults on every warehouse. Never rely on an
 implicit current database/schema.
+
+**Write SQL in the canonical dvt style.** Leading commas, lowercase keywords, a
+`where 1=1` guard — clean diffs, and a missing comma is a one-line error:
+
+```sql
+select alias1.field1
+    , alias1.field2
+    , sum(alias2.field3) as total_field3s
+from tablea as alias1
+inner join tableb as alias2
+    on alias1.key1 = alias2.key1
+    and alias1.key2 = alias2.key2
+where 1=1
+    and alias1.region = %(region)s
+group by alias1.field1
+    , alias1.field2
+```
+
+Rules: lowercase keywords; one field per line with **leading** commas; explicit
+`as` on every table alias and alias-qualified columns; `inner/left join` with `on`
+then indented `and` predicates; `where 1=1` guard then each predicate as an
+indented `and ...`; `group by` mirrors the select list. Parameter-bound predicates
+use named `%(key)s` bindings (ADR-0028) — never string-interpolate values into the
+SQL. Full reference: `docs/02-spec/sql-style-guide.md`.
 
 **Backend-free specs:** add `data.rows` (an array of row objects) and the panel
 renders from those directly — **no engine, no warehouse, no live query.** This makes
@@ -246,8 +294,12 @@ both, and a target panel must declare **two** things:
 2. a matching **`data.params`** default for that key (the slot the value overwrites).
 
 A binding whose param no target panel declares is wired to nothing — it renders fine
-but does nothing at runtime, and `dvt_spec_validate` warns about it. Multi-select
-(array binding) is deferred; filter controls are scalar in v1.
+but does nothing at runtime, and `dvt_spec_validate` warns about it. A
+`multiselect` control binds an **array** of selected values into an `IN`-list:
+write a bare named placeholder `WHERE region IN %(region)s` (no parens) and the
+engine expands it to one parameter-bound placeholder per selection — values are
+never spliced into SQL. An empty selection matches **no** rows ("nothing selected =
+nothing shown", not "no filter").
 
 **`filter`** — a dashboard-level control (its own panel). The selectable options come
 from the panel's own `data` (a `SELECT DISTINCT` value query, or baked `data.rows`),
@@ -270,7 +322,8 @@ or from a static `values` list. Selecting a value re-queries the target panels.
 
 `param` (required) — the params key this filter sets. `valueField` (required) — the
 value-source column holding each option's bound value; `labelField` defaults to it.
-`control`: `select` (default) | `date-range` | `number-range` | `search`. `valueType`:
+`control`: `select` (default) | `multiselect` (binds an array → `IN`-list; the
+target query uses a bare `IN %(param)s`) | `date-range` | `number-range` | `search`. `valueType`:
 `string` (default) | `number` | `date` | `boolean`. `targets`: `"all"` (default — every
 panel on the page that declares the key) or an explicit `["panelId", …]`; a panel that
 doesn't declare the key is never re-fetched. `values` — a static `[value | { value, label }]`
@@ -444,5 +497,6 @@ Prefer cuts with real variance — **time series, distributions, comparisons of 
 - Keep series colors as `{chart.series.N}` refs so the theme stays consistent.
 - Prefer `pages` for anything with more than ~8 panels.
 - Always fully-qualify table names in `data.query` as `database.schema.table` — connections may carry no default database/schema.
+- Write SQL in the canonical dvt style — lowercase keywords, leading commas, `where 1=1` guard, `%(key)s` bindings (see `docs/02-spec/sql-style-guide.md`).
 
 The machine-readable JSON Schema lives at `spec/schema/dashboard.schema.json` in the dvt repo — validate against it when in doubt.
