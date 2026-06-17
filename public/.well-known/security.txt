@@ -1,0 +1,6 @@
+# dvt security contact — https://dvt.dev/security
+Contact: mailto:security@dvt.dev
+Expires: 2027-03-16T00:00:00Z
+Preferred-Languages: en
+Canonical: https://dvt.dev/.well-known/security.txt
+Policy: https://dvt.dev/security
