@@ -1,0 +1,180 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+
+export const prerender = true;
+
+// Keep in sync with the canonical inventory in dvt/docs/07-operations/subprocessors.md (SEC-14).
+const subprocessors = [
+  {
+    name: 'WorkOS',
+    purpose: 'Authentication & identity (sign-in, organizations, directory)',
+    data: 'Names, email addresses, organization & membership metadata',
+    region: 'United States',
+  },
+  {
+    name: 'Neon',
+    purpose: 'Metadata database (dashboard specs, accounts, roles, audit logs, encrypted credentials)',
+    data: 'Account metadata and dashboard specs; warehouse credentials as ciphertext. No raw warehouse data.',
+    region: 'United States',
+  },
+  {
+    name: 'Fly.io',
+    purpose: 'Application & query-engine hosting (compute)',
+    data: 'Data in transit during a request; nothing persisted to disk by dvt',
+    region: 'United States',
+  },
+  {
+    name: 'Cloudflare',
+    purpose: 'CDN, DNS, website hosting, and encrypted object storage (R2) for dashboard exports',
+    data: 'Website traffic; PNG/PDF export artifacts, encrypted and auto-deleted within 30 days',
+    region: 'Global edge (exports: eastern North America)',
+  },
+  {
+    name: 'Resend',
+    purpose: 'Transactional email (sign-in and product notifications)',
+    data: 'Email addresses and message content',
+    region: 'United States',
+  },
+  {
+    name: 'Sentry',
+    purpose: 'Error tracking (application errors across our services)',
+    data: 'Diagnostic/error events — may include user IDs, request context, and stack traces',
+    region: 'United States',
+  },
+  {
+    name: 'Axiom',
+    purpose: 'Application logs',
+    data: 'Application logs and request metadata — may include user/organization IDs',
+    region: 'United States',
+  },
+];
+---
+
+<Base
+  title="Subprocessors — dvt"
+  description="The third-party services dvt uses to operate the product, what each one processes, and where."
+>
+  <Nav />
+  <main>
+    <section class="page-hero">
+      <div class="container">
+        <div class="eyebrow">Trust</div>
+        <h1>Subprocessors</h1>
+        <p class="lead">
+          The third-party services dvt relies on to operate the product, what each one
+          processes, and where. Because queries run in your warehouse, none of these services
+          receive your raw warehouse data.
+        </p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Service</th>
+                <th>Purpose</th>
+                <th>Data processed</th>
+                <th>Region</th>
+              </tr>
+            </thead>
+            <tbody>
+              {subprocessors.map((s) => (
+                <tr>
+                  <td class="svc">{s.name}</td>
+                  <td>{s.purpose}</td>
+                  <td>{s.data}</td>
+                  <td class="region">{s.region}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          This list is kept current as our infrastructure evolves. For a data processing
+          agreement (DPA) or advance notice of subprocessor changes, email
+          <a href="mailto:security@dvt.dev">security@dvt.dev</a>. See also our
+          <a href="/security">security overview</a>.
+        </p>
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .page-hero {
+    padding: var(--space-16) 0 var(--space-12);
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+  .eyebrow {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-brand-mark);
+    margin-bottom: var(--space-4);
+  }
+  .page-hero h1 {
+    font-size: clamp(var(--text-3xl), 5vw, 56px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-5);
+  }
+  .lead {
+    font-size: var(--text-lg);
+    color: var(--color-neutral-600);
+    line-height: 1.65;
+    max-width: 640px;
+  }
+
+  .section { padding: var(--space-12) 0 var(--space-16); }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-lg);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+  }
+  thead th {
+    text-align: left;
+    padding: var(--space-4) var(--space-5);
+    background: var(--color-neutral-50);
+    border-bottom: 1px solid var(--color-neutral-200);
+    font-weight: 600;
+    color: var(--color-neutral-700);
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--color-neutral-100);
+    color: var(--color-neutral-700);
+    line-height: 1.6;
+    vertical-align: top;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.svc {
+    font-weight: 600;
+    color: var(--color-neutral-900);
+    white-space: nowrap;
+  }
+  td.region { white-space: nowrap; color: var(--color-neutral-500); }
+
+  .note {
+    margin-top: var(--space-8);
+    font-size: var(--text-sm);
+    color: var(--color-neutral-600);
+    line-height: 1.7;
+    max-width: 720px;
+  }
+</style>

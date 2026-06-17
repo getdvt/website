@@ -1,0 +1,411 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+
+export const prerender = true;
+---
+
+<Base
+  title="Security — dvt"
+  description="How dvt handles your data: queries run in your own warehouse, only the rows needed to render a chart come back, and we store dashboard specs — not your raw data."
+>
+  <Nav />
+  <main>
+    <!-- Hero -->
+    <section class="page-hero">
+      <div class="container">
+        <div class="eyebrow">Security</div>
+        <h1>Your data stays in your warehouse.</h1>
+        <p class="lead">
+          dvt is built so the sensitive parts of your data never have to live in our
+          infrastructure. We push queries down to your warehouse, return only the rows
+          needed to render a chart, and store dashboard specs — not your raw data.
+        </p>
+      </div>
+    </section>
+
+    <!-- Data flow -->
+    <section class="section">
+      <div class="container">
+        <h2>How data flows</h2>
+        <p class="section-lead">
+          A dashboard is a JSON spec. To render it, dvt compiles SQL and sends it to your
+          warehouse — the query runs there, on your compute, and only the result rows come back.
+        </p>
+        <div class="flow-diagram">
+          <div class="flow-row">
+            <div class="flow-node">
+              <span class="node-name">Your warehouse</span>
+              <span class="node-role">Snowflake · BigQuery · Postgres</span>
+            </div>
+            <div class="flow-arrows">
+              <span class="flow-arrow down">SQL pushed down →</span>
+              <span class="flow-arrow up">← result rows only</span>
+            </div>
+            <div class="flow-node dvt">
+              <span class="node-name">dvt</span>
+              <span class="node-role">compiles spec · renders chart</span>
+            </div>
+          </div>
+          <p class="flow-label">Your raw data never lands in dvt's metadata database.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- What we store / what we don't -->
+    <section class="section section-alt">
+      <div class="container">
+        <h2>What we store — and what we don't</h2>
+        <div class="two-col">
+          <div class="store-card good">
+            <h3>What dvt stores</h3>
+            <ul>
+              <li>Dashboard <strong>specs</strong> (the JSON definition of your charts and layout)</li>
+              <li>Account metadata — users, organizations, roles, audit logs</li>
+              <li>Warehouse connection settings, with credentials <strong>encrypted</strong></li>
+            </ul>
+          </div>
+          <div class="store-card bad">
+            <h3>What dvt does not store</h3>
+            <ul>
+              <li>Your raw warehouse tables or datasets</li>
+              <li>Query results, in our metadata database — they transit memory per-request and are discarded</li>
+              <li>Warehouse credentials in plaintext — we only ever hold ciphertext</li>
+            </ul>
+          </div>
+        </div>
+        <p class="precise-note">
+          <strong>To be precise:</strong> query results pass through dvt's systems in memory to
+          render your charts and are not persisted to our database. Exports are the one nuance, and
+          there are two kinds: an <strong>image export</strong> (PNG or PDF) is stored encrypted,
+          scoped to your organization, and automatically deleted within 30 days — this is the one
+          place your data values land durably in our infrastructure. A <strong>data export</strong>
+          (CSV or XLSX) is streamed to you on request and audited, but <strong>never stored</strong>
+          by dvt. We'd rather tell you exactly where your data goes than make a claim we can't stand
+          behind.
+        </p>
+      </div>
+    </section>
+
+    <!-- Encryption -->
+    <section class="section">
+      <div class="container">
+        <h2>Encryption</h2>
+        <div class="control-grid">
+          <div class="control">
+            <h3>In transit</h3>
+            <p>All connections to the dvt app and API use TLS 1.2 or higher. dvt connects to your warehouse over an encrypted channel; every major managed warehouse requires TLS by default.</p>
+          </div>
+          <div class="control">
+            <h3>At rest</h3>
+            <p>Our database provider encrypts all metadata at rest with AES-256. Warehouse credentials get a second layer we control: each is sealed with its own data key (envelope encryption), and our database stores only the ciphertext.</p>
+          </div>
+          <div class="control">
+            <h3>Credential isolation</h3>
+            <p>The root key that unwraps credentials lives only in the query engine — never in the API tier and never in the database. A single component can decrypt, for one query, and the plaintext is discarded.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Access & isolation -->
+    <section class="section section-alt">
+      <div class="container">
+        <h2>Access &amp; tenant isolation</h2>
+        <div class="control-grid">
+          <div class="control">
+            <h3>Role-based access</h3>
+            <p>Capability-based roles (viewer, editor, admin, owner) gate every action. API keys carry their own scopes, narrowed to the minimum a workload needs.</p>
+          </div>
+          <div class="control">
+            <h3>Organization scoping</h3>
+            <p>Every record is scoped to an organization and checked on every read and write. One organization cannot see another's specs, connections, or data.</p>
+          </div>
+          <div class="control">
+            <h3>Audit logging</h3>
+            <p>Sensitive actions — including every credential decryption — are recorded to an append-only audit log with the actor, action, and resource.</p>
+          </div>
+          <div class="control">
+            <h3>Managed authentication</h3>
+            <p>Sign-in is handled by WorkOS. Sessions use sealed, http-only cookies; the session token is never exposed to JavaScript. API keys are shown once at creation and aren't recoverable afterward.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI governance -->
+    <section class="section">
+      <div class="container">
+        <h2>AI authoring &amp; your data</h2>
+        <p class="section-lead">
+          dvt is AI-native: humans and AI agents author the same dashboard spec, over the same
+          API and MCP surface. That raises a fair question — what does the AI see?
+        </p>
+        <ul class="prose-list">
+          <li>The AI is <strong>your</strong> agent, not ours. dvt exposes a scoped, audited MCP and REST surface that an AI agent you run connects to. dvt does not send your data to a model provider — there is no dvt-operated model that ingests your prompts or warehouse data.</li>
+          <li>AI agents author <strong>specs</strong> — the JSON definition of a dashboard. They operate over the same scoped, audited API a person uses, with API keys scoped to the minimum the workload needs — an agent cannot exceed the capabilities of the user who authorized it.</li>
+          <li>Agent actions are recorded in the audit log, attributed as agent activity.</li>
+          <li>The same data-flow rules apply: rendering an AI-authored dashboard pushes SQL to your warehouse like any other.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Reporting a vulnerability -->
+    <section class="section section-alt">
+      <div class="container">
+        <h2>Reporting a vulnerability</h2>
+        <p class="section-lead">
+          If you believe you've found a security issue, we want to hear from you. Email
+          <a href="mailto:security@dvt.dev">security@dvt.dev</a> with the details and steps to
+          reproduce. We'll acknowledge your report and keep you updated as we investigate.
+        </p>
+        <p>
+          We support good-faith research: if you make a genuine effort to avoid privacy
+          violations, data destruction, and service disruption while investigating, we will not
+          pursue legal action over it. Please give us a reasonable chance to fix an issue before
+          disclosing it publicly. Our machine-readable policy is published at
+          <a href="/.well-known/security.txt">/.well-known/security.txt</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- Compliance status -->
+    <section class="section">
+      <div class="container">
+        <h2>Compliance</h2>
+        <p class="section-lead">
+          We're an early-stage company and we'd rather be straight with you than imply a badge we
+          don't hold.
+        </p>
+        <ul class="prose-list">
+          <li>dvt is <strong>not yet SOC 2 audited.</strong> Our controls are designed to map to the common security criteria, and we'll pursue a formal audit when an enterprise engagement calls for it.</li>
+          <li>Our architecture is our strongest control: because your raw data stays in your warehouse, the scope of what we hold is small by design.</li>
+          <li>We maintain a current list of the third-party services that support dvt — see <a href="/subprocessors">subprocessors</a>.</li>
+        </ul>
+        <p class="contact-line">
+          Running a security review or need a DPA? Email
+          <a href="mailto:security@dvt.dev">security@dvt.dev</a> and we'll help.
+        </p>
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .page-hero {
+    padding: var(--space-16) 0 var(--space-12);
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+
+  .eyebrow {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-brand-mark);
+    margin-bottom: var(--space-4);
+  }
+
+  .page-hero h1 {
+    font-size: clamp(var(--text-3xl), 5vw, 56px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-5);
+    max-width: 720px;
+  }
+
+  .lead {
+    font-size: var(--text-lg);
+    color: var(--color-neutral-600);
+    line-height: 1.65;
+    max-width: 640px;
+  }
+
+  .section { padding: var(--space-16) 0; }
+  .section-alt {
+    padding: var(--space-16) 0;
+    background: var(--color-neutral-50);
+    border-top: 1px solid var(--color-neutral-200);
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+
+  .section h2 {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-6);
+  }
+
+  .section-lead {
+    font-size: var(--text-base);
+    color: var(--color-neutral-600);
+    margin-bottom: var(--space-8);
+    max-width: 620px;
+    line-height: 1.7;
+  }
+
+  /* Data-flow diagram */
+  .flow-diagram {
+    background: var(--color-white);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-8);
+    text-align: center;
+  }
+  .flow-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-5);
+    margin-bottom: var(--space-5);
+    flex-wrap: wrap;
+  }
+  .flow-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: var(--space-4) var(--space-6);
+    background: var(--color-neutral-100);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-lg);
+    min-width: 200px;
+  }
+  .flow-node.dvt {
+    background: color-mix(in srgb, var(--color-brand-mark) 10%, transparent);
+    border-color: var(--color-brand-mark);
+  }
+  .node-name {
+    font-family: var(--font-mono);
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--color-neutral-900);
+  }
+  .node-role {
+    font-size: var(--text-xs);
+    color: var(--color-neutral-500);
+  }
+  .flow-arrows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+  }
+  .flow-arrow.down { color: var(--color-brand-indigo); }
+  .flow-arrow.up { color: var(--color-brand-teal); }
+  .flow-label {
+    font-size: var(--text-sm);
+    color: var(--color-neutral-500);
+    font-weight: 500;
+  }
+
+  /* Store / don't-store cards */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6);
+    align-items: stretch;
+  }
+  @media (max-width: 768px) {
+    .two-col { grid-template-columns: 1fr; }
+  }
+  .store-card {
+    background: var(--color-white);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+  }
+  .store-card h3 {
+    font-size: var(--text-base);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-3);
+    border-bottom: 2px solid var(--color-neutral-100);
+  }
+  .store-card.good h3 { border-bottom-color: var(--color-brand-mark); }
+  .store-card.bad h3 { border-bottom-color: var(--color-neutral-300); }
+  .store-card ul { list-style: none; }
+  .store-card li {
+    position: relative;
+    padding-left: var(--space-6);
+    margin-bottom: var(--space-3);
+    color: var(--color-neutral-700);
+    line-height: 1.6;
+  }
+  .store-card.good li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: var(--color-brand-teal);
+    font-weight: 700;
+  }
+  .store-card.bad li::before {
+    content: "✕";
+    position: absolute;
+    left: 0;
+    color: var(--color-neutral-400);
+    font-weight: 700;
+  }
+  .precise-note {
+    margin-top: var(--space-8);
+    padding: var(--space-6);
+    background: var(--color-white);
+    border: 1px solid var(--color-neutral-200);
+    border-left: 3px solid var(--color-brand-mark);
+    border-radius: var(--radius-md);
+    color: var(--color-neutral-700);
+    line-height: 1.7;
+    max-width: 820px;
+  }
+
+  /* Control grid */
+  .control-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6);
+  }
+  @media (max-width: 768px) {
+    .control-grid { grid-template-columns: 1fr; }
+  }
+  .control h3 {
+    font-size: var(--text-base);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-2);
+  }
+  .control p {
+    color: var(--color-neutral-700);
+    line-height: 1.7;
+  }
+
+  /* Prose lists */
+  .prose-list {
+    list-style: none;
+    max-width: 760px;
+  }
+  .prose-list li {
+    position: relative;
+    padding-left: var(--space-6);
+    margin-bottom: var(--space-4);
+    color: var(--color-neutral-700);
+    line-height: 1.7;
+  }
+  .prose-list li::before {
+    content: "—";
+    position: absolute;
+    left: 0;
+    color: var(--color-brand-mark);
+    font-weight: 700;
+  }
+
+  .contact-line {
+    margin-top: var(--space-6);
+    color: var(--color-neutral-700);
+  }
+</style>
