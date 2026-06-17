@@ -492,7 +492,7 @@ Prefer cuts with real variance — **time series, distributions, comparisons of 
 
 ## Rules
 
-- No JS functions in specs — use `format` objects and the `{ "$dvtRef": "formatter:pie-label" }` ref instead.
+- No JS functions in specs — use `format` objects and the `{ "$dvtRef": "formatter:pie-label@1" }` ref instead. `$dvtRef` ids are **versioned** (`<kind>:<name>@<version>`, e.g. `formatter:usd-compact@1`) and must be one of the registered ids — an unknown or unversioned ref is rejected at write time (ADR-0016).
 - Every `layout.items[*].i` must match a panel `id`.
 - Keep series colors as `{chart.series.N}` refs so the theme stays consistent.
 - Prefer `pages` for anything with more than ~8 panels.
