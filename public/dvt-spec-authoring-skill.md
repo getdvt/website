@@ -95,6 +95,9 @@ Builder (`/builder`) to see it render live.
 | `chart:chord` | ECharts chord (passthrough) | inline `series[].data` (nodes) + `series[].links` with values |
 | `chart:map` | ECharts map (advanced) | `series[].map` names a registered map asset (bundled: `USA`, `world`); (name, value) rows bind automatically, `labelField`/`valueField` override; `visualMap` min/max auto-fill from bound values. For data-driven geography set `geoField` to a GeoJSON-geometry column (e.g. a Snowflake GEOGRAPHY/GEOMETRY column) and the query rows build a per-panel inline map — no named asset needed (DVT-153) — **`series[].map` must name a registered map asset (ADR-0023). dvt bundles `USA` (US states + DC + Puerto Rico) and `world` (country boundaries, region name on `properties.name`); other names need host-side registerMapAsset and render an explicit error until registered. For data-driven geography, set `geoField` to a column carrying GeoJSON geometry (e.g. a Snowflake GEOGRAPHY/GEOMETRY column, returned as GeoJSON by the engine) — the rows build a per-panel inline map, so no named asset is needed (DVT-153).** |
 | `chart:custom` | ECharts custom (advanced) | `series[].renderItem` must be a registered `$dvtRef` — **Requires a renderItem function, which must be a registered $dvtRef (ADR-0016); raw functions cannot be expressed in a spec.** |
+| `chart:bar:racing` | ECharts bar (advanced) | `animation.frameField` (required — the time column), `categoryField` (entity identity, stable across frames so bars slide not pop), `valueField` (measure); optional `animation.{speeds,speedDefault,loop,controls.placement}`, top-N via `yAxis.max` — **Animated 'bar chart race' (ADR-0034). dvt Full / non-portable. Requires an `animation` block with `frameField` (the time/sequence column); `categoryField` is the stable entity identity that slides between frames and `valueField` the measure. One query returns all frames stacked in rows; the client iterates in-browser — no per-frame query. Top-N via `yAxis.max`. Renders to a static poster (last frame) in exports (ADR-0024).** |
+| `chart:line:racing` | ECharts line (advanced) | `animation.frameField` (required — the x/time column), `valueField` (y measure), optional `seriesField` (multi-line split); `animation.{speeds,speedDefault,loop,controls.placement}` — **Animated progressive / 'racing' line (ADR-0034). dvt Full / non-portable. Requires an `animation` block with `frameField` (the x/time column the line draws along); optional `seriesField` splits multiple lines, `valueField` is the y measure. One query, the client iterates frames as a cumulative slice — no per-frame query. Renders to a static poster (last frame) in exports (ADR-0024).** |
+| `chart:geo:animated` | ECharts map (advanced) | `animation.frameField` (required — the period column), `series[].map` (registered asset, e.g. `USA`), `labelField`/`valueField` (region, measure) or `geoField` for data-driven geometry; `visualMap` auto-fills from values — **Animated choropleth over a time dimension (ADR-0034), built on the native ECharts `timeline` + `visualMap`. dvt Full / non-portable. Requires `animation.frameField` (the period column) and a registered map asset (`series[].map`, ADR-0023); `labelField`/`geoField` name the region, `valueField` the measure. Choropleth fills JUMP between periods (no color interpolation) — use smaller deltas / more frames. One query, the client iterates. Renders to a static poster (last frame) in exports (ADR-0024).** |
 <!-- END generated chart-type table -->
 | `metric-strip` | Row of KPI metric tiles | `metrics[]` (see below) |
 | `kpi` | Single-value scorecard (one headline number + comparison + sparkline) | `valueField` (required), `agg`, `format`, `label`, `caption`, `comparison{…}`, `sparkline{…}` (see below) |
@@ -105,10 +108,10 @@ Builder (`/builder`) to see it render live.
 | `hero` | Headline block (eyebrow + headline + subhead) | `headline` (required), `eyebrow`, `subhead`, `align`, `size` (`sm`\|`md`\|`lg`\|`xl`); text fields support `{{ … }}` variables (see below) |
 | `media` | Image block (ADR-0014 escape hatch) | `src` (required, sanitized), `alt`, `fit` (`cover`\|`contain`\|`fill`), `rounded`, `caption` (see below) |
 | `divider` | Visible rule line | `orientation`, `thickness`, `color`, `style` (`solid`\|`dashed`\|`dotted`), `inset` (see below) |
-| `filter` | Interactive control whose selected value re-queries target panels | `param` (required), `valueField` (required), `labelField`, `control` (`select`\|`multiselect`\|`date-range`\|`number-range`\|`search`), `valueType`, `targets`, `values`, `default` (see Filters & drill-downs) |
+| `filter` | Interactive control whose selected value re-queries target panels | `param` (required unless a range), `valueField` (required), `labelField`, `control` (`select`\|`multiselect`\|`date-range`\|`number-range`\|`search`), `valueType`, `targets`, `values`, `default`, `allLabel`, `unsetMode` (`omit`\|`null`), `operator` (`equals`\|`not-equals`\|`contains`\|`starts-with`\|`ends-with`\|`in`\|`not-in`\|`between`); **range** (`between` / `number-range` / `date-range`): `loParam`+`hiParam` (required, replace `param`), `min`, `max`, `step`; **date** (`date-range`): `relativeDate` (`{lo?,hi?}`, each `{unit,amount,direction}`), `presets` (`today`\|`last-7d`\|`last-30d`\|`last-90d`\|`mtd`\|`qtd`\|`ytd`\|`all-time`), `timezone` (IANA, default `UTC`) (see Filters & drill-downs) |
 | `container` | Tabbed container — one page region holding several panel sets behind tabs (layout primitive, not a chart) | `spec.layout: "tabs"` (required), `tabs[]` (required) each `{ id, label, panels:[childId…], layout }`, `defaultTab?`. **Children stay real elements in `panels[]`** referenced by id (never inlined); each tab carries its own mini 24-col `layout`, and the container itself occupies one cell in the page grid. Children are NOT in the page grid. Single level only (no tabs-in-tabs). NOT the same as page-level tabs (`pages[]`+`tabBar`). The semantic validator rejects missing refs / a child placed twice / a child also in the page grid / nesting / a bad `defaultTab` / a tab id that collides with a panel id |
 
-Any panel can also carry a `drill` object (not a `type`) for click-to-navigate drill-downs — see **Filters & drill-downs**.
+Any panel can also carry a `drill` object (left-click navigate) and/or a `contextMenu` object (right-click action menu) — neither is a `type`; see **Filters & drill-downs**.
 
 ### Data binding
 
@@ -298,8 +301,9 @@ but does nothing at runtime, and `dvt_spec_validate` warns about it. A
 `multiselect` control binds an **array** of selected values into an `IN`-list:
 write a bare named placeholder `WHERE region IN %(region)s` (no parens) and the
 engine expands it to one parameter-bound placeholder per selection — values are
-never spliced into SQL. An empty selection matches **no** rows ("nothing selected =
-nothing shown", not "no filter").
+never spliced into SQL. **Clearing a multi-select to 0 selected = unset** ("show
+everything"), resolved per `unsetMode` below — not "show nothing" (ADR-0028
+Amendment 1).
 
 **`filter`** — a dashboard-level control (its own panel). The selectable options come
 from the panel's own `data` (a `SELECT DISTINCT` value query, or baked `data.rows`),
@@ -329,6 +333,152 @@ panel on the page that declares the key) or an explicit `["panelId", …]`; a pa
 doesn't declare the key is never re-fetched. `values` — a static `[value | { value, label }]`
 list (the fallback when there's no value query/rows). `default` — the initial selection.
 
+**The unfiltered / "everything" state (`allLabel` + `unsetMode`, ADR-0028
+Amendment 1).** Don't hand-roll an `'ALL'` option row plus a
+`(%(k)s = 'ALL' OR col = %(k)s)` SQL hack — the control renders the "All" affordance
+for you. Two fields:
+
+- `allLabel` — the display text for the unset state (e.g. `"All regions"`, `"Any
+  date"`). Falls back to `placeholder`, then `"All"`. The single-select **All row**
+  and the multi-select **0-selected** state are control affordances, not data rows.
+- `unsetMode` — how an unset filter binds:
+  - `"omit"` (default) — the key is **not set**, so each target panel keeps its
+    **authored `params` default**. Author writes plain `WHERE col = %(k)s`. Use when
+    there's a natural default value.
+  - `"null"` — the key binds **SQL NULL**. Author writes the guarded predicate
+    `WHERE (%(k)s IS NULL OR col = %(k)s)`. Use for "show everything by default", for
+    `IN`-list multi-selects (`WHERE (%(k)s IS NULL OR col IN %(k)s)`), and it is
+    **required** for open-ended range sides.
+
+```json
+{ "id": "region-filter", "type": "filter", "title": "Region",
+  "data": { "sourceId": "db", "query": "SELECT DISTINCT region FROM demo.public.orders ORDER BY 1" },
+  "spec": { "param": "region", "valueField": "region", "control": "select",
+            "allLabel": "All regions", "unsetMode": "null", "targets": "all" } }
+```
+
+…with the target panel guarding the param so unset = everything:
+`WHERE (%(region)s IS NULL OR region = %(region)s)`. Unset is **omit or typed NULL
+only** — never a sentinel string or client-built SQL.
+
+**The comparison operator (`operator`, ADR-0028 Amendment 1).** `operator` is
+**author-fixed** spec state — it tells the renderer how to *shape the bound value*
+(e.g. wrap a `contains` term in `%…%`), it is **not** a control a viewer toggles, and
+it **never** changes the SQL. You write the matching, fixed predicate yourself; the
+value still enters SQL only as a bound `%(k)s` parameter (never interpolated). Default
+`equals`.
+
+| `operator` | you write this predicate | the value the viewer types is bound as |
+|---|---|---|
+| `equals` (default) | `WHERE col = %(k)s` | the value as-is |
+| `not-equals` | `WHERE col <> %(k)s` | the value as-is |
+| `contains` | `WHERE col LIKE %(k)s ESCAPE '!'` | `%value%` (LIKE metachars `! % _` escaped) |
+| `starts-with` | `WHERE col LIKE %(k)s ESCAPE '!'` | `value%` |
+| `ends-with` | `WHERE col LIKE %(k)s ESCAPE '!'` | `%value` |
+| `not-in` | `WHERE col NOT IN %(k)s` | an array → parameter-bound `NOT IN`-list |
+| `in` / `between` | (multiselect / range — see those controls) | array / two bounds |
+
+**Required for the LIKE operators** (`contains` / `starts-with` / `ends-with`): your
+query **must** carry the `ESCAPE '!'` clause. The renderer escapes `!`, `%`, and `_`
+in the viewer's value with `!` so a typed `%` or `_` matches **literally** (not as a
+wildcard). The `!` escape character is fixed on both sides — write it verbatim. The
+text control shows the operator verb (e.g. `Customer  contains`) next to the label so
+viewers see the match kind; a viewer who needs both `equals` and `contains` on one
+column gets **two** filters (operator switching is author-time only).
+
+```json
+{ "id": "customer-search", "type": "filter", "title": "Customer",
+  "data": { "sourceId": "db", "query": "SELECT DISTINCT customer FROM demo.public.orders ORDER BY 1" },
+  "spec": { "param": "customer", "valueField": "customer", "control": "search",
+            "operator": "contains", "unsetMode": "null", "targets": "all" } }
+```
+
+…with the target panel: `WHERE (%(customer)s IS NULL OR customer LIKE %(customer)s ESCAPE '!')`.
+
+**Number range (`control: "number-range"`, `operator: "between"`, ADR-0028 Amendment 1
+— DVT-257).** A range filter binds **two** values, so it uses **two author-declared
+keys** — `loParam` and `hiParam` — instead of the single `param` (for a range,
+`param` is **forbidden** and `loParam`+`hiParam` are **required**). They are ordinary
+`data.params` keys (no `__lo`/`__hi` magic suffix): you declare both and write the
+predicate. The renderer shows a dual-thumb slider (domain from `min`/`max`, or derived
+from a `MIN()`/`MAX()` value-source query, stepped by `step`) plus paired min/max
+numeric inputs. The two values bind as named scalar parameters — never interpolated,
+never a list — so the engine is unchanged.
+
+**Open-ended (one side blank) is required to work**, so write the **null-tolerant
+guarded predicate** and set `unsetMode: "null"` (required for ranges): an unset side
+binds typed **NULL**, which the guard reads as "no bound on that side."
+
+```json
+{ "id": "amount-range", "type": "filter", "title": "Order amount",
+  "data": { "sourceId": "db", "query": "SELECT MIN(amount) AS amount, MAX(amount) AS amount FROM demo.public.orders" },
+  "spec": { "control": "number-range", "operator": "between", "valueField": "amount",
+            "valueType": "number", "loParam": "amount_lo", "hiParam": "amount_hi",
+            "min": 0, "max": 50000, "step": 1000,
+            "unsetMode": "null", "allLabel": "Any amount", "targets": "all" } }
+```
+
+…with the target panel writing the dual-guarded predicate and declaring **both** keys:
+
+```sql
+WHERE (%(amount_lo)s IS NULL OR amount >= %(amount_lo)s)
+  AND (%(amount_hi)s IS NULL OR amount <= %(amount_hi)s)
+```
+
+`"params": { "amount_lo": null, "amount_hi": null }`. A blank min **or** max is
+open-ended on that side; an **inverted** range (min above max) binds faithfully and
+simply matches no rows (the renderer never silently swaps the bounds).
+
+**Date range (`control: "date-range"`, ADR-0028 Amendment 1 A2.3/A5 — DVT-256).** A
+date filter is a range, so it binds the **same two author-declared keys** as a number
+range — `loParam` + `hiParam` (the scalar `param` is **forbidden**; declare both keys
+and write the dual-guarded predicate, exactly like the number range above). What it
+adds is **relative** windows that resolve to concrete dates:
+
+- **`relativeDate`** — `{ lo?, hi? }`, where each end is
+  `{ unit: "day" | "week" | "month" | "quarter" | "year", amount: <int ≥ 0>, direction: "past" | "future" }`.
+  `amount: 0` = the anchor ("today"). An omitted end is **open-ended** on that side.
+  Example: last 30 days = `lo: { unit:"day", amount:30, direction:"past" }`,
+  `hi: { unit:"day", amount:0, direction:"past" }`.
+- **`presets`** — an allow-list of quick-pick chips, a subset (in your order) of:
+  `today`, `last-7d`, `last-30d`, `last-90d`, `mtd`, `qtd`, `ytd`, `all-time`.
+  `all-time` clears both bounds (fully open).
+- **`timezone`** — an IANA zone (e.g. `"America/New_York"`, default `"UTC"`) that
+  defines what "today" / day boundaries mean. **This is your authored basis, not the
+  viewer's locale** — the dashboard resolves identically for every viewer.
+
+**How relative dates resolve (the contract you can rely on).** A relative window
+resolves to **absolute** dates that bind as ordinary `date` params — never
+interpolated, never the warehouse `CURRENT_DATE`. "Now" is sampled **once per
+dashboard load** and the resolution uses your `timezone`, so "last 7 days" always
+means the same 7 days for everyone viewing at the same moment. Crucially, a shared
+link / reload encodes the **relative expression** (e.g. "last 30 days"), not the
+resolved dates — so the recipient re-resolves against **their** current "now" and a
+link stays meaningfully relative. The viewer can also switch to **Absolute** mode and
+pick literal dates (those are fixed, and encode as-is). Either side blank/disabled =
+open-ended, so write the same null-tolerant guard and `unsetMode: "null"` as a number
+range.
+
+```json
+{ "id": "date-range", "type": "filter", "title": "Order date",
+  "data": { "sourceId": "db", "query": "SELECT MIN(order_date) AS order_date, MAX(order_date) AS order_date FROM demo.public.orders" },
+  "spec": { "control": "date-range", "valueField": "order_date", "valueType": "date",
+            "loParam": "order_date_lo", "hiParam": "order_date_hi",
+            "unsetMode": "null", "allLabel": "Any date", "timezone": "America/New_York",
+            "relativeDate": { "lo": { "unit": "day", "amount": 30, "direction": "past" },
+                              "hi": { "unit": "day", "amount": 0, "direction": "past" } },
+            "presets": ["today", "last-7d", "last-30d", "mtd", "qtd", "ytd", "all-time"],
+            "targets": "all" } }
+```
+
+…with the target panel writing the dual-guarded date predicate and declaring **both**
+keys (`"params": { "order_date_lo": null, "order_date_hi": null }`):
+
+```sql
+WHERE (%(order_date_lo)s IS NULL OR order_date >= %(order_date_lo)s)
+  AND (%(order_date_hi)s IS NULL OR order_date <= %(order_date_hi)s)
+```
+
 **`drill`** — a property on **any** panel (not a `type`). Clicking a mark/row navigates
 to `targetPage` with the clicked value bound, by name, into that page's panels — the same
 value→query contract as a filter.
@@ -345,6 +495,117 @@ exactly like the filter targets above. `targetPage` (required) — a `pages[].id
 (required) — the params key set on the target page's panels. `valueFrom`: `category`
 (default) | `value` | `seriesName` | a field name from the clicked row (use a field name
 for tables). `valueType` — as above.
+
+**`contextMenu`** — a property on **any** panel (and, additively, on any `table` column,
+ADR-0032). Where `drill` is the single left-click quick-path, `contextMenu` is the
+**right-click menu**: an ordered `actions[]` list, each parameterized by the clicked
+mark/row, that turns a dashboard from read-only into explorable. Like `filter`/`drill` it
+is interactive-only (a no-op in a static PNG render). Five action types:
+
+```json
+{ "id": "rev-by-region", "type": "chart:bar", "title": "Revenue by Region",
+  "data": { "sourceId": "db", "query": "SELECT region, SUM(amount) AS rev, region_id FROM demo.public.orders GROUP BY 1, 3" },
+  "spec": { "series": [{ "type": "bar", "dataField": "rev" }] },
+  "contextMenu": { "actions": [
+    { "type": "filter", "label": "Filter page to {category}", "param": "region", "valueFrom": "category" },
+    { "type": "drill",  "label": "Open {category} detail", "targetPage": "region-detail", "param": "region", "valueFrom": "category" },
+    { "type": "link",   "label": "Open {category} in CRM", "url": "https://crm.example.com/regions/{region_id}", "target": "tab" },
+    { "type": "copy",   "label": "Copy value", "copy": "value" },
+    { "type": "export", "label": "Export this row", "format": "csv", "scope": "row" }
+  ] } }
+```
+
+- Every action has `type` (the discriminator), `label` (required — supports `{token}`
+  templates), optional `icon`, and optional `when: { field }` (show the action only when
+  the clicked datum has a non-null value for `field` — e.g. "Open in CRM" only on rows
+  with an account id).
+- **`{token}` templates** in `label` (and `link.url`): `{category}`, `{value}`,
+  `{seriesName}`, and `{<field>}` for any field of the clicked row. On **tables** every
+  field works. On **charts**, `{category}`/`{value}`/`{seriesName}` always work; arbitrary
+  `{<field>}` / `valueFrom:<field>` resolve the clicked mark's source row on row-per-mark
+  charts (bar, line, area, scatter, pie) — for a pivoting stacked/multi-series chart, bind
+  from `category`/`value`/`seriesName` instead.
+- **`filter`** — cross-filters the **current** page (no navigation): `param` (required),
+  `valueFrom?` (default `category`), `valueType?`, `targets?` (`"all"` | panel-id list).
+  Same value→query binding + targeting as a `filter` control.
+- **`drill`** — navigates to a page: `targetPage` + `param` (required), `valueFrom?`,
+  `valueType?`. One menu can hold several drill destinations (the bare `drill` property
+  holds only one); the two coexist.
+- **`link`** — opens an external URL. Scheme must be `https` | `mailto` | `tel`
+  (`javascript:`/`data:`/`http:` are rejected). Token values are URL-encoded, and a
+  `{token}` may appear only in the path/query/fragment — never in the scheme or host (so
+  `https://{host}/…` is rejected). `target?`: `tab` (default, opens a new tab with
+  `noopener`/`no-referrer`) | `self`. A missing token disables the action.
+- **`copy`** — `copy?`: `value` (default) | `row` (tab-separated) | a field name. Client-only.
+- **`export`** — `scope?`: `row` (default, the clicked row client-side) | `result` (the
+  panel's full result via the audited export endpoint); `format?`: `csv` (default) | `json`.
+
+A column-level `contextMenu` on a `table` column **merges below** the panel-level menu
+(panel actions first, then that column's actions).
+
+### Animated / temporal charts — playback over a time dimension (ADR-0034)
+
+Three chart types replay **one query result as frames** over a time/sequence column —
+a bar-chart **race**, a **racing line**, and an animated **choropleth**. They are
+**dvt Full** (non-portable, ECharts-coupled): a spec using one reports
+`conformance: "full"`, and an **export/render captures a static poster frame** (the
+final frame), not the motion. Live playback is a web-renderer capability.
+
+| Type | Use it for | Mode |
+|------|-----------|------|
+| `chart:bar:racing` | top-N rankings that reshuffle over time (brands/regions by year) | continuous tween — bars **slide** |
+| `chart:line:racing` | series drawing in / diverging over time (prices, cumulative metrics) | continuous tween — line **grows** |
+| `chart:geo:animated` | a measure spreading across a map over periods (share by state by quarter) | discrete steps — fills **jump** |
+
+**One query, all frames.** The rows carry every frame stacked; the client groups them by
+`animation.frameField` and iterates **in-browser** — there is **no per-frame query** and no
+engine change (ADR-0011/0013). A 12-year race of 10 categories is 120 rows in one result,
+not 12 queries. For a backend-free spec, bake all frames into `data.rows`.
+
+**The `animation` block** (required on these three types):
+
+```jsonc
+"animation": {
+  "frameField": "year",          // REQUIRED — the column rows are grouped/ordered by
+  "frames": ["2019","2020","…"], // optional explicit order; else numeric/date-aware sort
+  "speedDefault": 1,             // initial speed multiplier (∈ speeds)
+  "speeds": [0.5, 1, 2, 4],      // selectable multipliers; scrubber + segmented control
+  "loop": false,                 // restart after the last frame
+  "controls": { "placement": "below" }   // "below" (default) | "overlay"
+}
+```
+
+The shared control bar (play/pause · scrubber · speed · period label · loop, keyboard-operable)
+renders automatically; you don't author it. Speed scales the tick interval **and** the tween
+duration together so motion stays smooth.
+
+**Stable identity is the whole trick.** Each data item must keep a stable name across frames so
+the renderer *slides* it instead of popping. For a **bar race**, `categoryField` is that identity
+(one row per category per frame) and `valueField` is the measure; `yAxis.max: N-1` shows the
+top-N (default 10). For a **line race**, `valueField` is the y measure and an optional
+`seriesField` splits multiple lines. For **animated geo**, `series[].map` names a registered
+asset (`USA`/`world`, ADR-0023), `labelField` is the region (matching the map's
+`properties.name`, e.g. a full US state name), `valueField` the measure, and a single
+`visualMap` colours all frames on one scale (set `min`/`max` so colours are comparable
+period-to-period).
+
+```jsonc
+// Bar race — top regions by MRR over the year
+{ "type": "chart:bar:racing", "title": "MRR by region",
+  "data": { "rows": [
+    {"month":"Jan","region":"AMER","mrr":120}, {"month":"Jan","region":"EMEA","mrr":131},
+    {"month":"Feb","region":"AMER","mrr":135}, {"month":"Feb","region":"EMEA","mrr":141}
+    /* …all months × regions… */ ] },
+  "spec": {
+    "categoryField": "region", "valueField": "mrr",
+    "series": [{ "type": "bar" }],
+    "animation": { "frameField": "month", "loop": true }
+  } }
+```
+
+Tips: keep frames ≲ 50 and one row per entity per frame; tidy, numeric/date-sortable
+`frameField` values order without an explicit `frames` list; for geo prefer smaller period
+deltas (monthly > yearly) since fills don't interpolate.
 
 ## Canvas mode — immersive, full-bleed, scroll-driven layouts
 
