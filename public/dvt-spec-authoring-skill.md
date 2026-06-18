@@ -161,6 +161,25 @@ Keep `query` alongside `rows` so the SQL inspector still shows real SQL:
           "rows": [ { "category": "Software", "revenue": 1269315.62 } ] }
 ```
 
+### tooltip.fields — extra columns on hover (DVT-301)
+
+`spec.tooltip.fields` surfaces additional query-result columns in the chart hover tooltip. It is **dvt Core** (portable, renderer-neutral) and works on bar/line/area, pie/donut, and scatter. Any other key under `tooltip` is the ECharts passthrough (dvt Full). Absent columns are silently skipped.
+
+Each entry: `{ "field": "<column>", "label"?: "...", "format"?: { ... } }`. `label` defaults to a humanized form of the field name. `format` is the shared FormatObject.
+
+```json
+{ "type": "chart:bar",
+  "spec": {
+    "series": [{ "type": "bar", "dataField": "rev" }],
+    "tooltip": { "fields": [
+      { "field": "order_count", "label": "Orders", "format": { "type": "number" } },
+      { "field": "yoy", "label": "YoY", "format": { "type": "percentage" } }
+    ] } } }
+```
+
+Mix with ECharts passthrough keys freely — they coexist under `tooltip`:
+`"tooltip": { "trigger": "axis", "fields": [...] }`.
+
 ### metric-strip
 
 ```json
