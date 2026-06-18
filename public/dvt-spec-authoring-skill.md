@@ -47,6 +47,12 @@ Builder (`/builder`) to see it render live.
     of the viewport. Only used when `position: "free"`; ignored otherwise.
   Example (a centered floating bar for a canvas deck):
   `"tabBar": { "position": "free", "layout": "stacked", "alignment": "center", "size": "md", "placement": { "x": 50, "y": 4 } }`
+  - A page may set **`hidden": true`** (ADR-0036): it is **excluded from the tab bar / default
+    nav** but stays fully authored and is a valid `drill`/`openOverlay` target — the way to
+    build a **detail page that only opens as an overlay** (`pages: [{ id: "region-detail",
+    title: "Region detail", hidden: true, layout, panels:[…] }]`). ⚠️ `hidden` is
+    **presentation, not access control** — a hidden page's data is governed by the same RBAC
+    as any page; never use it to "protect" sensitive data.
 - **`cache`** (optional) tunes how long this dashboard's query results may be reused
   before re-querying the warehouse. `ttlSeconds` is the freshness window (e.g. `600`
   = up to 10 min stale); `0` or `"enabled": false` means **always live**. Omit it to
@@ -149,7 +155,10 @@ Rules: lowercase keywords; one field per line with **leading** commas; explicit
 then indented `and` predicates; `where 1=1` guard then each predicate as an
 indented `and ...`; `group by` mirrors the select list. Parameter-bound predicates
 use named `%(key)s` bindings (ADR-0028) — never string-interpolate values into the
-SQL. Full reference: `docs/02-spec/sql-style-guide.md`.
+SQL. Full reference: `docs/02-spec/sql-style-guide.md`. This is dvt's opinionated
+default for SQL that's easy to read and audit; customers can override authoring with
+their own skills, but the dvt app always normalizes the SQL shown in the panel query
+inspector to this canonical style.
 
 **Backend-free specs:** add `data.rows` (an array of row objects) and the panel
 renders from those directly — **no engine, no warehouse, no live query.** This makes
@@ -179,6 +188,42 @@ Each entry: `{ "field": "<column>", "label"?: "...", "format"?: { ... } }`. `lab
 
 Mix with ECharts passthrough keys freely — they coexist under `tooltip`:
 `"tooltip": { "trigger": "axis", "fields": [...] }`.
+
+### Number display — value labels, funnel rates, derived metrics
+
+dvt Core, renderer-neutral ways to put numbers *on the chart* — no hand-written ECharts `formatter`. All format via the shared format objects (see Formats). A raw `series[].label.formatter` remains the Full escape hatch and takes precedence over these.
+
+**Value labels on marks** — top-level `spec.label` puts the formatted datum value on each mark. Works on bar/line/area, pie/donut, scatter (ignored on pivot/relational families). `position` defaults sensibly per type (bar→top, horizontal bar→right, pie/donut→outside, scatter→top).
+
+```json
+{ "type": "chart:bar",
+  "spec": {
+    "series": [{ "type": "bar", "dataField": "revenue" }],
+    "label": { "show": true, "position": "top", "format": { "type": "currency", "currency": "USD", "compact": true } } } }
+```
+
+**Derived display metrics** — `label.derive` shows a value computed from the series instead of the raw number:
+
+- `percentOfTotal` — each datum as % of the series sum.
+- `deltaPrev` — absolute change vs the previous datum (signed ▲/▼).
+- `deltaPrevPct` — percent change vs the previous datum (signed ▲/▼).
+
+First datum / zero-sum / zero-prior render as `—`.
+
+```json
+"label": { "show": true, "derive": "percentOfTotal", "format": { "type": "percentage", "decimals": 0 } }
+```
+
+**Funnel conversion rates** — on `chart:funnel`, top-level `spec.funnelRate` shows conversion % in the stage labels (no raw formatter needed):
+
+```json
+{ "type": "chart:funnel",
+  "spec": {
+    "labelField": "stage", "valueField": "count",
+    "funnelRate": { "mode": "step", "showValue": true, "precision": 0 } } }
+```
+
+`mode`: `step` (% of the previous stage) · `overall` (% of the first stage) · `total` (% of all stages) · `none`. `showValue` also prints the formatted stage value (uses the panel's `valueFormat`).
 
 ### metric-strip
 
@@ -535,7 +580,7 @@ for tables). `valueType` — as above.
 ADR-0035). Where `drill` is the single left-click quick-path, `contextMenu` is the
 **right-click menu**: an ordered `actions[]` list, each parameterized by the clicked
 mark/row, that turns a dashboard from read-only into explorable. Like `filter`/`drill` it
-is interactive-only (a no-op in a static PNG render). Five action types:
+is interactive-only (a no-op in a static PNG render). Six action types:
 
 ```json
 { "id": "rev-by-region", "type": "chart:bar", "title": "Revenue by Region",
@@ -544,6 +589,7 @@ is interactive-only (a no-op in a static PNG render). Five action types:
   "contextMenu": { "actions": [
     { "type": "filter", "label": "Filter page to {category}", "param": "region", "valueFrom": "category" },
     { "type": "drill",  "label": "Open {category} detail", "targetPage": "region-detail", "param": "region", "valueFrom": "category" },
+    { "type": "openOverlay", "label": "Inspect {category}", "targetPage": "region-detail", "present": "modal", "param": "region", "valueFrom": "category" },
     { "type": "link",   "label": "Open {category} in CRM", "url": "https://crm.example.com/regions/{region_id}", "target": "tab" },
     { "type": "copy",   "label": "Copy value", "copy": "value" },
     { "type": "export", "label": "Export this row", "format": "csv", "scope": "row" }
@@ -566,6 +612,14 @@ is interactive-only (a no-op in a static PNG render). Five action types:
 - **`drill`** — navigates to a page: `targetPage` + `param` (required), `valueFrom?`,
   `valueType?`. One menu can hold several drill destinations (the bare `drill` property
   holds only one); the two coexist.
+- **`openOverlay`** (ADR-0036) — opens `targetPage` as a **modal or drawer overlay** *over*
+  the current page (detail-on-demand), instead of navigating away. A superset of `drill`:
+  `targetPage` (required), optional `param`/`valueFrom`/`valueType` (the clicked value is
+  bound into the overlay page's panels, scoped to the overlay — it never touches the base
+  page; closing the overlay discards it). Presentation: `present?` (`modal` default |
+  `drawer`), `size?` (`sm`|`md`|`lg`|`full`), `side?` (`left`|`right`, drawer only). Omit
+  `param` for a context-free detail/help overlay. The target is **usually a hidden page**
+  (see below). In a renderer without overlay support it degrades to a `drill` navigation.
 - **`link`** — opens an external URL. Scheme must be `https` | `mailto` | `tel`
   (`javascript:`/`data:`/`http:` are rejected). Token values are URL-encoded, and a
   `{token}` may appear only in the path/query/fragment — never in the scheme or host (so
@@ -750,8 +804,17 @@ gradient `pages[].background` plus a shared dark `overrides` block on each card.
 
 ## Formats
 
-`format` objects compile to number formatters: `{ "type": "currency"|"percentage"|"number"|"compact"|"date", "currency": "USD", "decimals": 0, "compact": true }`.
-Place them where a value is rendered, e.g. `"axisLabel": { "format": {...} }` or on a metric.
+`format` objects are dvt's portable number-display vocabulary (dvt Core) — they compile to a formatter at render time so a spec stays declarative (no JS). One shape, reused everywhere a value is rendered: table columns, `valueFormat`, axis labels, tooltip fields, value labels, funnel rates.
+
+`{ "type": "currency"|"percentage"|"number"|"compact"|"date", "decimals": 1, "currency": "USD", "compact": true, "prefix": "~", "suffix": " /mo", "locale": "en-US" }`
+
+- **type** — `number` (grouped), `currency` (with `currency` ISO code), `percentage` (input is a whole-number percent — `12.5` → `12.5%`), `compact` (1234567 → `1.2M`), `date`.
+- **decimals** — fixed decimal places.
+- **compact** — K/M/B/T notation; combine with `currency` for `$1.2M`.
+- **prefix / suffix** — arbitrary affixes wrapped around the formatted value (empty/blank values stay blank — no bare affix).
+- **locale** — BCP-47 separators; defaults to `en-US` for deterministic output.
+
+Place a format where a value renders: `"axisLabel": { "format": {…} }`, a table column `format`, `valueFormat` on a chart, a `tooltip.fields` entry, or a value `label` (see "Number display" above).
 
 ## Authoring method — audit, narrate, design, verify
 
