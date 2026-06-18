@@ -305,6 +305,22 @@ never spliced into SQL. **Clearing a multi-select to 0 selected = unset** ("show
 everything"), resolved per `unsetMode` below — not "show nothing" (ADR-0028
 Amendment 1).
 
+The multi-select control's UX affordances are **automatic — no spec field**: a
+tri-state **Select all / Clear all** bulk row, an in-list **search** box (appears once
+the option list exceeds 8), an **"N selected"** footer summary, and **batched Apply**
+(the re-query fires once on Apply, not per checkbox). For a `not-in` (exclude)
+multi-select, author the guarded `WHERE (%(k)s IS NULL OR col NOT IN %(k)s)` so an
+empty exclusion means "show all" rather than matching no rows.
+
+**Filter selections round-trip in the URL.** When a viewer adjusts a filter, the
+selection is mirrored to the page URL (under an `f.<param>` query param), so a reload
+or a **shared/bookmarked link restores the exact filter bar** (multi-select arrays,
+scalars, ranges, and dates alike). Dates encode the relative **intent** ("last 7
+days"), not the resolved dates, so a shared "last 7 days" re-resolves against the
+recipient's current day. No authoring action is required; an unset filter simply
+drops its URL param. (View-time URL sync is on for the live viewer and the immersive
+present view; the Builder authoring canvas and headless renders don't touch the URL.)
+
 **`filter`** — a dashboard-level control (its own panel). The selectable options come
 from the panel's own `data` (a `SELECT DISTINCT` value query, or baked `data.rows`),
 or from a static `values` list. Selecting a value re-queries the target panels.
