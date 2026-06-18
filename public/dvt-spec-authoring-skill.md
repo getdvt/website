@@ -730,8 +730,9 @@ the final frame.
 ## Theme & tokens (the customization engine)
 
 Tokens are a 3-tier tree (`primitive` → `semantic` → `component`). Any value may be
-a literal (`"#4F46E5"`) or a reference (`"{color.brand-indigo}"`). Change one
-primitive and every chart updates. Useful tokens:
+a literal (`"#4F46E5"`) or a reference (`"{color.brand-indigo}"`) — with one exception:
+the **font-family** slots below are a *closed allow-set*, not free text (see
+`typography.fontFamily`). Change one primitive and every chart updates. Useful tokens:
 
 - `chart.series.1..6` — the series palette (drives chart colors automatically)
 - `chart.axis.label.color`, `chart.grid.line.color`, `chart.axis.line.color` — chart chrome (retint these on dark surfaces)
@@ -740,7 +741,7 @@ primitive and every chart updates. Useful tokens:
 - `panel.background`, `panel.border.color`, `panel.radius`, `panel.shadow` — per-card chrome
 - `panel.title.size`, `panel.title.weight`
 - `text.primary`, `text.secondary`, `text.muted`
-- `typography.fontFamily`
+- `typography.fontFamily` (and any `*.family` token) — a **closed allow-set, not free text**. Use exactly one of these stacks (or a `"{typography.fontFamily}"` ref): `Inter Variable, Inter, sans-serif` · `Inter, sans-serif` · `JetBrains Mono, monospace` · `JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace` · `ui-sans-serif, system-ui, sans-serif` · `ui-serif, Georgia, serif` · `ui-monospace, monospace`. An off-list stack (e.g. `"Helvetica, Arial, sans-serif"`) is **rejected with a 422 by `dvt_spec_validate`** — a font stack has no safe-literal grammar, so the schema gates it as an enum, not free text (DVT-294, ADR-0032 §A3).
 
 **Per-panel overrides:** any panel may set `"overrides": { "panel.background": "#0F1E2E", "text.primary": "#E8EEF5", "chart.axis.label.color": "#8DA2B8", "chart.grid.line.color": "rgba(255,255,255,0.06)", "chart.series.1": "#5BBFBA" }`
 to restyle just that card. This is how you make one panel dark, recolor a single
