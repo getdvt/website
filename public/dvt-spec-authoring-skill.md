@@ -97,7 +97,7 @@ Builder (`/builder`) to see it render live.
 | `chart:custom` | ECharts custom (advanced) | `series[].renderItem` must be a registered `$dvtRef` — **Requires a renderItem function, which must be a registered $dvtRef (ADR-0016); raw functions cannot be expressed in a spec.** |
 | `chart:bar:racing` | ECharts bar (advanced) | `animation.frameField` (required — the time column), `categoryField` (entity identity, stable across frames so bars slide not pop), `valueField` (measure); optional `animation.{speeds,speedDefault,loop,controls.placement}`, top-N via `yAxis.max` — **Animated 'bar chart race' (ADR-0034). dvt Full / non-portable. Requires an `animation` block with `frameField` (the time/sequence column); `categoryField` is the stable entity identity that slides between frames and `valueField` the measure. One query returns all frames stacked in rows; the client iterates in-browser — no per-frame query. Top-N via `yAxis.max`. Renders to a static poster (last frame) in exports (ADR-0024).** |
 | `chart:line:racing` | ECharts line (advanced) | `animation.frameField` (required — the x/time column), `valueField` (y measure), optional `seriesField` (multi-line split); `animation.{speeds,speedDefault,loop,controls.placement}` — **Animated progressive / 'racing' line (ADR-0034). dvt Full / non-portable. Requires an `animation` block with `frameField` (the x/time column the line draws along); optional `seriesField` splits multiple lines, `valueField` is the y measure. One query, the client iterates frames as a cumulative slice — no per-frame query. Renders to a static poster (last frame) in exports (ADR-0024).** |
-| `chart:geo:animated` | ECharts map (advanced) | `animation.frameField` (required — the period column), `series[].map` (registered asset, e.g. `USA`), `labelField`/`valueField` (region, measure) or `geoField` for data-driven geometry; `visualMap` auto-fills from values — **Animated choropleth over a time dimension (ADR-0034), built on the native ECharts `timeline` + `visualMap`. dvt Full / non-portable. Requires `animation.frameField` (the period column) and a registered map asset (`series[].map`, ADR-0023); `labelField`/`geoField` name the region, `valueField` the measure. Choropleth fills JUMP between periods (no color interpolation) — use smaller deltas / more frames. One query, the client iterates. Renders to a static poster (last frame) in exports (ADR-0024).** |
+| `chart:geo:animated` | ECharts map (advanced) | `animation.frameField` (required — the period column), `series[].map` (registered asset, e.g. `USA`), `labelField`/`valueField` (region, measure) or `geoField` for data-driven geometry; `visualMap` auto-fills from values — **Animated choropleth over a time dimension (ADR-0034), driven by the shared merge-clock + `visualMap` (not the native ECharts `timeline`, ADR-0034 Amdt 1). dvt Full / non-portable. Requires `animation.frameField` (the period column) and a registered map asset (`series[].map`, ADR-0023); `labelField`/`geoField` name the region, `valueField` the measure. Fills CROSS-FADE between periods via per-region value interpolation (ADR-0034 Amdt 3); regions with no data on either side snap at the boundary, and large maps (>80 regions, e.g. `world`) stay discrete. One query, the client iterates. Renders to a static poster (last frame) in exports (ADR-0024).** |
 <!-- END generated chart-type table -->
 | `metric-strip` | Row of KPI metric tiles | `metrics[]` (see below) |
 | `kpi` | Single-value scorecard (one headline number + comparison + sparkline) | `valueField` (required), `agg`, `format`, `label`, `caption`, `comparison{…}`, `sparkline{…}` (see below) |
@@ -513,7 +513,7 @@ exactly like the filter targets above. `targetPage` (required) — a `pages[].id
 for tables). `valueType` — as above.
 
 **`contextMenu`** — a property on **any** panel (and, additively, on any `table` column,
-ADR-0032). Where `drill` is the single left-click quick-path, `contextMenu` is the
+ADR-0035). Where `drill` is the single left-click quick-path, `contextMenu` is the
 **right-click menu**: an ordered `actions[]` list, each parameterized by the clicked
 mark/row, that turns a dashboard from read-only into explorable. Like `filter`/`drill` it
 is interactive-only (a no-op in a static PNG render). Five action types:
@@ -571,7 +571,7 @@ final frame), not the motion. Live playback is a web-renderer capability.
 |------|-----------|------|
 | `chart:bar:racing` | top-N rankings that reshuffle over time (brands/regions by year) | continuous tween — bars **slide** |
 | `chart:line:racing` | series drawing in / diverging over time (prices, cumulative metrics) | continuous tween — line **grows** |
-| `chart:geo:animated` | a measure spreading across a map over periods (share by state by quarter) | discrete steps — fills **jump** |
+| `chart:geo:animated` | a measure spreading across a map over periods (share by state by quarter) | fills **cross-fade** (large maps step) |
 
 **One query, all frames.** The rows carry every frame stacked; the client groups them by
 `animation.frameField` and iterates **in-browser** — there is **no per-frame query** and no
@@ -586,14 +586,22 @@ not 12 queries. For a backend-free spec, bake all frames into `data.rows`.
   "frames": ["2019","2020","…"], // optional explicit order; else numeric/date-aware sort
   "speedDefault": 1,             // initial speed multiplier (∈ speeds)
   "speeds": [0.5, 1, 2, 4],      // selectable multipliers; scrubber + segmented control
-  "loop": false,                 // restart after the last frame
+  "loop": true,                  // restart after the last frame (DEFAULT true; set false to play once)
   "controls": { "placement": "below" }   // "below" (default) | "overlay"
 }
 ```
 
 The shared control bar (play/pause · scrubber · speed · period label · loop, keyboard-operable)
-renders automatically; you don't author it. Speed scales the tick interval **and** the tween
-duration together so motion stays smooth.
+renders automatically; you don't author it. Panels **autoplay and loop on mount** by default so a
+dashboard stays alive (set `loop:false` to play once and park on the final frame; OS
+*prefers-reduced-motion* starts paused on the first frame). Speed scales the tick interval **and**
+the tween duration together so motion stays smooth.
+
+**Smoothness is automatic.** The bar and line races synthesize interpolated sub-frames between your
+data periods (ADR-0034 Amendment 2), so sparse data (a handful of periods) still glides instead of
+lurching — you don't author intermediate frames. Animated geo **cross-fades** too (Amendment 3): per-region
+values interpolate so fills shift smoothly; regions with no data on a side snap at the boundary, and large
+maps (>80 regions, e.g. `world`) stay discrete to avoid repaint jank. Reduced-motion steps discretely.
 
 **Stable identity is the whole trick.** Each data item must keep a stable name across frames so
 the renderer *slides* it instead of popping. For a **bar race**, `categoryField` is that identity
