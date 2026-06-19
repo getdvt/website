@@ -186,6 +186,16 @@ Each entry: `{ "field": "<column>", "label"?: "...", "format"?: { ... } }`. `lab
     ] } } }
 ```
 
+**The FormatObject** (`format`) is one shared, renderer-neutral vocabulary — it renders identically on chart axes/labels/tooltips, KPI scorecards, table cells, and `{{ }}` text variables. `type` is one of:
+
+- `number` / `currency` (`currency` ISO code) / `percentage` — `decimals` sets fraction digits; `compact` (`1.2M`) on number/currency. (Percentage expects a whole number, e.g. `25` → `25%`.)
+- `compact` — shorthand for compact number notation.
+- `date` — `pattern` selects which fields show (CLDR-ish tokens: `yyyy`/`yy`, `MMMM`/`MMM`/`MM`/`M`, `dd`/`d`, `HH`, `mm`), e.g. `"MMM d, yyyy"` → `Mar 9, 2026`. Rendered in UTC.
+- `duration` — humanizes a numeric duration. `unit` is the input unit (`ms` default, or `s`/`m`/`h`/`d`); `style` is `short` (`2h 5m`, default), `long` (`2 hours 5 minutes`), or `colon` (`2:05:00`).
+- `custom` — `pattern` is a [d3-format](https://github.com/d3/d3-format) string (a portable mini-language, **not** author code — ADR-0016): `",.2f"`, `"$,.0f"`, `".1%"`, `"~s"`. Note: a d3 `%` pattern (`".1%"`) multiplies by 100 and expects a **fraction** (`0.25` → `25%`), unlike `type:"percentage"` which expects a whole number (`25` → `25%`).
+
+All types also accept `prefix`/`suffix` (wrap the output) and `locale` (BCP-47; defaults to `en-US` for deterministic output).
+
 Mix with ECharts passthrough keys freely — they coexist under `tooltip`:
 `"tooltip": { "trigger": "axis", "fields": [...] }`.
 
@@ -790,6 +800,7 @@ the **font-family** slots below are a *closed allow-set*, not free text (see
 
 - `chart.series.1..6` — the series palette (drives chart colors automatically)
 - `chart.axis.label.color`, `chart.grid.line.color`, `chart.axis.line.color` — chart chrome (retint these on dark surfaces)
+- `chart.*` component style (renderer-neutral themeable defaults — ADR-0014 Amendment 1): `chart.font.family`; axis `chart.axis.label.size`/`.weight`, `chart.axis.name.size`/`.weight`, `chart.axis.tick.show`; tooltip card `chart.tooltip.background`/`.border.color`/`.border.width`/`.text.color`/`.text.size`/`.radius`/`.shadow`/`.padding`; legend `chart.legend.icon`/`.item.size`/`.gap`/`.text.size`; bars `chart.bar.maxWidth`/`.categoryGap`/`.radius`; lines `chart.line.width`/`.showSymbol`; plot insets `chart.grid.left`/`.right`/`.top`/`.bottom`. Set any in `theme.tokens.component` or a panel `overrides` block to restyle chrome without raw ECharts passthrough.
 - `heatmap.low`, `heatmap.high` — heatmap value ramp endpoints
 - `page.background` — the canvas behind panels (or set `page.background` per page via `pages[].background`)
 - `panel.background`, `panel.border.color`, `panel.radius`, `panel.shadow` — per-card chrome
