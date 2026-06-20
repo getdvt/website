@@ -114,6 +114,7 @@ Builder (`/builder`) to see it render live.
 | `hero` | Headline block (eyebrow + headline + subhead) | `headline` (required), `eyebrow`, `subhead`, `align`, `size` (`sm`\|`md`\|`lg`\|`xl`); text fields support `{{ … }}` variables (see below) |
 | `media` | Image block (ADR-0014 escape hatch) | `src` (required, sanitized), `alt`, `fit` (`cover`\|`contain`\|`fill`), `rounded`, `caption` (see below) |
 | `divider` | Visible rule line | `orientation`, `thickness`, `color`, `style` (`solid`\|`dashed`\|`dotted`), `inset` (see below) |
+| `section` | Grid heading band that labels a group of panels | panel `title` = the heading; `subtitle` (one line), `rule` (hairline below, default true), `align` (`left`\|`center`\|`right`); takes no query, spans full width (`w:24` by convention). **dvt Core. NOT the canvas `layout.sections[]` block — distinct constructs** (see below) |
 | `filter` | Interactive control whose selected value re-queries target panels | `param` (required unless a range), `valueField` (required), `labelField`, `control` (`select`\|`multiselect`\|`date-range`\|`number-range`\|`search`), `valueType`, `targets`, `values`, `default`, `allLabel`, `unsetMode` (`omit`\|`null`), `operator` (`equals`\|`not-equals`\|`contains`\|`starts-with`\|`ends-with`\|`in`\|`not-in`\|`between`); **range** (`between` / `number-range` / `date-range`): `loParam`+`hiParam` (required, replace `param`), `min`, `max`, `step`; **date** (`date-range`): `relativeDate` (`{lo?,hi?}`, each `{unit,amount,direction}`), `presets` (`today`\|`last-7d`\|`last-30d`\|`last-90d`\|`mtd`\|`qtd`\|`ytd`\|`all-time`), `timezone` (IANA, default `UTC`) (see Filters & drill-downs) |
 | `container` | Tabbed container — one page region holding several panel sets behind tabs (layout primitive, not a chart) | `spec.layout: "tabs"` (required), `tabs[]` (required) each `{ id, label, panels:[childId…], layout }`, `defaultTab?`. **Children stay real elements in `panels[]`** referenced by id (never inlined); each tab carries its own mini 24-col `layout`, and the container itself occupies one cell in the page grid. Children are NOT in the page grid. Single level only (no tabs-in-tabs). NOT the same as page-level tabs (`pages[]`+`tabBar`). The semantic validator rejects missing refs / a child placed twice / a child also in the page grid / nesting / a bad `defaultTab` / a tab id that collides with a panel id |
 
@@ -468,6 +469,47 @@ Text panels render markdown and **interpolate live values** from the panel's own
 - Omit the agg → `last`. Omit the format → plain number. Unknown/empty → `—`.
 
 Use text panels to give every dashboard a thesis and takeaways — **explain the data, don't just plot it.**
+
+### Takeaway titles & subtitles — `{{ }}` in panel headers (A1/DVT-468)
+
+A panel's own `title` and `subtitle` interpolate the **same** `{{ field | agg | format }}`
+variables, resolved against that panel's query rows. Use this to write **takeaway titles** that
+state the insight with a live number instead of naming a column — the single highest-leverage
+narrative change.
+
+```json
+{ "type": "chart:line", "title": "Revenue grew {{ revenue | delta | percent }} to {{ revenue | last | currency | compact }}",
+  "subtitle": "Enterprise now {{ ent_share | last | percent }} of the book",
+  "data": { "sourceId": "db", "query": "SELECT month, SUM(amount) AS revenue, … GROUP BY 1 ORDER BY 1" },
+  "spec": { "series": [{ "dataField": "revenue" }] } }
+```
+
+| Column-name title (weak) | Takeaway title (strong) |
+| --- | --- |
+| `"Revenue Over Time"` | `"Revenue grew {{ revenue \| delta \| percent }} to {{ revenue \| last \| currency \| compact }}"` |
+| `"NRR by Quarter"` | `"NRR improved to {{ nrr \| last \| percent }} — best in 6 quarters"` |
+
+- `title: ""` renders **no header** (common for `text`/`html` panels that paint their own headline).
+- `subtitle` shows as a muted second line under the title; omit it to show none.
+- Same agg/format ops as text panels (`sum avg last first min max count delta` · `currency percent number compact date`); unknown/empty → `—`.
+
+### section panels — grid heading bands (A2/DVT-469)
+
+A `section` panel is a **labelled heading band** that groups the panels beneath it — the panel
+`title` is the heading, with an optional one-line `subtitle` and a hairline `rule`. It takes **no
+query**, spans full width (`w:24` by convention), and is dvt Core. Use it to break a long grid
+page into legible chapters (Gestalt grouping) — e.g. a guided top band, then a "By segment"
+section below.
+
+```json
+{ "type": "section", "title": "By segment",
+  "spec": { "subtitle": "Where the growth came from", "rule": true, "align": "left" } }
+```
+
+- `rule` defaults `true` (a hairline below the heading); set `false` for a bare label.
+- `align` ∈ `left` (default) `center` `right`. `section.*` component tokens theme it.
+- **Not the same as canvas `layout.sections[]`** (ADR-0027, the scroll spine) — that is a layout
+  construct; this is a grid panel type. They are distinct and non-overlapping.
 
 ### html panels  ← the escape hatch
 
@@ -995,6 +1037,29 @@ to restyle just that card. This is how you make one panel dark, recolor a single
 chart, or retint axes/gridlines — without touching the rest. A dark page is just a
 gradient `pages[].background` plus a shared dark `overrides` block on each card.
 
+### Theme presets — `exec-light` · `exec-dark` · `exec-brand` (A7/DVT-471, ADR-0043)
+
+For a polished starting point, set `theme.preset` to a named, pre-baked token pack instead of
+hand-authoring every token:
+
+```json
+{ "theme": { "preset": "exec-dark", "tokens": { "primitive": {}, "semantic": {} } } }
+```
+
+- **Closed enum:** `exec-light`, `exec-dark`, `exec-brand`. An off-list value is **rejected by
+  `dvt_spec_validate`** (and fails closed to an empty tier at resolve time).
+- `theme.tokens` (with `primitive` + `semantic`) is **still required** alongside `preset` — leave
+  the maps empty to take the preset as-is, or fill keys to override it.
+- **Precedence (lowest → highest):** `BUILTIN_DEFAULTS → org baseline → PRESET → your primitive →
+  semantic → component → per-element overrides`. So the dashboard's own tokens always win per-key,
+  and the preset sits **above** the org baseline.
+- **Org-brand inheritance:** `exec-brand` inherits org branding by **omitting** the accent palette
+  (`chart.series.1`–`6`) and the page background (`color.page` / `page.background`) — the org
+  baseline beneath the preset flows through for exactly those keys. Do **not** hard-code accent or
+  background tokens at the dashboard tier or you block co-branding (ADR-0037). Pick `exec-dark` for
+  presentation/kiosk, `exec-light` for embedded/print/daytime, `exec-brand` when co-branding a tenant.
+- The spec stays **dvt Core** — presets are just a token tier.
+
 ### Color encoding (DVT-411 / E7)
 
 dvt provides three declarative color-encoding directives on `ChartSpec` (all dvt Core, stripped before the ECharts option is emitted):
@@ -1103,8 +1168,28 @@ dvt provides a declarative `annotations[]` array on `ChartSpec` for reference li
 **Per-annotation style keys:**
 
 - `style` — `"solid"` | `"dashed"` | `"dotted"` (line type, defaults to `"dashed"`)
+- `width` — line width in px for `line` annotations (defaults to the `annotation.line.width` token, `1`; clamped to `(0, 100]`)
 - `color` — hex literal or token ref; validated by `safeChartColor` — `image://`, `url(`, `javascript:`, `expression(` are rejected to the default
 - `opacity` — `[0, 1]` fill opacity for bands; clamped defensively at compile time
+- `label` — either a **plain string** (just the text) *or* a **styled object** (DVT-493):
+  - `text` (required) — the label text (truncated to 256 chars)
+  - `color` — label text color (hex or token ref, `safeChartColor`-guarded). **Defaults to the mark's own color** for `line`/`point` labels (so the label reads as part of the line, not a decoupled grey); band labels default to the `annotation.label.color` token
+  - `size` — font size in px (clamped to `[1, 100]`; defaults to the `annotation.label.size` token, `11`)
+  - `bold` — `true` for a bold font weight
+  - `italic` — `true` for an italic font style
+  - `maxWidth` — max label width in px; **enables wrapping** (the text breaks onto multiple lines instead of running off the plot). Clamped to `[1, 2000]`
+  - `position` (DVT-500) — placement, mapped per mark type: `line` honors `start`/`middle`/`end` (along the line, kept inside the grid); `point`/`text`/`band` honor `top`/`bottom`/`left`/`right`/`inside`. Values that don't apply to the mark type fall back to the default (line: end; point/text: top). Use it to spread several labels that would otherwise stack
+  - `offset` (DVT-500) — a pixel nudge `[dx, dy]` applied to the label (e.g. `[0, 12]` bumps it down). Each component clamped to `[-1000, 1000]`
+  - `rotate` (DVT-500) — label rotation in degrees, clamped `[-90, 90]`. Vertical (x-axis) event-marker labels default to `0` (horizontal) so they read normally instead of running along the line
+
+  ```json
+  { "type": "line", "axis": "y", "value": 100, "color": "#DC2626",
+    "width": 2, "style": "solid",
+    "label": { "text": "Hard limit — do not exceed", "bold": true,
+               "maxWidth": 120, "position": "start", "offset": [0, 10] } }
+  ```
+
+  Labels are always emitted as a **static string** — no `backgroundColor`/`rich` (the `image://` SSRF sinks, ADR-0041 §5); reference-line labels default to `insideEndTop` so they stay inside the plot (DVT-492). `point` markers render as a small circle with the label above it; **lines and point/text markers are interactive** — hover shows the label + value (bands stay passive so they don't block the axis tooltip) (DVT-500).
 
 **Annotation tokens** (`annotation.*` namespace, overridable per dashboard or org):
 
@@ -1198,6 +1283,30 @@ Prefer cuts with real variance — **time series, distributions, comparisons of 
 2. Validate with `dvt_spec_validate` — fix field errors and heed `warnings` (typos, and panels that will render EMPTY).
 3. **Render and actually look at it:** `dvt_dashboard_render_inline` at desktop (`width` ~1280–1440) AND mobile (`width` ~390–414), for each `page`. Read the image: is there a clear headline? Any unreadable text, squished labels, empty panels, flat bars? Does it answer the question?
 4. Iterate on what you saw, then save via the API / MCP. **Don't ship a dashboard you haven't looked at.**
+
+### 5. Premium polish — the exec-grade checklist
+
+For a C-suite / board / prospect-facing dashboard, run this final gate (every item TRUE) before
+you ship. It's the authoring-skill condensation of the executive-dashboard playbook:
+
+1. **One key message** — answer-first headline top-left before any chart (Minto/BLUF), with live `{{ }}` values.
+2. **Answer-first ordering** — hero → supporting groups → detail (inverted pyramid); no chart above the key message.
+3. **Guided band, then explore** — a full-width headline + KPI strip + insight sentence reads on its own; filters/drill live below it, never above.
+4. **One hero, ≥2 size tiers** — the hero panel is ≥2× a standard panel's area; **never an all-same-size grid**.
+5. **Top-left = most important** — respect F/Z reading paths.
+6. **KPI strip: 3–6 cards** — each with value + signed % delta + sparkline + target, semantic color only.
+7. **Takeaway titles** — titles state the insight with injected values, not column names.
+8. **Narrative block per section** — a `text` panel with live `{{ }}` precedes the chart it explains.
+9. **Annotation callouts** on the hero chart's target/peak/inflection with a cause phrase (cap 3/chart).
+10. **Section headers** (`section` panels) group the grid into legible chapters.
+11. **Restrained palette** — neutral base + 1 accent + semantic tokens; color = meaning only. Consider a `theme.preset`.
+12. **Flat & clean** — no gradient/shadow/3D on data; faint horizontal gridlines only; high data-ink ratio.
+13. **Humanized, consistent units & locked axes** for fair comparison.
+14. **No pies >3 slices, no dual-axis, no rainbow heatmaps** — sorted bars / split panels / single-hue ramps.
+15. **Render and look at it** — desktop AND mobile; dark mode is first-class, not an inversion filter.
+
+(The full playbook — audience framing, KPI-card anatomy, the anti-pattern table — lives in the
+`executive-dashboard` design skill; this checklist is the spec-author's pocket version.)
 
 ## Rules
 
