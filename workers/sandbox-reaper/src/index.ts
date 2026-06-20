@@ -27,7 +27,7 @@ export interface Env {
 }
 
 export default {
-  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+  async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
     // Fail loud (and visible in `wrangler tail`) if a secret was never set —
     // a silent no-auth call would just 401 forever and the reaper would never run.
     if (!env.SANDBOX_INTERNAL_KEY || !env.SANDBOX_CRON_SECRET) {
@@ -36,7 +36,10 @@ export default {
       )
     }
 
-    ctx.waitUntil(reap(env))
+    // Await directly (single short request): a throw here marks the scheduled
+    // invocation as errored in the CF cron dashboard, which is the only signal
+    // a failed reap produces. No waitUntil — we want the failure to count.
+    await reap(env)
   },
 }
 
@@ -47,6 +50,8 @@ async function reap(env: Env): Promise<void> {
       Authorization: `Bearer ${env.SANDBOX_INTERNAL_KEY}`,
       'X-Cron-Secret': env.SANDBOX_CRON_SECRET,
     },
+    // Fail fast rather than riding the Worker wall-clock limit if dvt-api hangs.
+    signal: AbortSignal.timeout(30_000),
   })
 
   // Body is small JSON (a ReapResult summary); log it so `wrangler tail` shows

@@ -43,6 +43,16 @@ Schedule: hourly (`0 * * * *`). The reaper is idempotent and cheap when nothing
 is expired, so an hourly cadence bounds a leaked sandbox to ≤1h past its 24h TTL.
 Change the cadence in `wrangler.toml` (`[triggers].crons`).
 
+### ⚠️ Secret rotation — rotate in BOTH places
+
+`SANDBOX_INTERNAL_KEY` / `SANDBOX_CRON_SECRET` live in two systems: the dvt-api
+Fly app (`flyctl secrets set … -a dvt-api`) and this Worker (`wrangler secret put`).
+They must stay identical. If you rotate them on dvt-api **without** re-running
+`wrangler secret put` here, the reaper silently 401s and expired sandboxes stop
+being reaped (fail-closed — no wrong deletes, but the cleanup gap reopens). The
+failure is visible via `wrangler tail` / the CF cron dashboard but is **not yet
+alerted** (follow-up). Always rotate both, in both places, together.
+
 ## Typecheck
 
 ```bash
