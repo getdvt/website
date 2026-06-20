@@ -1,0 +1,26 @@
+# Cloudflare Worker — sandbox reaper cron (DVT-437 / ADR-0042 D7)
+#
+# A scheduled-only Worker: on each cron tick it POSTs to the dvt-api reaper
+# endpoint, which hard-deletes expired sandbox orgs + their R2 artifacts.
+# This Worker holds NO delete logic — it is purely the trigger. All scoping
+# and safety guards live in the API (server/internal/repo/sandbox.go).
+#
+# Deploy:   cd workers/sandbox-reaper && npx wrangler deploy
+# Secrets:  npx wrangler secret put SANDBOX_INTERNAL_KEY
+#           npx wrangler secret put SANDBOX_CRON_SECRET
+#   (values must match the SANDBOX_* secrets on the dvt-api Fly app)
+# Tail:     npx wrangler tail dvt-sandbox-reaper
+
+name = "dvt-sandbox-reaper"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# Hourly. The reaper is idempotent and cheap when nothing is expired, so an
+# hourly cadence bounds a leaked sandbox's lifetime to <=1h past its 24h TTL.
+[triggers]
+crons = ["0 * * * *"]
+
+[vars]
+# dvt-api direct origin — MUST bypass Cloudflare (the app.dvt.dev proxy returns
+# CF 1010 on these internal paths). Non-secret.
+REAP_URL = "https://dvt-api.fly.dev/internal/sandbox/reap"
