@@ -1,0 +1,49 @@
+name: Migrate D1 schema
+
+# Applies schema.sql to the handraises D1 databases. Idempotent
+# (CREATE TABLE / INDEX IF NOT EXISTS), so it's safe to re-run.
+#
+# Build + deploy of dvt.dev now runs on Cloudflare native Git builds (ADR-0040,
+# DVT-373/DVT-381) — the old deploy.yml that used to run this migration on every
+# deploy is gone. This workflow keeps the migration in code, but scoped so it only
+# runs when the schema actually changes (push to main touching schema.sql) or on a
+# manual dispatch (use that to seed the preview DB the first time).
+#
+# Targets BOTH databases:
+#   dvt-handraises          — production (bound to prod deploys of dvt-website)
+#   dvt-handraises-preview  — throwaway DB bound to PR-preview deploys (DVT-381,
+#                             isolates prod signup PII from public preview URLs)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'schema.sql'
+      - '.github/workflows/d1-migrate.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: migrate-d1
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Apply schema to production DB
+        run: npx wrangler d1 execute dvt-handraises --file=schema.sql --remote
+        env:
+          CLOUDFLARE_API_TOKEN:  ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Apply schema to preview DB
+        run: npx wrangler d1 execute dvt-handraises-preview --file=schema.sql --remote
+        env:
+          CLOUDFLARE_API_TOKEN:  ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
