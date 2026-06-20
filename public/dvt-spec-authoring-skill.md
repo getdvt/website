@@ -170,9 +170,15 @@ Keep `query` alongside `rows` so the SQL inspector still shows real SQL:
           "rows": [ { "category": "Software", "revenue": 1269315.62 } ] }
 ```
 
-### tooltip.fields — extra columns on hover (DVT-301)
+### Tooltip — dvt Core extensions (DVT-301 / DVT-408)
 
-`spec.tooltip.fields` surfaces additional query-result columns in the chart hover tooltip. It is **dvt Core** (portable, renderer-neutral) and works on bar/line/area, pie/donut, and scatter. Any other key under `tooltip` is the ECharts passthrough (dvt Full). Absent columns are silently skipped.
+The tooltip sub-keys `fields`, `total`, `order`, `template`, and `crosshair` are *dvt Core* (portable, renderer-neutral). They are compiled + stripped before the ECharts tooltip passthrough — any other key under `tooltip` is the ECharts escape hatch. Tooltip enrichment works on bar/line/area, pie/donut, and scatter; ignored on pivot/relational families.
+
+**Functions are never allowed in dvt specs.** The `template` key is the function-free alternative to a raw ECharts `tooltip.formatter`.
+
+#### tooltip.fields — extra columns on hover (DVT-301)
+
+`spec.tooltip.fields` surfaces additional query-result columns in the chart hover tooltip. Absent columns are silently skipped.
 
 Each entry: `{ "field": "<column>", "label"?: "...", "format"?: { ... } }`. `label` defaults to a humanized form of the field name. `format` is the shared FormatObject.
 
@@ -186,6 +192,71 @@ Each entry: `{ "field": "<column>", "label"?: "...", "format"?: { ... } }`. `lab
     ] } } }
 ```
 
+#### tooltip.total — shared-axis sum row (DVT-408)
+
+Appends a total row summing all numeric series values at the hovered category. *dvt Core.*
+
+`total.show` (boolean) — enable the total row. `total.label` (string, default `"Total"`) — the row label. `total.format` (FormatObject) — formats the sum; defaults to a grouped number.
+
+```json
+"tooltip": { "total": { "show": true, "label": "Total", "format": { "type": "currency", "currency": "USD", "compact": true } } }
+```
+
+#### tooltip.order — sort per-series rows (DVT-408)
+
+`order`: `"asc"` \| `"desc"` \| `"seriesIndex"` (default). Sorts the per-series tooltip rows by numeric value ascending or descending; `"seriesIndex"` keeps the original series order.
+
+```json
+"tooltip": { "order": "desc" }
+```
+
+#### tooltip.template — function-free row template (DVT-408)
+
+A string template applied to each per-series tooltip row instead of the default `name: value` line. *dvt Core — no functions needed.*
+
+**Token grammar** (only these tokens are substituted; everything else is left as literal text):
+
+- `{value}` — the formatted series value for this row
+- `{label}` — the series name
+- `{field:<colname>}` — a named query-result column from the hovered row (`<colname>` must be `[A-Za-z0-9_]+`)
+
+All substituted values and all literal template text are HTML-escaped. Unknown tokens (anything that doesn't match the allow-list) are left as-is in the output.
+
+```json
+"tooltip": {
+  "template": "{label}: {value} ({field:region})"
+}
+```
+
+Example output for a series named `Revenue`, value `$1.2M`, hovered row `region=West`: `Revenue: $1.2M (West)`.
+
+#### tooltip.crosshair — axis pointer style (DVT-408)
+
+Compiles to ECharts `tooltip.axisPointer`. *dvt Core.*
+
+- `crosshair.axis`: `"x"` \| `"y"` \| `"both"` — `x`/`y` renders a line pointer on that axis; `"both"` renders a cross pointer.
+- `crosshair.label` (boolean) — when `true`, shows the axis value label on the pointer line.
+- `crosshair.snap` (boolean) — when `true`, the pointer snaps to the nearest data point.
+
+```json
+"tooltip": { "crosshair": { "axis": "x", "label": true, "snap": false } }
+```
+
+#### Composing all Core keys
+
+All dvt Core tooltip keys compose freely and can be mixed with ECharts passthrough keys:
+
+```json
+"tooltip": {
+  "trigger": "axis",
+  "fields": [{ "field": "order_count", "label": "Orders", "format": { "type": "number" } }],
+  "total": { "show": true },
+  "order": "desc",
+  "template": "{label}: {value}",
+  "crosshair": { "axis": "x" }
+}
+```
+
 **The FormatObject** (`format`) is one shared, renderer-neutral vocabulary — it renders identically on chart axes/labels/tooltips, KPI scorecards, table cells, and `{{ }}` text variables. `type` is one of:
 
 - `number` / `currency` (`currency` ISO code) / `percentage` — `decimals` sets fraction digits; `compact` (`1.2M`) on number/currency. (Percentage expects a whole number, e.g. `25` → `25%`.)
@@ -196,8 +267,30 @@ Each entry: `{ "field": "<column>", "label"?: "...", "format"?: { ... } }`. `lab
 
 All types also accept `prefix`/`suffix` (wrap the output) and `locale` (BCP-47; defaults to `en-US` for deterministic output).
 
-Mix with ECharts passthrough keys freely — they coexist under `tooltip`:
-`"tooltip": { "trigger": "axis", "fields": [...] }`.
+### Legend (DVT-407)
+
+*Multi-series charts auto-get a legend.* A chart with ≥2 series (bar/line/area/scatter, any orientation) receives a styled legend automatically — no `legend: {}` needed. Single-series cartesian charts do *not* get an auto-legend (it's noise). Set `"legend": { "show": false }` to suppress.
+
+`legend.position` — *dvt Core* placement shorthand: `"top"` \| `"bottom"` \| `"left"` \| `"right"`. `left`/`right` automatically set `orient:"vertical"`. Compiled + stripped; not a native ECharts key. Raw ECharts placement keys (`top`/`left`/`right`/`bottom`/`orient`) set directly on `legend` win over this shorthand.
+
+`legend.values` — *dvt Core* value-in-legend: appends an aggregated series value to each legend label. No JS needed.
+
+```json
+{ "type": "chart:bar",
+  "spec": {
+    "series": [
+      { "type": "bar", "dataField": "revenue", "name": "Revenue" },
+      { "type": "bar", "dataField": "target",  "name": "Target" }
+    ],
+    "legend": {
+      "position": "bottom",
+      "values": { "agg": "total", "format": { "type": "currency", "currency": "USD", "compact": true } }
+    } } }
+```
+
+`values.agg`: `last` (last non-null) · `total` (sum) · `min` · `max` · `mean`. `values.format` is the shared *FormatObject*.
+
+For scroll behavior, hiding individual series by default, or other ECharts legend features — use the raw ECharts legend passthrough (`type:"scroll"`, `selected`, etc.) directly alongside Core keys.
 
 ### Number display — value labels, funnel rates, derived metrics
 
@@ -234,6 +327,95 @@ First datum / zero-sum / zero-prior render as `—`.
 ```
 
 `mode`: `step` (% of the previous stage) · `overall` (% of the first stage) · `total` (% of all stages) · `none`. `showValue` also prints the formatted stage value (uses the panel's `valueFormat`).
+
+### Axes
+
+`xAxis` and `yAxis` accept a single *AxisSpec* object or an array of *AxisSpec* objects for multi-axis charts. Every property below is dvt Core (portable). Any key *not* listed here is raw ECharts passthrough — it validates and renders as-is (the escape hatch, ADR-0014).
+
+| Property | Type | Notes |
+|----------|------|-------|
+| `type` | `"value"` \| `"category"` \| `"time"` \| `"log"` | Axis scale. Default `"value"` for numeric axes, `"category"` for label axes. |
+| `min` | number \| `"dataMin"` | Fixed lower bound, or `"dataMin"` to derive from the data. |
+| `max` | number \| `"dataMax"` | Fixed upper bound, or `"dataMax"` to derive from the data. |
+| `scale` | boolean | Value axis: don't force a zero baseline. Default `false`. |
+| `splitNumber` | integer | Suggested tick count (ECharts treats as a hint). |
+| `logBase` | number | Base for `type:"log"`. Default 10. |
+| `name` | string | Axis title label. Styled by `chart.axis.name.*` tokens. |
+| `nameLocation` | `"start"` \| `"middle"` \| `"center"` \| `"end"` | Where along the axis the name anchors. Default `"end"`. |
+| `nameGap` | number | Distance in pixels between the name and the axis line. |
+| `nameRotate` | number | Name label rotation in degrees. |
+| `boundaryGap` | boolean \| array | Category-axis edge padding. `false` = data point on the axis edge. Array `["10%","10%"]` for value axes. |
+| `inverse` | boolean | Reverse the axis direction. Default `false`. |
+| `position` | `"top"` \| `"bottom"` \| `"left"` \| `"right"` | Axis position. Default `"bottom"` for xAxis, `"left"` for yAxis. |
+| `axisLabel.rotate` | number | Tick-label rotation (-90 to 90). Use for long labels that overlap. |
+| `axisLabel.interval` | number \| `"auto"` | Label display interval. `0` = every label; `"auto"` = auto-hide overlapping. |
+| `axisLabel.hideOverlap` | boolean | Auto-hide overlapping labels. |
+| `axisLabel.margin` | number | Distance (px) between label text and the axis. |
+| `axisLabel.width` | number | Max label width (px); overflow handled by `axisLabel.overflow`. |
+| `axisLabel.overflow` | `"none"` \| `"truncate"` \| `"break"` \| `"breakAll"` | Text overflow handling when label exceeds `width`. |
+| `axisLabel.format` | FormatObject | The compiler turns this into an ECharts `axisLabel.formatter` — the same renderer-neutral vocabulary as value labels and tooltips. Use for date axes to avoid hand-written formatters. |
+
+*Example — named axes with rotated labels:*
+
+```json
+{ "type": "chart:bar",
+  "spec": {
+    "xAxis": { "type": "category", "name": "Month", "nameLocation": "end",
+               "axisLabel": { "rotate": 45 } },
+    "yAxis": { "type": "value", "name": "Revenue (USD)", "nameGap": 20,
+               "axisLabel": { "format": { "type": "currency", "currency": "USD", "compact": true } } },
+    "series": [{ "type": "bar", "dataField": "revenue" }] } }
+```
+
+**Dual-axis pattern.** Set `yAxis` to an array and reference the secondary axis by index in the series. `dvt_spec_validate` warns when `series[].yAxisIndex > 0` but `yAxis` is not an array of sufficient length.
+
+```json
+{ "type": "chart:line",
+  "spec": {
+    "xAxis": { "type": "category" },
+    "yAxis": [
+      { "type": "value", "name": "Revenue" },
+      { "type": "value", "name": "Margin %", "position": "right" }
+    ],
+    "series": [
+      { "type": "line", "dataField": "revenue" },
+      { "type": "line", "dataField": "margin", "yAxisIndex": 1 }
+    ] } }
+```
+
+Any other ECharts axis key (e.g. `splitLine`, `axisPointer`, `minInterval`) is raw passthrough and validates alongside these documented properties — both coexist freely.
+
+### Gridlines, banding & plot area
+
+Four dvt-Core keys control the plot grid — no hand-written ECharts `splitLine`/`splitArea`/`grid` needed for common cases. *Precedence*: raw ECharts passthrough (e.g. a `xAxis.splitLine` set directly, or a raw `grid:{left:60}`) always wins over these Core keys, which in turn win over the theme defaults.
+
+| Key | Type | Effect |
+|-----|------|--------|
+| `gridlines.x` | *GridlineAxis* | Gridlines on the x axis |
+| `gridlines.y` | *GridlineAxis* | Gridlines on the y axis |
+| `banding` | `{ axis, colors? }` | Zebra-stripe bands on the named axis |
+| `plotArea` | `{ background?, border? }` | Plot area fill and border color |
+| `gridPadding` | `{ left?, right?, top?, bottom? }` | Plot-area inset overrides (partial deep-merge) |
+| `density` | `"comfortable"` \| `"compact"` | Preset spacing; `"compact"` tightens insets for dense dashboards |
+
+*GridlineAxis* properties: `show` (boolean), `style` (`"solid"` \| `"dashed"` \| `"dotted"`), `width` (number), `color` (CSS color string).
+
+*Example — dashed y-axis gridlines, zebra x banding, compact plot area:*
+
+```json
+{ "type": "chart:bar",
+  "spec": {
+    "gridlines": { "y": { "show": true, "style": "dashed", "color": "#E0E0E0" } },
+    "banding":   { "axis": "x" },
+    "plotArea":  { "background": "#FAFAFA" },
+    "gridPadding": { "left": 60 },
+    "density": "compact",
+    "xAxis": { "type": "category" },
+    "yAxis": { "type": "value" },
+    "series": [{ "type": "bar", "dataField": "revenue" }] } }
+```
+
+`density:"compact"` is for panels where space is scarce (e.g. a narrow column). For most charts, omit it (the `"comfortable"` default). A partial `gridPadding` (e.g. only `left`) deep-merges over the defaults — the other three insets and `containLabel` are unchanged.
 
 ### metric-strip
 
@@ -812,6 +994,137 @@ the **font-family** slots below are a *closed allow-set*, not free text (see
 to restyle just that card. This is how you make one panel dark, recolor a single
 chart, or retint axes/gridlines — without touching the rest. A dark page is just a
 gradient `pages[].background` plus a shared dark `overrides` block on each card.
+
+### Color encoding (DVT-411 / E7)
+
+dvt provides three declarative color-encoding directives on `ChartSpec` (all dvt Core, stripped before the ECharts option is emitted):
+
+**`palette`** — override the series palette with a named categorical color scheme:
+
+```json
+{ "palette": "okabe-ito" }
+```
+
+Registered schemes: `okabe-ito` (colorblind-safe, 8 colors), `set2` (soft, print-safe, 8 colors), `viridis`, `magma`, `blues` (sequential), `rdbu`, `brbg`, `spectral` (diverging). An invalid name is silently ignored (keeps the default brand palette). A raw passthrough `color` array in the spec still wins.
+
+**`colorRules`** — conditional per-datum color (bar, line, area, scatter, pie, donut). Rules are evaluated in order; the first match wins:
+
+```json
+{
+  "colorRules": [
+    { "when": { "field": "delta", "op": "lt", "value": 0 }, "color": "{semantic.negative}" },
+    { "when": { "field": "delta", "op": "gt", "value": 0 }, "color": "{semantic.positive}" }
+  ]
+}
+```
+
+Operators: `lt` / `lte` / `gt` / `gte` / `eq` (numeric or string), `in` (value is an array — membership check), `between` (value is `[lo, hi]` — inclusive range). `color` may be a hex literal or a `{token}` ref. Absent columns skip the rule (no throw).
+
+**`colorScale`** — continuous or stepped value-to-color encoding for heatmap and scatter:
+
+```json
+{ "colorScale": { "type": "sequential", "scheme": "viridis" } }
+{ "colorScale": { "type": "diverging",  "scheme": "rdbu", "domainMid": 0 } }
+{ "colorScale": { "type": "piecewise",  "scheme": "blues", "buckets": 5, "domain": [0, 100] } }
+```
+
+Compiles to an ECharts `visualMap`. `domain: [min, max]` overrides the auto-computed data extent. `domainMid` centers a diverging ramp. `buckets` splits a piecewise map into equal-width bins.
+
+When a scatter sets both `colorScale` and `colorRules`, `colorRules` takes precedence per datum (a rule-matched point keeps its explicit color; unmatched points are colored by the scale).
+
+**Semantic tokens** — built-in defaults (overridable per dashboard or org):
+
+- `{semantic.positive}` → `#16A34A` (green-600)
+- `{semantic.negative}` → `#DC2626` (red-600)
+- `{semantic.warning}` → `#D97706` (amber-600)
+
+Use these in `colorRules.color` to get consistent traffic-light color on unthemed dashboards. Override via `theme.tokens.semantic` to retheme globally.
+
+All color values (hex, rgb, token refs) are validated through the SSRF guard (`safeChartColor`) — `image://`, `url(`, `javascript:`, and `expression(` are rejected at compile time. Raw ECharts `visualMap` and per-series `itemStyle.color` remain the Full escape hatch and win over dvt Core directives.
+
+### Annotations (DVT-413 / E8)
+
+dvt provides a declarative `annotations[]` array on `ChartSpec` for reference lines, shaded bands, and callout markers — the "draw a line at our goal/SLA/budget" feature. Annotations are *dvt Core* (portable, themed, validated) and are stripped before the ECharts option is emitted.
+
+**Supported on cartesian families only** (line/area/bar/scatter/combo). Ignored on axis-less families (pie, gauge, funnel, sankey).
+
+**Annotation types:**
+
+- `"line"` — a full-width/height reference rule (`markLine`)
+- `"band"` — a shaded range (`markArea`)
+- `"point"` — a single marker at a coordinate (`markPoint`)
+- `"text"` — a label callout with no symbol (`markPoint` with `symbol:"none"`)
+
+**Placement keys:**
+
+- `value` (number) — fixed scalar position on the chosen axis (`axis:"y"` for horizontal rules, `axis:"x"` for vertical rules)
+- `from` + `to` (numbers, *band only*) — the band extent on `axis`
+- `at` (string or number) — categorical or time position on the x-axis for event markers (e.g. `"2024-06-01"` or a category label); emitted as a coordinate, never evaluated
+- `stat` (`"avg"` | `"median"` | `"min"` | `"max"`) — computed at compile time from the host series' bound data and emitted as a numeric literal; a stat over empty or all-non-numeric data *drops the annotation* (no NaN coordinate)
+
+**Example — target line + average line + launch marker + target-zone band:**
+
+```json
+{
+  "annotations": [
+    {
+      "type": "line",
+      "axis": "y",
+      "value": 100,
+      "label": "Target",
+      "style": "dashed",
+      "color": "{semantic.warning}"
+    },
+    {
+      "type": "line",
+      "axis": "y",
+      "stat": "avg",
+      "label": "Average"
+    },
+    {
+      "type": "line",
+      "axis": "x",
+      "at": "2024-06-01",
+      "label": "Launch"
+    },
+    {
+      "type": "band",
+      "axis": "y",
+      "from": 80,
+      "to": 100,
+      "label": "Target zone",
+      "color": "{semantic.positive}",
+      "opacity": 0.12
+    }
+  ]
+}
+```
+
+**Per-annotation style keys:**
+
+- `style` — `"solid"` | `"dashed"` | `"dotted"` (line type, defaults to `"dashed"`)
+- `color` — hex literal or token ref; validated by `safeChartColor` — `image://`, `url(`, `javascript:`, `expression(` are rejected to the default
+- `opacity` — `[0, 1]` fill opacity for bands; clamped defensively at compile time
+
+**Annotation tokens** (`annotation.*` namespace, overridable per dashboard or org):
+
+- `annotation.line.color` — default `#71717A` (zinc-500)
+- `annotation.line.width` — default `1`
+- `annotation.line.style` — default `"dashed"`
+- `annotation.band.color` — default `#E4E4E7`
+- `annotation.band.opacity` — default `0.12`
+- `annotation.label.color` — default `#52525B`
+- `annotation.label.size` — default `11`
+- `annotation.point.color` — default `#71717A`
+- `annotation.font` — defaults to `chart.font.family`
+
+**Semantic tokens for annotation colors** (same traffic-light tokens as `colorRules`):
+
+- `{semantic.positive}` → `#16A34A` (green-600)
+- `{semantic.negative}` → `#DC2626` (red-600)
+- `{semantic.warning}` → `#D97706` (amber-600)
+
+**Full escape hatch:** a raw `series[].markLine` / `series[].markArea` / `series[].markPoint` set directly on a series is the ECharts passthrough (`layer:echarts`) and takes precedence over dvt-layer annotations for that series. dvt *defensively themes* these raw marks — the neutral annotation defaults are merged underneath the author's mark (so the escape hatch no longer renders raw ECharts blue), and every color leaf is run through `safeChartColor` to block `image://` SSRF values.
 
 ## Formats
 
