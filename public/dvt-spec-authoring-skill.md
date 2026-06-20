@@ -1126,6 +1126,23 @@ dvt provides a declarative `annotations[]` array on `ChartSpec` for reference li
 
 **Full escape hatch:** a raw `series[].markLine` / `series[].markArea` / `series[].markPoint` set directly on a series is the ECharts passthrough (`layer:echarts`) and takes precedence over dvt-layer annotations for that series. dvt *defensively themes* these raw marks — the neutral annotation defaults are merged underneath the author's mark (so the escape hatch no longer renders raw ECharts blue), and every color leaf is run through `safeChartColor` to block `image://` SSRF values.
 
+#### Query-bound thresholds (DVT-419)
+
+Two additional placement keys let an annotation read its scalar position from the panel's **own result rows** rather than a literal — join your target or SLA value into the query (e.g. via `CROSS JOIN` or a subquery that broadcasts it as a repeated constant column) and point the annotation at that column. An absent or all-non-numeric column **drops the annotation silently** at render time (the server cannot see live query columns; this is by design per ADR-0011).
+
+- `valueField` (string) — take the **first finite numeric value** of that named column across the result rows (case-tolerant: exact match wins, then case-insensitive unique match). Applies to `line`, `point`, and `text` types.
+- `of` (string) — used together with `stat` to compute the stat over a **named result column** instead of the host series' bound data. Without `of`, `stat` keeps its original meaning (computed over the host series' values).
+
+Placement precedence: `stat` → `valueField` → `value` (literal) → `at` (categorical, `line` only).
+
+```json
+{ "type": "line", "axis": "y", "valueField": "plan_target", "label": "Plan" }
+```
+
+```json
+{ "type": "line", "axis": "y", "stat": "avg", "of": "revenue", "label": "Avg revenue" }
+```
+
 ## Formats
 
 `format` objects are dvt's portable number-display vocabulary (dvt Core) — they compile to a formatter at render time so a spec stays declarative (no JS). One shape, reused everywhere a value is rendered: table columns, `valueFormat`, axis labels, tooltip fields, value labels, funnel rates.
