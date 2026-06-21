@@ -115,7 +115,8 @@ Builder (`/builder`) to see it render live.
 | `media` | Image block (ADR-0014 escape hatch) | `src` (required, sanitized), `alt`, `fit` (`cover`\|`contain`\|`fill`), `rounded`, `caption` (see below) |
 | `divider` | Visible rule line | `orientation`, `thickness`, `color`, `style` (`solid`\|`dashed`\|`dotted`), `inset` (see below) |
 | `section` | Grid heading band that labels a group of panels | panel `title` = the heading; `subtitle` (one line), `rule` (hairline below, default true), `align` (`left`\|`center`\|`right`); takes no query, spans full width (`w:24` by convention). **dvt Core. NOT the canvas `layout.sections[]` block — distinct constructs** (see below) |
-| `filter` | Interactive control whose selected value re-queries target panels | `param` (required unless a range), `valueField` (required), `labelField`, `control` (`select`\|`multiselect`\|`date-range`\|`number-range`\|`search`), `valueType`, `targets`, `values`, `default`, `allLabel`, `unsetMode` (`omit`\|`null`), `operator` (`equals`\|`not-equals`\|`contains`\|`starts-with`\|`ends-with`\|`in`\|`not-in`\|`between`); **range** (`between` / `number-range` / `date-range`): `loParam`+`hiParam` (required, replace `param`), `min`, `max`, `step`; **date** (`date-range`): `relativeDate` (`{lo?,hi?}`, each `{unit,amount,direction}`), `presets` (`today`\|`last-7d`\|`last-30d`\|`last-90d`\|`mtd`\|`qtd`\|`ytd`\|`all-time`), `timezone` (IANA, default `UTC`) (see Filters & drill-downs) |
+| `filter` | Interactive control whose selected value re-queries target panels | `param` (required unless a range), `valueField` (required), `labelField`, `label` (display label — preferred over `placeholder` for labelling; falls back to `placeholder` → param → `'Filter'`), `placeholder` (input-hint text only), `help` (accessible `?` tooltip), `control` (`select`\|`multiselect`\|`date-range`\|`number-range`\|`search`\|`toggle`\|`number`\|`segmented`\|`radio`\|`button-group`\|`checkbox-list`), `valueType` (`string`\|`number`\|`date`\|`boolean`), `targets`, `values`, `default`, `allLabel`, `unsetMode` (`omit`\|`null`), `operator` (`equals`\|`not-equals`\|`contains`\|`starts-with`\|`ends-with`\|`in`\|`not-in`\|`between`\|`gt`\|`gte`\|`lt`\|`lte`), `apply` (`live`\|`button`), `required` (boolean), `chrome` (`card`\|`none`), `width` (`compact`\|`full`), `density` (`comfortable`\|`compact`), `icon` (`calendar`\|`search`\|`filter`\|`region`\|`tag`\|`clock`\|`user`\|`dollar`); **range** (`between` / `number-range` / `date-range`): `loParam`+`hiParam` (required, replace `param`), `min`, `max`, `step`; **date** (`date-range`): `relativeDate` (`{lo?,hi?}`, each `{unit: minute\|hour\|day\|week\|month\|quarter\|year, amount, direction}`), `presets` (`today`\|`last-7d`\|`last-30d`\|`last-90d`\|`mtd`\|`qtd`\|`ytd`\|`all-time`), `timezone` (IANA, default `UTC`) (see Filters & drill-downs) |
+| `filter-bar` | Horizontal band grouping several filter elements in one light surface (DVT-551) | `panels` (required — ordered list of child filter element ids from the same page's `panels[]`), `title?`; child filters should set `chrome:"none"` to avoid doubled chrome; children are NOT page grid items; semantic pass enforces existence / no double-placement |
 | `container` | Tabbed container — one page region holding several panel sets behind tabs (layout primitive, not a chart) | `spec.layout: "tabs"` (required), `tabs[]` (required) each `{ id, label, panels:[childId…], layout }`, `defaultTab?`. **Children stay real elements in `panels[]`** referenced by id (never inlined); each tab carries its own mini 24-col `layout`, and the container itself occupies one cell in the page grid. Children are NOT in the page grid. Single level only (no tabs-in-tabs). NOT the same as page-level tabs (`pages[]`+`tabBar`). The semantic validator rejects missing refs / a child placed twice / a child also in the page grid / nesting / a bad `defaultTab` / a tab id that collides with a panel id |
 
 Any panel can also carry a `drill` object (retained for back-compat, now inert on its own — DVT-555) and/or a `contextMenu` object (right-click action menu). Drill navigation is now triggered via a `contextMenu` action of `type:"drill"`; for overlay presentation use `openOverlay` — see **Filters & drill-downs**.
@@ -1015,6 +1016,7 @@ Text panels render markdown and **interpolate live values** from the panel's own
 - **agg ops:** `sum, avg, last, first, min, max, count, delta` (delta = % change of last two rows; defaults to percent format).
 - **format ops:** `currency, percent, number, compact, date`.
 - Omit the agg → `last`. Omit the format → plain number. Unknown/empty → `—`.
+- **Text columns:** `first`/`last` (and the default agg) over a text column return the raw string — `{{ artist | last }}` or `{{ department }}` resolves to the value, not `—`. A numeric format op (`currency`/`percent`/`number`/`compact`) forces the numeric path; a non-numeric value then renders `—`. `—` now means only: missing column, empty result, or a numeric format applied to non-numeric text.
 
 Use text panels to give every dashboard a thesis and takeaways — **explain the data, don't just plot it.**
 
@@ -1039,7 +1041,7 @@ narrative change.
 
 - `title: ""` renders **no header** (common for `text`/`html` panels that paint their own headline).
 - `subtitle` shows as a muted second line under the title; omit it to show none.
-- Same agg/format ops as text panels (`sum avg last first min max count delta` · `currency percent number compact date`); unknown/empty → `—`.
+- Same agg/format ops as text panels (`sum avg last first min max count delta` · `currency percent number compact date`); unknown/empty → `—`. Text columns: `first`/`last` (and the default) return the raw string; a numeric format op forces the numeric path (non-numeric → `—`).
 
 ### section panels — grid heading bands (A2/DVT-469)
 
@@ -1188,12 +1190,47 @@ or from a static `values` list. Selecting a value re-queries the target panels.
 
 `param` (required) — the params key this filter sets. `valueField` (required) — the
 value-source column holding each option's bound value; `labelField` defaults to it.
-`control`: `select` (default) | `multiselect` (binds an array → `IN`-list; the
-target query uses a bare `IN %(param)s`) | `date-range` | `number-range` | `search`. `valueType`:
-`string` (default) | `number` | `date` | `boolean`. `targets`: `"all"` (default — every
-panel on the page that declares the key) or an explicit `["panelId", …]`; a panel that
-doesn't declare the key is never re-fetched. `values` — a static `[value | { value, label }]`
-list (the fallback when there's no value query/rows). `default` — the initial selection.
+`label` — the display label shown in the pill/popover header. Use this instead of
+`placeholder` for labelling the control; `placeholder` is now input-hint text only
+(shown inside a blank text/search input). Precedence: `label` → `placeholder` → `param`
+→ `'Filter'`. `help` — per-control help text; the renderer surfaces an accessible `?`
+tooltip on hover + keyboard focus (`aria-describedby`).
+
+`control`: `select` (default) | `multiselect` (binds an array → `IN`-list; target query
+uses a bare `IN %(param)s`) | `date-range` | `number-range` | `search` | `toggle`
+(tri-state boolean switch; pair with `valueType:"boolean"`, binds a scalar boolean via
+the `equals` path; unset = no predicate when `unsetMode:"omit"`) | `number` (single
+`<input type=number>` binding one scalar to `param`; use with `operator: gt|gte|lt|lte|
+equals` for one-sided numeric comparisons — unlike `number-range` it binds a single
+`param`, not `loParam`/`hiParam`) | `segmented` / `button-group` (inline single-select —
+a horizontal row of option buttons, same value binding as `select`, ideal for ≤6 options)
+| `radio` (inline single-select as a vertical radio list, same binding as `select`) |
+`checkbox-list` (inline multiselect as a vertical checkbox list, same array binding as
+`multiselect`; engine expands to IN-list, DVT-170). All four inline controls commit
+instantly (no Apply step) and share the same option source as their popover counterparts.
+
+`valueType`: `string` (default) | `number` | `date` | `boolean`. `targets`: `"all"`
+(default — every panel on the page that declares the key) or an explicit `["panelId", …]`;
+a panel that doesn't declare the key is never re-fetched. `values` — a static
+`[value | { value, label }]` list (the fallback when there's no value query/rows).
+`default` — the initial selection.
+
+**UX and presentation fields.** `apply`: `"live"` | `"button"` — override the default
+commit timing. Default: instant controls (`select`, `search`, `toggle`, `number`) commit
+on each change; batched controls (`multiselect`, `number-range`, `date-range`) hold in a
+draft until the viewer presses Apply. `"button"` forces an explicit Apply step even for
+normally-instant controls; `"live"` forces immediate commits even for batched controls.
+`required`: `true` — suppresses the clear/All affordance and holds target queries until
+a value is chosen (prevents a "fetch everything" on expensive panels while unset). Default
+`false`. `chrome`: `"card"` (default) | `"none"` — `"none"` renders the bare control only
+(no background, border, shadow, radius, or minHeight floor); use it to embed a filter
+inside a `filter-bar` without doubled card-in-card chrome. `width`: `"compact"` |
+`"full"` (default) — `"compact"` shrinks the control to fit-content width inside its
+grid cell. `density`: `"comfortable"` (default, 36 px min-height) | `"compact"` (28 px
+min-height, tighter padding) — useful when multiple filters share a filter-bar.
+`icon`: closed enum — `calendar` | `search` | `filter` | `region` | `tag` | `clock` |
+`user` | `dollar`. A curated leading glyph inside the filter pill; values outside this
+list fail validation (422, ADR-0032 §A3). Omit for no icon.
 
 **The unfiltered / "everything" state (`allLabel` + `unsetMode`, ADR-0028
 Amendment 1).** Don't hand-roll an `'ALL'` option row plus a
@@ -1239,6 +1276,10 @@ value still enters SQL only as a bound `%(k)s` parameter (never interpolated). D
 | `ends-with` | `WHERE col LIKE %(k)s ESCAPE '!'` | `%value` |
 | `not-in` | `WHERE col NOT IN %(k)s` | an array → parameter-bound `NOT IN`-list |
 | `in` / `between` | (multiselect / range — see those controls) | array / two bounds |
+| `gt` | `WHERE col > %(k)s` | a plain scalar (NOT LIKE-wrapped) |
+| `gte` | `WHERE col >= %(k)s` | a plain scalar |
+| `lt` | `WHERE col < %(k)s` | a plain scalar |
+| `lte` | `WHERE col <= %(k)s` | a plain scalar |
 
 **Required for the LIKE operators** (`contains` / `starts-with` / `ends-with`): your
 query **must** carry the `ESCAPE '!'` clause. The renderer escapes `!`, `%`, and `_`
@@ -1298,10 +1339,13 @@ and write the dual-guarded predicate, exactly like the number range above). What
 adds is **relative** windows that resolve to concrete dates:
 
 - **`relativeDate`** — `{ lo?, hi? }`, where each end is
-  `{ unit: "day" | "week" | "month" | "quarter" | "year", amount: <int ≥ 0>, direction: "past" | "future" }`.
+  `{ unit: "minute" | "hour" | "day" | "week" | "month" | "quarter" | "year", amount: <int ≥ 0>, direction: "past" | "future" }`.
   `amount: 0` = the anchor ("today"). An omitted end is **open-ended** on that side.
   Example: last 30 days = `lo: { unit:"day", amount:30, direction:"past" }`,
   `hi: { unit:"day", amount:0, direction:"past" }`.
+  Sub-day units (`hour`, `minute`) resolve to an **absolute ISO 8601 timestamp** (not a
+  calendar date) — use them for ops / real-time dashboards that filter by rolling hour or
+  minute windows. Day and coarser units resolve to a calendar date.
 - **`presets`** — an allow-list of quick-pick chips, a subset (in your order) of:
   `today`, `last-7d`, `last-30d`, `last-90d`, `mtd`, `qtd`, `ytd`, `all-time`.
   `all-time` clears both bounds (fully open).
@@ -1340,6 +1384,48 @@ keys (`"params": { "order_date_lo": null, "order_date_hi": null }`):
 WHERE (%(order_date_lo)s IS NULL OR order_date >= %(order_date_lo)s)
   AND (%(order_date_hi)s IS NULL OR order_date <= %(order_date_hi)s)
 ```
+
+**`filter-bar` — the de-blocky grouping band (DVT-551, dvt Core).** A `filter-bar`
+element is a horizontal band that lays out several filter elements inside one light,
+theme-aware surface. Its children are **real elements** in the same page's `panels[]`
+(never inlined), referenced by id — they remain individually queryable/filterable.
+The `filter-bar` itself occupies one grid cell; its children are **NOT** in the page
+grid (the semantic pass enforces this, along with existence / no double-placement).
+
+Intended pattern: set `chrome: "none"` on each child filter so the bare pill merges
+into the band surface without doubled card-in-card chrome. Use `density: "compact"`
+on children to tighten vertical padding when filters share a narrow row.
+
+```json
+{ "id": "filter-band", "type": "filter-bar", "title": "Filters",
+  "spec": { "panels": ["active-toggle", "status-seg"] } }
+
+{ "id": "active-toggle", "type": "filter", "title": "",
+  "spec": { "param": "is_active", "valueField": "val", "control": "toggle",
+            "valueType": "boolean", "label": "Active only",
+            "chrome": "none", "density": "compact",
+            "unsetMode": "omit", "targets": "all" },
+  "data": { "rows": [] } }
+
+{ "id": "status-seg", "type": "filter", "title": "",
+  "data": { "rows": [{ "val": "open" }, { "val": "closed" }, { "val": "pending" }] },
+  "spec": { "param": "status", "valueField": "val", "control": "segmented",
+            "label": "Status", "help": "Filter by order lifecycle state",
+            "chrome": "none", "density": "compact",
+            "allLabel": "All", "unsetMode": "null", "targets": "all" } }
+```
+
+The target panel writes the standard guarded predicates and declares both params in
+`data.params`:
+
+```sql
+where 1=1
+    and (%(is_active)s is null or is_active = %(is_active)s)
+    and (%(status)s is null or status = %(status)s)
+```
+
+Spec fields on `filter-bar`: `panels` (required, ordered child ids) + `title?`
+(optional heading above the band).
 
 **`drill`** — a property on **any** panel (not a `type`). Retained for back-compat but **inert on its own** (DVT-555): the left-click trigger was removed. To wire drill navigation, use a `contextMenu` action of `type:"drill"` (right-click menu, see below). The `drill` object fields (`targetPage`, `param`, `valueFrom`, `valueType`) are unchanged and the same binding contract applies — the clicked value enters the target page's panels by name through `data.params`, never interpolated.
 
