@@ -1016,6 +1016,7 @@ Text panels render markdown and **interpolate live values** from the panel's own
 - **agg ops:** `sum, avg, last, first, min, max, count, delta` (delta = % change of last two rows; defaults to percent format).
 - **format ops:** `currency, percent, number, compact, date`.
 - Omit the agg → `last`. Omit the format → plain number. Unknown/empty → `—`.
+- **Text columns:** `first`/`last` (and the default agg) over a text column return the raw string — `{{ artist | last }}` or `{{ department }}` resolves to the value, not `—`. A numeric format op (`currency`/`percent`/`number`/`compact`) forces the numeric path; a non-numeric value then renders `—`. `—` now means only: missing column, empty result, or a numeric format applied to non-numeric text.
 
 Use text panels to give every dashboard a thesis and takeaways — **explain the data, don't just plot it.**
 
@@ -1040,7 +1041,7 @@ narrative change.
 
 - `title: ""` renders **no header** (common for `text`/`html` panels that paint their own headline).
 - `subtitle` shows as a muted second line under the title; omit it to show none.
-- Same agg/format ops as text panels (`sum avg last first min max count delta` · `currency percent number compact date`); unknown/empty → `—`.
+- Same agg/format ops as text panels (`sum avg last first min max count delta` · `currency percent number compact date`); unknown/empty → `—`. Text columns: `first`/`last` (and the default) return the raw string; a numeric format op forces the numeric path (non-numeric → `—`).
 
 ### section panels — grid heading bands (A2/DVT-469)
 
