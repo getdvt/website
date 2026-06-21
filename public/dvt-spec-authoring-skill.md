@@ -105,12 +105,12 @@ Builder (`/builder`) to see it render live.
 | `chart:line:racing` | ECharts line (advanced) | `animation.frameField` (required — the x/time column), `valueField` (y measure), optional `seriesField` (multi-line split); `animation.{speeds,speedDefault,loop,controls.placement}` — **Animated progressive / 'racing' line (ADR-0034). dvt Full / non-portable. Requires an `animation` block with `frameField` (the x/time column the line draws along); optional `seriesField` splits multiple lines, `valueField` is the y measure. One query, the client iterates frames as a cumulative slice — no per-frame query. Renders to a static poster (last frame) in exports (ADR-0024).** |
 | `chart:geo:animated` | ECharts map (advanced) | `animation.frameField` (required — the period column), `series[].map` (registered asset, e.g. `USA`), `labelField`/`valueField` (region, measure) or `geoField` for data-driven geometry; `visualMap` auto-fills from values — **Animated choropleth over a time dimension (ADR-0034), driven by the shared merge-clock + `visualMap` (not the native ECharts `timeline`, ADR-0034 Amdt 1). dvt Full / non-portable. Requires `animation.frameField` (the period column) and a registered map asset (`series[].map`, ADR-0023); `labelField`/`geoField` name the region, `valueField` the measure. Fills CROSS-FADE between periods via per-region value interpolation (ADR-0034 Amdt 3); regions with no data on either side snap at the boundary, and large maps (>80 regions, e.g. `world`) stay discrete. One query, the client iterates. Renders to a static poster (last frame) in exports (ADR-0024).** |
 <!-- END generated chart-type table -->
-| `metric-strip` | Row of KPI metric tiles | `metrics[]` (see below) |
-| `kpi` | Single-value scorecard (one headline number + comparison + sparkline) | `valueField` (required), `agg`, `format`, `label`, `caption`, `comparison{…}`, `sparkline{…}` (see below) |
+| `metric-strip` | Row of KPI metric tiles | `metrics[]` (see below); each metric accepts `description` (optional hover tooltip) |
+| `kpi` | Single-value scorecard (one headline number + comparison + sparkline) | `valueField` (required), `agg`, `format`, `label`, `caption`, `description` (optional hover tooltip), `comparison{…}`, `sparkline{…}` (see below) |
 | `table` | Data table (dvt-native, portable) | `columns[]` — each `{ field, label?, format?, align?, sortable?, filterable? }`; omit for every query column in result order. `defaultSort{ field, direction }` seeds an initial sort; click-to-sort + per-column filter run client-side over the fetched rows (`sortable`/`filterable` default true). Row order follows the query `ORDER BY` unless `defaultSort` overrides it; `format` uses the shared format objects. `grouping{ groupBy[], aggregations[]{field,agg}, subtotals?, grandTotal?, defaultExpanded? }` collapses rows into a grouped tree with subtotal/grand-total rows — computed client-side over the fetched rows (no re-query, no SQL rewrite), `groupBy` order = nesting levels, `agg` ∈ sum/avg/min/max/count (default sum) |
 | `text` | Markdown narrative | `markdown`, `variant` (`plain`\|`callout`), `align` |
 | `html` | Sanitized HTML/CSS escape hatch | `html` (see below) |
-| `stat` | Big-number tile (hero-scale single value) | `valueField` (required), `agg`, `format`, `label`, `caption`, `delta`, `sparkline`, `align` (see below) |
+| `stat` | Big-number tile (hero-scale single value) | `valueField` (required), `agg`, `format`, `label`, `caption`, `description` (optional hover tooltip), `delta`, `sparkline`, `align` (see below) |
 | `hero` | Headline block (eyebrow + headline + subhead) | `headline` (required), `eyebrow`, `subhead`, `align`, `size` (`sm`\|`md`\|`lg`\|`xl`); text fields support `{{ … }}` variables (see below) |
 | `media` | Image block (ADR-0014 escape hatch) | `src` (required, sanitized), `alt`, `fit` (`cover`\|`contain`\|`fill`), `rounded`, `caption` (see below) |
 | `divider` | Visible rule line | `orientation`, `thickness`, `color`, `style` (`solid`\|`dashed`\|`dotted`), `inset` (see below) |
@@ -118,7 +118,7 @@ Builder (`/builder`) to see it render live.
 | `filter` | Interactive control whose selected value re-queries target panels | `param` (required unless a range), `valueField` (required), `labelField`, `control` (`select`\|`multiselect`\|`date-range`\|`number-range`\|`search`), `valueType`, `targets`, `values`, `default`, `allLabel`, `unsetMode` (`omit`\|`null`), `operator` (`equals`\|`not-equals`\|`contains`\|`starts-with`\|`ends-with`\|`in`\|`not-in`\|`between`); **range** (`between` / `number-range` / `date-range`): `loParam`+`hiParam` (required, replace `param`), `min`, `max`, `step`; **date** (`date-range`): `relativeDate` (`{lo?,hi?}`, each `{unit,amount,direction}`), `presets` (`today`\|`last-7d`\|`last-30d`\|`last-90d`\|`mtd`\|`qtd`\|`ytd`\|`all-time`), `timezone` (IANA, default `UTC`) (see Filters & drill-downs) |
 | `container` | Tabbed container — one page region holding several panel sets behind tabs (layout primitive, not a chart) | `spec.layout: "tabs"` (required), `tabs[]` (required) each `{ id, label, panels:[childId…], layout }`, `defaultTab?`. **Children stay real elements in `panels[]`** referenced by id (never inlined); each tab carries its own mini 24-col `layout`, and the container itself occupies one cell in the page grid. Children are NOT in the page grid. Single level only (no tabs-in-tabs). NOT the same as page-level tabs (`pages[]`+`tabBar`). The semantic validator rejects missing refs / a child placed twice / a child also in the page grid / nesting / a bad `defaultTab` / a tab id that collides with a panel id |
 
-Any panel can also carry a `drill` object (left-click navigate) and/or a `contextMenu` object (right-click action menu) — neither is a `type`; see **Filters & drill-downs**.
+Any panel can also carry a `drill` object (retained for back-compat, now inert on its own — DVT-555) and/or a `contextMenu` object (right-click action menu). Drill navigation is now triggered via a `contextMenu` action of `type:"drill"`; for overlay presentation use `openOverlay` — see **Filters & drill-downs**.
 
 ### Data binding
 
@@ -430,7 +430,7 @@ Four dvt-Core keys control the plot grid — no hand-written ECharts `splitLine`
 ```
 
 `agg`: `sum | avg | last | first | min | max | count | delta`. The strip shows the
-headline number, a ▲/▼ delta vs. the prior row, and a sparkline.
+headline number, a ▲/▼ delta vs. the prior row, and a sparkline. Each metric accepts an optional **`description`** field — a plain-text explanation shown as a hover tooltip; falls back to `label` when not set. dvt Core (DVT-558).
 
 ### kpi  ← single-value scorecard
 
@@ -451,6 +451,552 @@ up and given a real comparison binding):
 - **`comparison`**: `{ field?, agg?, mode?, improvement? }`. With `field`, the comparison value is that column; omit `field` to compare the last two points of the value series. `mode`: `percent | delta | both` (default `percent`). `improvement`: `up` (default) or `down` — set `down` for metrics where lower is better (cost, churn) so the chip colors green/red semantically.
 - **`sparkline`**: `{ field?, color? }` — needs ≥2 rows; `field` defaults to `valueField`. Omit for no trend line.
 - `label`, `caption`, `color`, `align` (`left | center`) trim the chrome.
+- **`description`** (optional) — a plain-text explanation of the metric shown as a hover tooltip; falls back to `caption` when not set. dvt Core, renderer-neutral (DVT-558).
+
+### Rich tables — conditional formatting, heat maps, in-cell viz, pivot (DVT-507)
+
+The `table` panel type ships a full vocabulary for presentation-quality tables.
+All features are dvt Core (client-side over already-bound rows, ADR-0011). The
+core table `spec` shape:
+
+```jsonc
+{
+  "type": "table",
+  "data": { "sourceId": "db", "query": "SELECT …" },
+  "spec": {
+    "columns": [ /* TableColumn[] — ordered column defs */ ],
+    "defaultSort": { "field": "revenue", "direction": "desc" },
+    "columnGroups": [ /* optional spanning headers */ ],
+    "grouping":  { /* optional row-grouping tree */ },
+    "conditionalFormat": [ /* table-wide CF rules */ ],
+    "footnotes": [ /* footnotes beneath the table */ ],
+    "sourceNote": "Source: analytics.public.orders",
+    "pivot": { /* pivot/cross-tab mode */ }
+  }
+}
+```
+
+Each **`TableColumn`** is `{ field, label?, description?, format?, align?, sortable?,
+filterable?, conditionalFormat?, colorScale?, cell?, textStyle? }`.
+
+---
+
+#### Conditional formatting (DVT-509, ADR-0044 §3)
+
+`TableSpec.conditionalFormat[]` sets **table-wide** rules (can target any column or
+the whole row). `TableColumn.conditionalFormat[]` sets **column-level** rules applied
+*after* table-wide ones (more specific wins per style key unless `stopIfMatched` is
+used).
+
+Each rule: `{ where: CellPredicate, apply: CellStyle, target?, stopIfMatched? }`.
+
+**`target`** — what gets painted when the predicate matches:
+
+- `"cell"` (default) — only the tested cell.
+- `"row"` — the entire row.
+- any field name string — that column's cell in the same row.
+
+**Precedence** (lowest → highest): `colorScale` background tint → table-wide CF →
+column-level CF. Within one array, rules layer **last-wins per style key** unless
+`stopIfMatched: true` (then first-wins short-circuits later rules for that row/cell).
+
+**`CellStyle`** properties: `fill`, `textColor`, `weight` (`normal|medium|bold`),
+`italic`, `underline`, `strikethrough`, `align` (`left|center|right`). Color slots
+accept a `ColorTokenValue` (hex / `rgb()` / named / `{token}`) or a `FieldColorRef`
+`{ fromField: "<col>" }` — see field-value color below.
+
+**`CellPredicate`** grammar:
+
+| op | `value` shape | Notes |
+|---|---|---|
+| `eq` / `neq` | scalar | Equality / inequality |
+| `gt` / `gte` / `lt` / `lte` | number | Numeric comparison |
+| `between` | `[lo, hi]` | Inclusive range |
+| `in` / `notIn` | array of scalars | Set membership |
+| `contains` | string | Substring match |
+| `isNull` / `isNotNull` | omit `value` | Null test |
+| `topN` / `bottomN` | integer N | Tier-B (cap-sensitive — a badge appears when result was capped) |
+
+`field` defaults to the column the rule is attached to; required for table-wide rules.
+Use `all: [...]` (AND) / `any: [...]` (OR) to combine sub-predicates (nesting capped at 5).
+
+```jsonc
+// Column-level CF: bold green when revenue > 100000, red italic when < 10000
+{
+  "field": "revenue",
+  "conditionalFormat": [
+    {
+      "where": { "op": "gt", "value": 100000 },
+      "apply": { "fill": "#d1fae5", "textColor": "#065f46", "weight": "bold" }
+    },
+    {
+      "where": { "op": "lt", "value": 10000 },
+      "apply": { "fill": "#fee2e2", "textColor": "#991b1b", "italic": true }
+    }
+  ]
+}
+
+// Table-wide CF: highlight the whole row when status = "at-risk"
+// (table-level conditionalFormat[], target:"row")
+{
+  "where": { "field": "status", "op": "eq", "value": "at-risk" },
+  "apply": { "fill": "#fff7ed" },
+  "target": "row"
+}
+
+// stopIfMatched — first matching rule wins; later rules don't layer
+{
+  "where": { "op": "topN", "value": 3 },
+  "apply": { "fill": "#fef9c3", "weight": "bold" },
+  "stopIfMatched": true
+}
+```
+
+---
+
+#### Heat-map color coding — `colorScale` (DVT-509, ADR-0044 §3)
+
+`TableColumn.colorScale` paints a **background tint proportional to each cell's
+numeric value** — the column stays readable (auto-contrast text) while giving an
+instant visual heat map. Computed client-side over the column's bound rows (ADR-0011).
+
+```jsonc
+{
+  "field": "conversion_rate",
+  "colorScale": {
+    "method": "numeric",       // "numeric" | "bin" | "quantile"
+    "domain": [0, 1],          // [min, (mid,) max] or "auto" (default)
+    "palette": "blues",        // named ramp or ColorTokenValue[] (≥2 stops)
+    "bins": 5,                 // for method:"bin" — number of equal-width bins
+    "nullColor": "#f3f4f6"     // background for null cells; omit = transparent
+  }
+}
+```
+
+`method`:
+
+- `"numeric"` — linear interpolation between domain bounds (default).
+- `"bin"` — equal-width bins; `bins` (default 5) controls the count.
+- `"quantile"` — nearest-rank percentile bins. **Tier-B cap-sensitive**: a badge
+  appears when the result set was truncated.
+
+`domain`: `"auto"` (default) derives min/max from the column's finite values — also
+Tier-B cap-sensitive. Explicit `[lo, hi]` or `[lo, mid, hi]` pins the scale.
+
+`palette`: a **named ramp** from the color-schemes registry or an explicit array of
+`ColorTokenValue` stops (at least 2). Named ramps:
+
+| Name | Kind |
+|---|---|
+| `blues` | sequential (light→dark blue, default) |
+| `viridis` | sequential (perceptually uniform) |
+| `magma` | sequential (dark→light) |
+| `rdbu` | diverging (red→neutral→blue) |
+| `brbg` | diverging (brown→neutral→green) |
+| `spectral` | diverging (red→yellow→blue) |
+| `okabe-ito` | categorical (colorblind-safe) |
+| `set2` | categorical (soft, print-safe) |
+
+---
+
+#### Field-value color — `FieldColorRef` (DVT-510, ADR-0044 §4)
+
+`CellStyle.fill` and `CellStyle.textColor` accept a `{ "fromField": "<col>" }` object
+instead of a literal color — the renderer reads the color from the named column of
+the same bound row. The warehouse-controlled value is sanitized by `sanitizeBackground`
+at render time (the same gate as an authored `ColorTokenValue`): an unsafe value
+(e.g., a URL function) is dropped and the cell renders without that color slot.
+
+```jsonc
+// Cells in the "status" column adopt the background color from the "status_color" column
+{
+  "field": "status",
+  "conditionalFormat": [
+    {
+      "where": { "op": "isNotNull" },
+      "apply": {
+        "fill": { "fromField": "status_color" },
+        "textColor": "#ffffff"
+      }
+    }
+  ]
+}
+```
+
+---
+
+#### In-cell visualizations — `TableColumn.cell` (DVT-511/512, ADR-0044 §4)
+
+`TableColumn.cell` replaces the plain text value with an inline SVG visualization.
+Dispatch on `kind`. Don't combine `cell` with `colorScale` on the same column —
+`cell` replaces the value, so the heat-map tint is moot (this is an authoring
+guideline, not a schema constraint; `colorScale` tints the background and keeps
+the value visible, which only makes sense when the value is still shown).
+
+**`ValueSeriesSource`** — used by `sparkline` and `winloss` to resolve a per-row
+numeric series. Exactly one of:
+
+- `{ "valuesField": "<col>" }` — column holding a comma-delimited string or JSON array of numbers.
+- `{ "valuesFromColumns": ["q1", "q2", "q3", "q4"] }` — ordered sibling column names whose values form the series.
+
+**`kind: "sparkline"`** — mini inline trend line/area/bar chart:
+
+```jsonc
+{
+  "field": "quarterly_trend",
+  "cell": {
+    "kind": "sparkline",
+    "type": "line",          // "line" (default) | "area" | "bar"
+    "source": { "valuesFromColumns": ["q1", "q2", "q3", "q4"] },
+    "color": "#2563eb",      // ColorTokenValue
+    "min": 0                 // optional fixed domain
+  }
+}
+```
+
+**`kind: "bar"`** — horizontal data bar sized to the cell value:
+
+```jsonc
+{
+  "field": "revenue",
+  "cell": {
+    "kind": "bar",
+    "domain": "auto",          // [min, max] or "auto"
+    "color": "#3b82f6",
+    "negativeColor": "#ef4444",
+    "baseline": 0,             // bar diverges here for negatives
+    "hideNumber": false        // true = suppress the inline text value
+  }
+}
+```
+
+**`kind: "bullet"`** — value bar + target reference line + optional qualitative bands:
+
+```jsonc
+{
+  "field": "attainment",
+  "cell": {
+    "kind": "bullet",
+    "valueField": "attainment",    // defaults to this column's own value
+    "targetField": "quota",        // per-row target column; overrides static "target"
+    "domain": [0, 150],
+    "qualBands": [50, 100]         // thresholds → poor / ok / good bands
+  }
+}
+```
+
+**`kind: "winloss"`** — win/loss tile strip (positive = win, negative = loss, zero = tie):
+
+```jsonc
+{
+  "field": "game_results",
+  "cell": {
+    "kind": "winloss",
+    "source": { "valuesField": "results_array" },
+    "winColor": "#22c55e",
+    "lossColor": "#ef4444",
+    "tieColor": "#94a3b8"
+  }
+}
+```
+
+**`kind: "dot"`** — positioned dot marker on a domain scale:
+
+```jsonc
+{ "field": "score", "cell": { "kind": "dot", "domain": [0, 100], "color": "#6366f1" } }
+```
+
+**`kind: "icon"`** — allow-listed bundled SVG icon. `name` or `nameField` selects
+the icon; an unrecognized name renders nothing (never injected into markup):
+
+```jsonc
+{
+  "field": "trend",
+  "cell": {
+    "kind": "icon",
+    "nameField": "trend_icon",   // column value selects icon at render time
+    "colorField": "trend_color"  // column value tints the icon (sanitized)
+    // or: "name": "arrow-up" + "color": "#22c55e" for a static icon
+  }
+}
+```
+
+Allow-listed icon names: `check` · `x` · `arrow-up` · `arrow-down` · `arrow-right` ·
+`arrow-left` · `circle` · `circle-check` · `circle-x` · `star` · `star-half` ·
+`warning` · `info` · `ban` · `bolt` · `clock` · `fire` · `heart` · `thumb-up` ·
+`thumb-down` · `trending-up` · `trending-down` · flag codes (`flag-us` `flag-gb`
+`flag-de` `flag-fr` `flag-jp` `flag-cn` `flag-ca` `flag-au` `flag-in` `flag-br`).
+
+**`kind: "image"`** — logo/avatar/thumbnail. `src`/`srcField` must pass the media
+safety gate (same-origin relative, https on approved dvt asset hosts, raster `data:`
+URIs; SVG and unapproved hosts are blocked — renders a placeholder):
+
+```jsonc
+{
+  "field": "logo_url",
+  "cell": {
+    "kind": "image",
+    "srcField": "logo_url",   // or static "src"
+    "shape": "circle",        // "rect" (default) | "circle"
+    "height": 32,             // px (8–200), width scales proportionally
+    "altField": "company_name"
+  }
+}
+```
+
+**`kind: "markdown"`** — renders the cell's string value as **sanitized inline
+markdown** (marked + DOMPurify; https/mailto links only; no `<img>`, no raw HTML).
+
+```jsonc
+{ "field": "notes", "cell": { "kind": "markdown" } }
+```
+
+---
+
+#### Text styling + number format additions (DVT-513, ADR-0044 §3b)
+
+**`TableColumn.textStyle`** sets a base style for data cells in a column — applied
+under `colorScale` and `conditionalFormat` (those override it per key):
+
+```jsonc
+{
+  "field": "region",
+  "textStyle": {
+    "weight": "bold",          // "normal" | "medium" | "bold"
+    "align": "left",           // "left" | "center" | "right"
+    "size": 13,                // font size px (8–48)
+    "font": "JetBrains Mono, monospace",  // closed FontFamily enum (ADR-0032 §A3)
+    "color": "#374151",        // ColorTokenValue
+    "transform": "uppercase",  // "none" | "uppercase" | "lowercase" | "capitalize"
+    "decoration": "underline"  // "none" | "underline" | "line-through"
+  }
+}
+```
+
+`font` is the same **closed allow-set** as `typography.fontFamily` — free-text CSS
+font stacks are rejected (ADR-0032 §A3). Valid values: `"Inter Variable, Inter, sans-serif"` ·
+`"Inter, sans-serif"` · `"JetBrains Mono, monospace"` · `"JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace"` ·
+`"ui-sans-serif, system-ui, sans-serif"` · `"ui-serif, Georgia, serif"` · `"ui-monospace, monospace"`.
+
+**`FormatObject` additions** (also available on chart panels):
+
+- **`negativeParens: true`** — accounting-style `(1,234)` instead of `-1,234`.
+- **`scaleBy: 1000`** — divide the raw value before formatting (e.g. `scaleBy:1000` +
+  `suffix:" K"` displays thousands; distinct from `compact` notation).
+
+---
+
+#### Column spanners + grouping totals (DVT-514, ADR-0044 §8)
+
+**`TableSpec.columnGroups[]`** adds spanning header rows above the normal column
+headers — like `gt::tab_spanner`. Groups may be nested to produce multiple spanner
+rows. Pure header layout — no data transform.
+
+```jsonc
+{
+  "columnGroups": [
+    {
+      "label": "This Quarter",
+      "columns": ["q_revenue", "q_deals", "q_win_rate"]   // leaf column fields
+    },
+    {
+      "label": "Totals",
+      "columnGroups": [                                    // nested sub-groups
+        { "label": "YTD", "columns": ["ytd_revenue"] },
+        { "label": "Annual Target", "columns": ["target"] }
+      ]
+    }
+  ]
+}
+```
+
+`columns` (leaf fields) and `columnGroups` (nested) are mutually exclusive. Columns
+not covered by any group show a blank cell in the spanner row.
+
+**`TableGrouping`** labels on totals rows:
+
+```jsonc
+{
+  "grouping": {
+    "groupBy": ["region", "segment"],
+    "aggregations": [{ "field": "revenue", "agg": "sum" }],
+    "subtotals": true,
+    "grandTotal": true,
+    "totalLabel": "Grand Total",
+    "subtotalLabelTemplate": "{value} subtotal"  // {value} = group value
+  }
+}
+```
+
+`totalLabel` sets the label in the leading cell of the grand-total row (default
+`"Total"`). `subtotalLabelTemplate` uses `{value}` to interpolate the group value —
+e.g., `"{value} subtotal"` renders as `"West subtotal"`.
+
+---
+
+#### Footnotes and source note (DVT-517, ADR-0044 §9)
+
+`TableSpec.footnotes[]` renders footnote marks as superscripts on column headers and
+collects the annotated text in a block beneath the table.
+
+```jsonc
+{
+  "footnotes": [
+    {
+      "mark": "*",                  // explicit mark; omit for auto (¹ ² ³ …)
+      "where": { "column": "revenue" },  // column header to anchor; omit = no anchor
+      "text": "Revenue excludes returns and chargebacks."
+    },
+    {
+      "text": "Win rate computed on closed opportunities only."
+      // no "where" → appears in notes block without a header superscript
+    }
+  ],
+  "sourceNote": "Source: [analytics.public.orders](https://example.com/docs)"
+}
+```
+
+Both `text` and `sourceNote` are **sanitized markdown** (https/mailto links only;
+no raw HTML). `sourceNote` is rendered after any `footnotes[]`.
+
+---
+
+#### Pivot / cross-tab mode (DVT-515, ADR-0044 §8)
+
+`TableSpec.pivot` restructures bound rows client-side into a cross-tab — no new
+panel type. The result is a `table` whose generated value-columns inherit the full
+`cell` / `conditionalFormat` / `colorScale` / `format` vocabulary (a colorScale heat
+map on a pivot is a common killer combo). Mutually exclusive with `grouping` (pivot
+wins; do not combine).
+
+```jsonc
+{
+  "pivot": {
+    "rows": ["region"],              // row-dimension fields (the left stub)
+    "columns": ["quarter"],          // column-dimension fields (low-cardinality)
+    "values": [
+      {
+        "field": "revenue",
+        "agg": "sum",                // "sum" (default) | "avg" | "min" | "max" | "count"
+        "weightField": "deals",      // with agg:"avg" → weighted mean Σ(v·w)/Σw
+        "label": "Revenue",
+        "format": { "type": "currency", "currency": "USD", "compact": true },
+        "colorScale": { "method": "numeric", "domain": "auto", "palette": "blues" }
+      }
+    ],
+    "totals": {
+      "row": true,    // trailing total COLUMN at the right (aggregate across quarters)
+      "column": true, // trailing grand-total ROW at the bottom
+      "grand": true   // grand-total intersection cell (bottom-right)
+    },
+    "maxColumns": 50  // cap on generated value-columns (default 50); exceeded → "showing K of J columns" disclosure
+  }
+}
+```
+
+**Avg-of-avgs guard (ADR-0044 §8):** omitting `agg` defaults to `sum`, never an
+implicit average. Use `agg: "avg"` explicitly; add `weightField` for a proper
+weighted mean.
+
+**Cardinality cap:** when the distinct column-dimension tuples × values exceeds
+`maxColumns` (max 200), the renderer truncates to the first N (in column-tuple order)
+and shows a visible "showing K of J columns (capped)" disclosure — the Tier-B
+honesty contract.
+
+---
+
+#### Composition example — rich table with multiple features
+
+```jsonc
+{
+  "type": "table",
+  "title": "Sales by Rep",
+  "data": { "sourceId": "db", "query": "SELECT rep, region, revenue, quota, monthly_trend, status_color FROM analytics.public.rep_performance ORDER BY revenue DESC" },
+  "spec": {
+    "columnGroups": [
+      { "label": "Identity",  "columns": ["rep", "region"] },
+      { "label": "Performance", "columns": ["revenue", "quota", "monthly_trend"] }
+    ],
+    "columns": [
+      { "field": "rep", "label": "Sales Rep" },
+      { "field": "region" },
+      {
+        "field": "revenue",
+        "format": { "type": "currency", "currency": "USD", "compact": true },
+        // colorScale: heat-map tint; keeps value visible
+        "colorScale": { "method": "numeric", "domain": "auto", "palette": "blues" },
+        // CF rule on top: bold the top 3
+        "conditionalFormat": [
+          {
+            "where": { "op": "topN", "value": 3 },
+            "apply": { "weight": "bold" },
+            "stopIfMatched": true
+          }
+        ]
+      },
+      {
+        "field": "quota",
+        "format": { "type": "currency", "currency": "USD", "compact": true },
+        // bullet chart: attainment bar vs quota target
+        "cell": {
+          "kind": "bullet",
+          "targetField": "quota",
+          "domain": "auto",
+          "qualBands": [50, 100]
+        }
+      },
+      {
+        "field": "monthly_trend",
+        "label": "Trend (12mo)",
+        // sparkline: area chart from a JSON-array column
+        "cell": {
+          "kind": "sparkline",
+          "type": "area",
+          "source": { "valuesField": "monthly_trend" },
+          "color": "{chart.series.1}"
+        }
+      }
+    ],
+    // table-wide CF: highlight entire row when rep is over quota
+    "conditionalFormat": [
+      {
+        "where": { "field": "revenue", "op": "gte", "value": 100 },
+        "apply": { "fill": { "fromField": "status_color" } },
+        "target": "row"
+      }
+    ],
+    "footnotes": [
+      { "where": { "column": "revenue" }, "text": "Revenue is recognized at close date." }
+    ],
+    "sourceNote": "Source: analytics.public.rep_performance"
+  }
+}
+```
+
+#### Pivot example — revenue by region × quarter with heat map
+
+```jsonc
+{
+  "type": "table",
+  "title": "Revenue by Region × Quarter",
+  "data": { "sourceId": "db", "query": "SELECT region, quarter, SUM(revenue) AS revenue FROM analytics.public.orders GROUP BY 1, 2" },
+  "spec": {
+    "pivot": {
+      "rows": ["region"],
+      "columns": ["quarter"],
+      "values": [
+        {
+          "field": "revenue",
+          "agg": "sum",
+          "format": { "type": "currency", "currency": "USD", "compact": true },
+          "colorScale": { "method": "numeric", "domain": "auto", "palette": "blues" }
+        }
+      ],
+      "totals": { "row": true, "column": true }
+    }
+  }
+}
+```
 
 ### text panels + narrative variables  ← dvt's differentiator
 
@@ -552,7 +1098,7 @@ reach for `stat` when you just want the number big.
 ```
 
 `valueField` (required) + `agg` (default `sum`); `delta`/`sparkline` are booleans
-(need ≥2 rows); `label`, `caption`, `color`, `align` (`left | center`).
+(need ≥2 rows); `label`, `caption`, `color`, `align` (`left | center`). Optional **`description`** — a plain-text explanation of the metric shown as a hover tooltip; falls back to `caption` when not set. dvt Core (DVT-558).
 
 **`hero`** — a headline block (eyebrow + headline + subhead) to open a canvas section.
 The three text fields interpolate `{{ field | agg | format }}` variables.
@@ -793,14 +1339,19 @@ WHERE (%(order_date_lo)s IS NULL OR order_date >= %(order_date_lo)s)
   AND (%(order_date_hi)s IS NULL OR order_date <= %(order_date_hi)s)
 ```
 
-**`drill`** — a property on **any** panel (not a `type`). Clicking a mark/row navigates
-to `targetPage` with the clicked value bound, by name, into that page's panels — the same
-value→query contract as a filter.
+**`drill`** — a property on **any** panel (not a `type`). Retained for back-compat but **inert on its own** (DVT-555): the left-click trigger was removed. To wire drill navigation, use a `contextMenu` action of `type:"drill"` (right-click menu, see below). The `drill` object fields (`targetPage`, `param`, `valueFrom`, `valueType`) are unchanged and the same binding contract applies — the clicked value enters the target page's panels by name through `data.params`, never interpolated.
+
+**`contextMenu`** — a property on **any** panel (and, additively, on any `table` column,
+ADR-0035). The **right-click menu**: an ordered `actions[]` list, each parameterized by the clicked
+mark/row, that turns a dashboard from read-only into explorable. This is the correct way to wire drill navigation (DVT-555) and overlay presentation. Like `filter`/`drill` it
+is interactive-only (a no-op in a static PNG render). Six action types:
 
 ```json
 { "id": "rev-by-region", "type": "chart:bar", "title": "Revenue by Region",
   "data": { "sourceId": "db", "query": "SELECT region, SUM(amount) AS rev FROM demo.public.orders GROUP BY 1" },
-  "drill": { "targetPage": "region-detail", "param": "region", "valueFrom": "category", "valueType": "string" },
+  "contextMenu": { "actions": [
+    { "type": "drill", "label": "Drill into {category}", "targetPage": "region-detail", "param": "region", "valueFrom": "category", "valueType": "string" }
+  ] },
   "spec": { "series": [{ "type": "bar", "dataField": "rev" }] } }
 ```
 
@@ -809,12 +1360,6 @@ exactly like the filter targets above. `targetPage` (required) — a `pages[].id
 (required) — the params key set on the target page's panels. `valueFrom`: `category`
 (default) | `value` | `seriesName` | a field name from the clicked row (use a field name
 for tables). `valueType` — as above.
-
-**`contextMenu`** — a property on **any** panel (and, additively, on any `table` column,
-ADR-0035). Where `drill` is the single left-click quick-path, `contextMenu` is the
-**right-click menu**: an ordered `actions[]` list, each parameterized by the clicked
-mark/row, that turns a dashboard from read-only into explorable. Like `filter`/`drill` it
-is interactive-only (a no-op in a static PNG render). Six action types:
 
 ```json
 { "id": "rev-by-region", "type": "chart:bar", "title": "Revenue by Region",
@@ -844,8 +1389,8 @@ is interactive-only (a no-op in a static PNG render). Six action types:
   `valueFrom?` (default `category`), `valueType?`, `targets?` (`"all"` | panel-id list).
   Same value→query binding + targeting as a `filter` control.
 - **`drill`** — navigates to a page: `targetPage` + `param` (required), `valueFrom?`,
-  `valueType?`. One menu can hold several drill destinations (the bare `drill` property
-  holds only one); the two coexist.
+  `valueType?`. This is the canonical drill trigger (DVT-555: the bare `drill` property is
+  now inert). One menu can hold several drill destinations.
 - **`openOverlay`** (ADR-0036) — opens `targetPage` as a **modal or drawer overlay** *over*
   the current page (detail-on-demand), instead of navigating away. A superset of `drill`:
   `targetPage` (required), optional `param`/`valueFrom`/`valueType` (the clicked value is
