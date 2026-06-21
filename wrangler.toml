@@ -15,6 +15,13 @@ database_name = "dvt-handraises"
 database_id = "37155907-6089-4112-ba22-3ebba2db3549"
 
 # Environment variables (non-secret)
-# Secrets (RESEND_API_KEY, CF_BEACON_TOKEN) go in Pages → Settings → Environment variables
+# Secrets (RESEND_API_KEY, TURNSTILE_SECRET_KEY, SANDBOX_INTERNAL_KEY) go in
+# Pages → Settings → Environment variables. SANDBOX_INTERNAL_KEY in particular
+# MUST be set as a secret (never committed here) — it is the Bearer key that
+# authorizes /internal/sandbox/provision on the dvt API.
 [vars]
-NOTIFY_EMAIL = "collin@dvt.dev"
+NOTIFY_EMAIL          = "collin@dvt.dev"
+DVT_API_BASE          = "https://dvt-api.fly.dev"
+DEMO_TTL_HOURS        = "72"
+DEMO_IP_CAP_24H       = "3"
+DEMO_GLOBAL_CAP_24H   = "50"
