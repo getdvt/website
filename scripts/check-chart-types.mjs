@@ -15,8 +15,9 @@
 //   - UPSTREAM drift (a silent rename in getdvt/dvt while both local files sit
 //     unchanged) is caught by the weekly `upstream-sweep` job in
 //     .github/workflows/chart-types-drift.yml, which reads origin/main's enum live
-//     via `gh api` (gated on the DVT_SCHEMA_READ_TOKEN secret). The sweep is a
-//     no-op until that secret is provisioned.
+//     via `gh api` using a short-lived getdvt-ci-reader GitHub App token (gated on
+//     the DVT_SCHEMA_APP_ID variable). The sweep is a no-op until the App is
+//     provisioned — see .github/github-app-ci-reader.md.
 //
 // Zero external dependencies: reads two local files, pure Node built-ins.
 //

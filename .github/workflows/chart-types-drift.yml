@@ -14,12 +14,20 @@ name: Chart-type drift check
 #     that wasn't committed.
 #   - UPSTREAM drift (a silent rename in getdvt/dvt while both local files sit
 #     unchanged) is caught by the weekly `schedule:` sweep in the `upstream-sweep`
-#     job below. That job reads origin/main's enum live via `gh api`, gated on the
-#     DVT_SCHEMA_READ_TOKEN secret (fine-grained PAT with contents:read on
-#     getdvt/dvt). The sweep is a no-op until the secret is provisioned.
+#     job below. That job mints a short-lived GitHub App installation token and
+#     reads origin/main's enum live via `gh api`. Auth = the `getdvt-ci-reader`
+#     App (Contents: read on getdvt/dvt), wired as the `DVT_SCHEMA_APP_ID` repo
+#     variable + `DVT_SCHEMA_APP_PRIVATE_KEY` repo secret. See the setup runbook:
+#     .github/github-app-ci-reader.md. The sweep is a no-op until the App is
+#     provisioned (gated on the DVT_SCHEMA_APP_ID variable).
+#
+# Why a GitHub App, not a PAT: the installation token is short-lived (auto-rotated
+# per run), scoped to exactly getdvt/dvt Contents:read, and owned by the org —
+# not tied to any one person's account. The pattern generalizes to any cross-repo
+# CI read; the runbook documents how to reuse it.
 #
 # Do NOT add `upstream-enum-sweep` to branch-protection required checks: it does
-# not run on PRs (job-level event guard) and exits 0 when the secret is absent,
+# not run on PRs (job-level event guard) and skips when the App is unprovisioned,
 # so it would report a false green. The PR-time gate is the `drift` job only.
 #
 # No npm install required — all scripts have zero external dependencies.
@@ -62,22 +70,38 @@ jobs:
     permissions:
       contents: read
     steps:
+      # Loud skip when the App isn't provisioned yet — App ID lives in a repo
+      # VARIABLE (not a secret) so it can gate `if:` (secrets can't be used there).
+      - name: Notice if the getdvt-ci-reader App is not configured
+        if: vars.DVT_SCHEMA_APP_ID == ''
+        run: |
+          echo "::notice::Upstream sweep skipped: the getdvt-ci-reader GitHub App is not configured. Set the DVT_SCHEMA_APP_ID repo variable + DVT_SCHEMA_APP_PRIVATE_KEY repo secret to enable the weekly upstream drift check. See .github/github-app-ci-reader.md."
+
+      # Mint a short-lived installation token scoped to getdvt/dvt Contents:read.
+      # The App is installed on getdvt/dvt; owner+repositories scope the token to it.
+      - name: Mint getdvt/dvt read token (GitHub App)
+        id: app-token
+        if: vars.DVT_SCHEMA_APP_ID != ''
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.DVT_SCHEMA_APP_ID }}
+          private-key: ${{ secrets.DVT_SCHEMA_APP_PRIVATE_KEY }}
+          owner: getdvt
+          repositories: dvt
+
       - uses: actions/checkout@v4
+        if: vars.DVT_SCHEMA_APP_ID != ''
 
       - uses: actions/setup-node@v4
+        if: vars.DVT_SCHEMA_APP_ID != ''
         with:
           node-version: 22
 
       - name: Compare upstream PanelType enum to vendored copy
+        if: vars.DVT_SCHEMA_APP_ID != ''
         env:
-          TOKEN: ${{ secrets.DVT_SCHEMA_READ_TOKEN }}
-          GH_TOKEN: ${{ secrets.DVT_SCHEMA_READ_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          if [ -z "$TOKEN" ]; then
-            echo "::notice::Upstream sweep skipped: DVT_SCHEMA_READ_TOKEN is not set. Provision a fine-grained PAT with contents:read on getdvt/dvt to enable the weekly upstream drift check."
-            exit 0
-          fi
-
           # Fetch upstream schema from origin/main.
           gh api repos/getdvt/dvt/contents/spec/schema/dashboard.schema.json \
             -H "Accept: application/vnd.github.raw" > /tmp/upstream-schema.json
