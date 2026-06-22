@@ -4,17 +4,25 @@ name: Chart-type drift check
 # canonical PanelType enum, which is VENDORED into src/data/panel-types.json.
 #
 # The enum is vendored because getdvt/dvt is private and CI has no token to read
-# it live. There is also no public schema URL for the enum. The vendored copy is
-# refreshed locally via scripts/sync-panel-types.sh (needs getdvt/dvt checked out
-# as a sibling), then committed. This PR-triggered job therefore catches:
-#   - A hand-edit of charts.ts that introduces a typo or an invented dvtType.
-#   - A stale panel-types.json after a manual refresh that wasn't committed.
+# it live. The vendored copy is refreshed locally via scripts/sync-panel-types.sh
+# (which now defaults to gh api / origin/main — no sibling checkout required),
+# then committed.
 #
-# What it does NOT catch: a silent upstream rename in getdvt/dvt while both
-# files here sit unchanged. That requires a manual refresh + PR to surface.
-# Don't promote this to a required check without accounting for that gap.
+# Coverage split (mirrors spec-skill-drift.yml):
+#   - PR trigger catches a hand-edit of charts.ts that introduces a typo or an
+#     invented dvtType, and catches a stale panel-types.json after a manual refresh
+#     that wasn't committed.
+#   - UPSTREAM drift (a silent rename in getdvt/dvt while both local files sit
+#     unchanged) is caught by the weekly `schedule:` sweep in the `upstream-sweep`
+#     job below. That job reads origin/main's enum live via `gh api`, gated on the
+#     DVT_SCHEMA_READ_TOKEN secret (fine-grained PAT with contents:read on
+#     getdvt/dvt). The sweep is a no-op until the secret is provisioned.
 #
-# No npm install required — the script has zero external dependencies.
+# Do NOT add `upstream-enum-sweep` to branch-protection required checks: it does
+# not run on PRs (job-level event guard) and exits 0 when the secret is absent,
+# so it would report a false green. The PR-time gate is the `drift` job only.
+#
+# No npm install required — all scripts have zero external dependencies.
 
 on:
   pull_request:
@@ -24,6 +32,8 @@ on:
       - 'src/data/panel-types.json'
       - 'scripts/check-chart-types.mjs'
       - '.github/workflows/chart-types-drift.yml'
+  schedule:
+    - cron: '23 13 * * 1'   # Mondays 13:23 UTC — weekly upstream-drift sweep
   workflow_dispatch:
 
 permissions:
@@ -42,3 +52,68 @@ jobs:
 
       - name: Assert all dvtType values are valid PanelType members
         run: node scripts/check-chart-types.mjs
+
+  upstream-sweep:
+    name: upstream-enum-sweep
+    # Schedule / manual only — never on PRs (avoids a false-green required-check
+    # trap and wasted runner minutes; the PR gate is the `drift` job).
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Compare upstream PanelType enum to vendored copy
+        env:
+          TOKEN: ${{ secrets.DVT_SCHEMA_READ_TOKEN }}
+          GH_TOKEN: ${{ secrets.DVT_SCHEMA_READ_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::notice::Upstream sweep skipped: DVT_SCHEMA_READ_TOKEN is not set. Provision a fine-grained PAT with contents:read on getdvt/dvt to enable the weekly upstream drift check."
+            exit 0
+          fi
+
+          # Fetch upstream schema from origin/main.
+          gh api repos/getdvt/dvt/contents/spec/schema/dashboard.schema.json \
+            -H "Accept: application/vnd.github.raw" > /tmp/upstream-schema.json
+
+          # Guard: result must be valid JSON with a non-empty $defs.PanelType.enum.
+          node -e '
+          const fs = require("fs");
+          try {
+            const schema = JSON.parse(fs.readFileSync("/tmp/upstream-schema.json", "utf8"));
+            const arr = (schema["$defs"] || {})["PanelType"] && schema["$defs"]["PanelType"]["enum"];
+            if (!Array.isArray(arr) || arr.length === 0) {
+              console.error("::error::Upstream schema fetch returned invalid JSON or missing $defs.PanelType.enum. Cannot verify drift.");
+              process.exit(1);
+            }
+            console.log("Upstream schema valid: " + arr.length + " PanelType members.");
+          } catch (e) {
+            console.error("::error::Failed to parse upstream schema: " + e.message);
+            process.exit(1);
+          }
+          '
+
+          # Compare upstream enum to vendored copy AS SETS (order-independent).
+          node -e '
+          const fs = require("fs");
+          const upstream = JSON.parse(fs.readFileSync("/tmp/upstream-schema.json", "utf8"))["$defs"]["PanelType"]["enum"];
+          const vendored = JSON.parse(fs.readFileSync("src/data/panel-types.json", "utf8")).panelTypes;
+          const upSet = new Set(upstream);
+          const venSet = new Set(vendored);
+          const added   = upstream.filter(t => !venSet.has(t));
+          const removed = vendored.filter(t => !upSet.has(t));
+          if (added.length || removed.length) {
+            console.error("::error::Upstream PanelType enum has drifted from the vendored copy in src/data/panel-types.json.");
+            if (added.length)   console.error("  Added upstream (missing from vendored):  " + JSON.stringify(added));
+            if (removed.length) console.error("  Removed upstream (still in vendored):    " + JSON.stringify(removed));
+            console.error("Fix: run ./scripts/sync-panel-types.sh and commit src/data/panel-types.json.");
+            process.exit(1);
+          }
+          console.log("OK — upstream enum matches vendored copy (" + vendored.length + " types).");
+          '

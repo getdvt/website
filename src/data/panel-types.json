@@ -1,5 +1,5 @@
 {
-  "$comment": "VENDORED mirror of dvt's canonical PanelType enum. Do NOT hand-edit. Refresh with: scripts/sync-panel-types.sh (with getdvt/dvt checked out as a FRESH sibling at origin/main — a stale checkout will vendor a stale enum). Drift from charts.ts is caught by scripts/check-chart-types.mjs in CI (see .github/workflows/chart-types-drift.yml).",
+  "$comment": "VENDORED mirror of dvt's canonical PanelType enum. Do NOT hand-edit. Refresh with: scripts/sync-panel-types.sh — gh api (origin/main) is the default refresh path; DVT_REPO or a freshness-checked sibling are fallbacks. Drift from charts.ts is caught by scripts/check-chart-types.mjs in CI (see .github/workflows/chart-types-drift.yml).",
   "source": "getdvt/dvt -> spec/schema/dashboard.schema.json -> $defs/PanelType.enum",
   "panelTypes": [
     "chart:bar",
