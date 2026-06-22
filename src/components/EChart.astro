@@ -1,0 +1,40 @@
+---
+// A single ECharts island. Renders only markup + the serialized option;
+// src/scripts/charts.ts boots the engine lazily on scroll. Keep `option`
+// pure data (no functions) — it is JSON-serialized into the page.
+interface Props {
+  option: Record<string, unknown>;
+  height?: string;
+  animate?: string | null;
+  label?: string;
+}
+const { option, height = '240px', animate = null, label } = Astro.props;
+---
+
+<figure
+  class="echart"
+  data-echart
+  data-animate={animate ?? undefined}
+  style={`height:${height}`}
+  role="img"
+  aria-label={label}
+>
+  <script type="application/json" set:html={JSON.stringify(option)} is:inline></script>
+  <noscript><span class="echart-fallback">{label}</span></noscript>
+</figure>
+
+<style>
+  .echart {
+    width: 100%;
+    margin: 0;
+    position: relative;
+  }
+  .echart-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-size: var(--text-xs);
+    color: var(--color-neutral-400);
+  }
+</style>

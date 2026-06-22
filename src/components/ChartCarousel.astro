@@ -1,0 +1,240 @@
+---
+import EChart from './EChart.astro';
+import { featured } from '../data/charts';
+
+const BUILDER_URL = 'https://demo.dvt.dev/builder';
+---
+
+<div class="carousel" data-carousel aria-roledescription="carousel" aria-label="dvt chart showcase">
+  <div class="stage">
+    {featured.map((c, i) => (
+      <div class={`slide${i === 0 ? ' active' : ''}`} data-slide aria-hidden={i === 0 ? 'false' : 'true'}>
+        <EChart option={c.option!} height="100%" animate={c.animate} label={`${c.title} chart`} />
+      </div>
+    ))}
+    <div class="stage-glow" aria-hidden="true"></div>
+  </div>
+
+  <div class="rail">
+    <div class="caps">
+      {featured.map((c, i) => (
+        <div class={`cap${i === 0 ? ' active' : ''}`} data-cap>
+          <code class="cap-type">{c.dvtType}</code>
+          <h3>{c.title}</h3>
+          <p>{c.blurb}</p>
+        </div>
+      ))}
+    </div>
+
+    <div class="controls">
+      <button class="arrow" data-prev type="button" aria-label="Previous chart">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="dots">
+        {featured.map((c, i) => (
+          <button class={`dot${i === 0 ? ' active' : ''}`} data-dot data-i={i} type="button" aria-label={`Show ${c.title}`} aria-current={i === 0 ? 'true' : 'false'}></button>
+        ))}
+      </div>
+      <button class="arrow" data-next type="button" aria-label="Next chart">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+
+    <a href={BUILDER_URL} class="builder-link">Build one live in the spec builder →</a>
+  </div>
+</div>
+
+<script>
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.querySelectorAll<HTMLElement>('[data-carousel]').forEach((root) => {
+    const slides = [...root.querySelectorAll<HTMLElement>('[data-slide]')];
+    const caps = [...root.querySelectorAll<HTMLElement>('[data-cap]')];
+    const dots = [...root.querySelectorAll<HTMLElement>('[data-dot]')];
+    if (!slides.length) return;
+    let i = 0;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const DELAY = 4800;
+
+    const show = (n: number) => {
+      i = (n + slides.length) % slides.length;
+      slides.forEach((s, k) => {
+        s.classList.toggle('active', k === i);
+        s.setAttribute('aria-hidden', k === i ? 'false' : 'true');
+      });
+      caps.forEach((c, k) => c.classList.toggle('active', k === i));
+      dots.forEach((d, k) => {
+        d.classList.toggle('active', k === i);
+        d.setAttribute('aria-current', k === i ? 'true' : 'false');
+      });
+      window.dvtChartsScan?.();
+    };
+
+    const start = () => {
+      if (reduced || timer) return;
+      timer = setInterval(() => show(i + 1), DELAY);
+    };
+    const stop = () => {
+      if (timer) clearInterval(timer);
+      timer = null;
+    };
+
+    root.querySelector('[data-next]')?.addEventListener('click', () => { show(i + 1); stop(); start(); });
+    root.querySelector('[data-prev]')?.addEventListener('click', () => { show(i - 1); stop(); start(); });
+    dots.forEach((d) =>
+      d.addEventListener('click', () => { show(Number(d.dataset.i)); stop(); start(); })
+    );
+
+    root.addEventListener('mouseenter', stop);
+    root.addEventListener('mouseleave', start);
+    document.addEventListener('visibilitychange', () => (document.hidden ? stop() : start()));
+
+    // touch swipe
+    let x0 = 0;
+    root.addEventListener('touchstart', (e) => (x0 = e.touches[0].clientX), { passive: true });
+    root.addEventListener('touchend', (e) => {
+      const dx = e.changedTouches[0].clientX - x0;
+      if (Math.abs(dx) > 40) { show(dx < 0 ? i + 1 : i - 1); stop(); start(); }
+    }, { passive: true });
+
+    start();
+  });
+</script>
+
+<style>
+  .carousel {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: var(--space-8);
+    align-items: stretch;
+    background: var(--color-white);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    box-shadow: var(--shadow-md);
+  }
+  @media (max-width: 820px) {
+    .carousel { grid-template-columns: 1fr; gap: var(--space-5); }
+  }
+
+  .stage {
+    position: relative;
+    min-height: 320px;
+    border-radius: var(--radius-md);
+    background:
+      radial-gradient(120% 120% at 100% 0%, rgba(91, 191, 186, 0.07), transparent 55%),
+      var(--color-neutral-50);
+    border: 1px solid var(--color-neutral-100);
+    overflow: hidden;
+  }
+  @media (max-width: 820px) {
+    .stage { min-height: 240px; }
+  }
+
+  .slide {
+    position: absolute;
+    inset: var(--space-3);
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+    transition: opacity 420ms ease, transform 420ms ease;
+    pointer-events: none;
+  }
+  .slide.active {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+  .stage-glow { position: absolute; inset: 0; pointer-events: none; }
+
+  .rail {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--space-5);
+  }
+
+  .caps {
+    position: relative;
+    min-height: 116px;
+  }
+  .cap {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 360ms ease, transform 360ms ease;
+    pointer-events: none;
+  }
+  .cap.active {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+  .cap-type {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-brand-mark);
+    background: rgba(91, 191, 186, 0.1);
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+  }
+  .cap h3 {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    letter-spacing: -0.02em;
+    margin: var(--space-3) 0 var(--space-2);
+  }
+  .cap p {
+    font-size: var(--text-sm);
+    color: var(--color-neutral-600);
+    line-height: 1.6;
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-md);
+    background: var(--color-white);
+    color: var(--color-neutral-500);
+    cursor: pointer;
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+  }
+  .arrow:hover { color: var(--color-brand-indigo); border-color: var(--color-neutral-400); }
+
+  .dots {
+    display: flex;
+    gap: var(--space-2);
+    flex: 1;
+  }
+  .dot {
+    width: 7px;
+    height: 7px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--color-neutral-300);
+    cursor: pointer;
+    transition: background var(--transition-fast), transform var(--transition-fast);
+  }
+  .dot:hover { background: var(--color-neutral-400); }
+  .dot.active {
+    background: var(--color-brand-indigo);
+    transform: scale(1.25);
+  }
+
+  .builder-link {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-brand-navy);
+  }
+  .builder-link:hover { color: var(--color-brand-mark); }
+</style>

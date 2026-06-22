@@ -1,0 +1,123 @@
+---
+import ChartCard from './ChartCard.astro';
+import { families, totalChartCount } from '../data/charts';
+---
+
+<div class="gallery" data-gallery>
+  <div class="tabs" role="tablist" aria-label="Chart families">
+    {families.map((f, i) => (
+      <button
+        class={`tab${i === 0 ? ' active' : ''}`}
+        data-tab={f.id}
+        type="button"
+        role="tab"
+        aria-selected={i === 0 ? 'true' : 'false'}
+      >
+        {f.label}
+        <span class="tab-count">{f.charts.length}</span>
+      </button>
+    ))}
+  </div>
+
+  {families.map((f, i) => (
+    <section class={`panel${i === 0 ? ' active' : ''}`} data-panel={f.id} hidden={i !== 0}>
+      <p class="panel-blurb">{f.blurb}</p>
+      <div class="grid">
+        {f.charts.map((c) => (
+          <ChartCard chart={c} />
+        ))}
+      </div>
+    </section>
+  ))}
+
+  <p class="gallery-foot">
+    {totalChartCount} chart &amp; table types shown — every one is a few lines of
+    declarative spec. <a href="https://demo.dvt.dev/builder">Try them in the builder →</a>
+  </p>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-gallery]').forEach((root) => {
+    const tabs = [...root.querySelectorAll<HTMLElement>('[data-tab]')];
+    const panels = [...root.querySelectorAll<HTMLElement>('[data-panel]')];
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const id = tab.dataset.tab;
+        tabs.forEach((t) => {
+          const on = t === tab;
+          t.classList.toggle('active', on);
+          t.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        panels.forEach((p) => {
+          const on = p.dataset.panel === id;
+          p.classList.toggle('active', on);
+          p.hidden = !on;
+        });
+        // Boot any charts revealed for the first time, then size them.
+        requestAnimationFrame(() => window.dvtChartsScan?.());
+      });
+    });
+  });
+</script>
+
+<style>
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-bottom: var(--space-6);
+  }
+  .tab {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 7px var(--space-4);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-neutral-600);
+    background: var(--color-white);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+  .tab:hover {
+    border-color: var(--color-neutral-400);
+    color: var(--color-neutral-900);
+  }
+  .tab.active {
+    color: var(--color-white);
+    background: var(--color-brand-navy);
+    border-color: var(--color-brand-navy);
+  }
+  .tab-count {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--color-neutral-400);
+  }
+  .tab.active .tab-count {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .panel-blurb {
+    font-size: var(--text-sm);
+    color: var(--color-neutral-500);
+    margin-bottom: var(--space-5);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--space-5);
+  }
+  @media (max-width: 520px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  .gallery-foot {
+    margin-top: var(--space-8);
+    font-size: var(--text-sm);
+    color: var(--color-neutral-500);
+    text-align: center;
+  }
+</style>

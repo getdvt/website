@@ -19,6 +19,7 @@
     "@fontsource/inter": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
     "astro": "^6.4.4",
+    "echarts": "^6.0.0",
     "wrangler": "^4.98.0"
   },
   "overrides": {

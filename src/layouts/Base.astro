@@ -22,6 +22,9 @@ const ogImageURL = new URL(ogImage, Astro.site);
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Mark JS-capable clients so progressive-enhancement reveals only hide
+         content when JS can bring it back. -->
+    <script is:inline>document.documentElement.classList.add('js');</script>
     <link rel="canonical" href={canonicalURL} />
 
     <!-- Primary meta -->

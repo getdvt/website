@@ -5,6 +5,57 @@ import Handraise from '../components/Handraise.astro';
 import Footer from '../components/Footer.astro';
 
 export const prerender = true;
+
+const personas = [
+  {
+    title: 'Analytics engineers & data scientists',
+    body: 'Already using dbt and dlt. Think in SQL. Use git. Care about reproducibility. Want to build dashboards programmatically — not click-and-drag. Comfortable with JSON specs, and would rather author a dashboard via API or let Claude write the spec than wrestle with a GUI.',
+    signal: '“I want programmatic control over my dashboards — and the option to put them in git when it makes sense.”',
+  },
+  {
+    title: 'Data analysts who use AI heavily',
+    body: "May not write much code, but work in environments where Claude or another agent drafts analytical artifacts. For this user, dvt's AI-native authoring means describing what they want — and an agent builds it, with every detail editable through a structured editor backed by the same open spec.",
+    signal: '“I asked Claude to build me a revenue dashboard and it just worked.”',
+  },
+  {
+    title: 'Platform & BI teams',
+    body: 'Need to standardize dashboards, enforce brand guidelines, manage permissions at scale, and audit what data is shown to whom. The DAD model — dashboards as versioned, API-managed data — gives them auditability and control that legacy GUI tools cannot.',
+    signal: '“We need every dashboard to be reviewable before it reaches production.”',
+  },
+];
+
+const reasons = [
+  {
+    n: '01',
+    title: 'LLMs can write dashboard specs',
+    body: 'A well-structured JSON schema plus a good MCP server means Claude can author, edit, and audit dashboards as first-class operations — not just describe what they should look like. AI agents become first-class dashboard authors.',
+  },
+  {
+    n: '02',
+    title: 'The dbt/dlt community is large and underserved',
+    body: "Analytics engineers have great tooling for the data layer and poor tooling for the visualization layer. They're the community most primed to adopt a code-native visualization tool — and they're already asking for it.",
+  },
+  {
+    n: '03',
+    title: 'Apache ECharts 6 solved the rendering problem',
+    body: 'A token-based theme system, dynamic switching, and deep per-element config APIs make a truly flexible spec-driven renderer feasible without building chart primitives from scratch. The hard part is done.',
+  },
+];
+
+const cases = [
+  {
+    q: '“Where is the sales forecast?”',
+    a: 'Ask dvt’s search API. It returns the dashboard Claude built — with the business context it wrote, the data source it used, and how often the team views it. No separate metadata catalog. No manual documentation step.',
+  },
+  {
+    q: '“How do we define churn — and do we have competing versions?”',
+    a: 'Query all panels that reference churn-related metrics. dvt surfaces every definition in use, who created each one (human or AI agent), and which version the team actually looks at. Usage frequency becomes a proxy for canonical truth.',
+  },
+  {
+    q: '“What data is the executive revenue dashboard built on?”',
+    a: 'Every panel in a dvt spec records its data source, metric reference, and the description Claude wrote for it. Full lineage is in the spec. No separate lineage tool required.',
+  },
+];
 ---
 
 <Base
@@ -25,24 +76,21 @@ export const prerender = true;
       </div>
     </section>
 
-    <!-- The thesis -->
-    <section class="section">
+    <!-- Thesis: full-bleed statement -->
+    <section class="statement statement--light" data-reveal>
       <div class="container">
-        <div class="thesis-block">
-          <p class="thesis-quote">
-            "Dashboards should be declarative data that AI agents and humans
-            co-author — stored in a database, updated via API, where <em>every</em> visual
-            property is a named, customizable parameter — not a design
-            constraint imposed by the tool."
-          </p>
-        </div>
+        <p class="statement-quote">
+          “Dashboards should be declarative data that AI agents and humans
+          co-author — stored in a database, updated via API, where <em>every</em> visual
+          property is a named, customizable parameter — not a design constraint imposed by the tool.”
+        </p>
       </div>
     </section>
 
-    <!-- The problem -->
+    <!-- The gap + animated stack -->
     <section class="section section-alt">
       <div class="container two-col">
-        <div class="col-text">
+        <div class="col-text" data-reveal>
           <h2>The gap in the modern data stack</h2>
           <p>
             <strong>dlt</strong> (data load tool) extracts and loads raw data into your warehouse.
@@ -59,29 +107,27 @@ export const prerender = true;
             <strong>dvt completes the trio.</strong> The right analogy is Figma or Notion,
             not dbt: dashboard specs are live data in the cloud, updated instantly via
             API or MCP — not files committed to a repo every time a chart color changes.
-            The spec <em>format</em> is open and version-controlled (like dbt's model
-            definition). Individual dashboards are mutable records (like a Figma file).
           </p>
         </div>
         <div class="col-stack">
           <div class="stack-diagram">
             <div class="stack-row">
-              <div class="stack-tool">
+              <div class="stack-tool" data-reveal data-reveal-delay="0">
                 <span class="tool-name">dlt</span>
                 <span class="tool-role">Load</span>
               </div>
-              <div class="stack-arrow">→</div>
-              <div class="stack-tool">
+              <div class="stack-arrow" data-reveal data-reveal-delay="160">→</div>
+              <div class="stack-tool" data-reveal data-reveal-delay="320">
                 <span class="tool-name">dbt</span>
                 <span class="tool-role">Transform</span>
               </div>
-              <div class="stack-arrow">→</div>
-              <div class="stack-tool dvt">
+              <div class="stack-arrow" data-reveal data-reveal-delay="480">→</div>
+              <div class="stack-tool dvt" data-reveal data-reveal-delay="640">
                 <span class="tool-name">dvt</span>
                 <span class="tool-role">Visualize</span>
               </div>
             </div>
-            <p class="stack-label">The complete modern data stack</p>
+            <p class="stack-label" data-reveal data-reveal-delay="820">The complete modern data stack</p>
           </div>
         </div>
       </div>
@@ -90,44 +136,15 @@ export const prerender = true;
     <!-- Who it's for -->
     <section class="section">
       <div class="container">
-        <h2>Who dvt is for</h2>
+        <h2 class="band-title" data-reveal>Who dvt is for</h2>
         <div class="persona-grid">
-          <div class="persona-card">
-            <h3>Analytics engineers &amp; data scientists</h3>
-            <p>
-              Already using dbt and dlt. Think in SQL. Use git. Care about reproducibility.
-              Want to build dashboards programmatically — not click-and-drag. Comfortable
-              with JSON specs. Would rather author a dashboard via API or let Claude write
-              the spec than wrestle with a GUI.
-            </p>
-            <p class="persona-signal">
-              "I want programmatic control over my dashboards — and the option to put them in git when it makes sense."
-            </p>
-          </div>
-          <div class="persona-card">
-            <h3>Data analysts who use AI heavily</h3>
-            <p>
-              May not write much code, but work in environments where Claude or another agent
-              drafts analytical artifacts. For this user, dvt's AI-native authoring means
-              describing what they want — and an agent builds it, with every detail editable
-              through a structured editor backed by the same open spec.
-            </p>
-            <p class="persona-signal">
-              "I asked Claude to build me a revenue dashboard and it just worked."
-            </p>
-          </div>
-          <div class="persona-card">
-            <h3>Platform &amp; BI teams</h3>
-            <p>
-              Need to standardize dashboards, enforce brand guidelines, manage permissions
-              at scale, and audit what data is being shown to whom. The DAD model — dashboards
-              as versioned, API-managed data — gives them auditability and control that legacy
-              GUI tools cannot.
-            </p>
-            <p class="persona-signal">
-              "We need every dashboard to be reviewable before it reaches production."
-            </p>
-          </div>
+          {personas.map((p, i) => (
+            <div class="persona-card" data-reveal data-reveal-delay={i * 120}>
+              <h3>{p.title}</h3>
+              <p>{p.body}</p>
+              <p class="persona-signal">{p.signal}</p>
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -135,61 +152,36 @@ export const prerender = true;
     <!-- Why now -->
     <section class="section section-alt">
       <div class="container">
-        <h2>Why now</h2>
-        <p class="section-lead">Three forces converge in 2025–2026 to make this tractable for a small team.</p>
+        <h2 class="band-title" data-reveal>Why now</h2>
+        <p class="band-sub" data-reveal>Three forces converge in 2025–2026 to make this tractable for a small team.</p>
         <div class="reasons">
-          <div class="reason">
-            <div class="reason-num">01</div>
-            <div>
-              <h3>LLMs can write dashboard specs</h3>
-              <p>
-                A well-structured JSON schema plus a good MCP server means Claude can author,
-                edit, and audit dashboards as first-class operations — not just describe what
-                they should look like. AI agents become first-class dashboard authors.
-              </p>
+          {reasons.map((r, i) => (
+            <div class="reason" data-reveal data-reveal-delay={i * 120}>
+              <div class="reason-num">{r.n}</div>
+              <div>
+                <h3>{r.title}</h3>
+                <p>{r.body}</p>
+              </div>
             </div>
-          </div>
-          <div class="reason">
-            <div class="reason-num">02</div>
-            <div>
-              <h3>The dbt/dlt community is large and underserved</h3>
-              <p>
-                Analytics engineers have great tooling for the data layer and poor tooling
-                for the visualization layer. They're the community most primed to adopt a
-                code-native visualization tool — and they're already asking for it.
-              </p>
-            </div>
-          </div>
-          <div class="reason">
-            <div class="reason-num">03</div>
-            <div>
-              <h3>Apache ECharts 6 solved the rendering problem</h3>
-              <p>
-                A token-based theme system, dynamic switching, and deep per-element config
-                APIs make a truly flexible spec-driven renderer feasible without building
-                chart primitives from scratch. The hard part is done.
-              </p>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     </section>
 
-    <!-- Semantic layer section -->
-    <section class="section section-alt">
+    <!-- Semantic layer -->
+    <section class="section">
       <div class="container">
-        <h2>The semantic layer you already have</h2>
-        <p class="section-lead">
+        <h2 class="band-title" data-reveal>The semantic layer you already have</h2>
+        <p class="band-sub" data-reveal>
           The modern data stack is being told it needs another abstraction: a semantic layer
           between the warehouse and every downstream tool. dvt's answer is different.
         </p>
         <div class="sem-split">
-          <div class="sem-problem">
+          <div class="sem-problem" data-reveal>
             <h3>The promise</h3>
             <p>
               Define your business metrics once — ARR, churn, pipeline — in a central governed
               schema. Every tool queries them consistently. No more competing definitions.
-              No more "which churn rate is the real one?"
             </p>
             <p>
               The problem: this requires another grammar to learn, another service to run, and
@@ -197,43 +189,24 @@ export const prerender = true;
               governance problem doesn't go away — it just moves.
             </p>
           </div>
-          <div class="sem-answer">
+          <div class="sem-answer" data-reveal data-reveal-delay="120">
             <h3>dvt's answer</h3>
             <p>
               When Claude authors a dvt dashboard, metric definitions come with it — embedded in
               the spec, stored in the database, queryable over the same REST API. You don't define
-              your metrics before building dashboards. The definitions emerge from the dashboards
-              themselves.
+              your metrics before building dashboards. The definitions emerge from the dashboards themselves.
             </p>
           </div>
         </div>
         <div class="sem-usecases">
-          <div class="sem-case">
-            <div class="sem-case-q">"Where is the sales forecast?"</div>
-            <p>
-              Ask dvt's search API. It returns the dashboard Claude built — with the business
-              context it wrote, the data source it used, and how often the team views it. No
-              separate metadata catalog. No manual documentation step.
-            </p>
-          </div>
-          <div class="sem-case">
-            <div class="sem-case-q">"How do we define churn — and do we have competing versions?"</div>
-            <p>
-              Query all panels that reference churn-related metrics. dvt surfaces every
-              definition in use, who created each one (human or AI agent), and which version
-              the team actually looks at. Usage frequency becomes a proxy for canonical truth.
-            </p>
-          </div>
-          <div class="sem-case">
-            <div class="sem-case-q">"What data is the executive revenue dashboard built on?"</div>
-            <p>
-              Every panel in a dvt spec records its data source, metric reference, and the
-              description Claude wrote for it. Full lineage is in the spec. No separate lineage
-              tool required.
-            </p>
-          </div>
+          {cases.map((c, i) => (
+            <div class="sem-case" data-reveal data-reveal-delay={i * 100}>
+              <div class="sem-case-q">{c.q}</div>
+              <p>{c.a}</p>
+            </div>
+          ))}
         </div>
-        <p class="sem-caveat">
+        <p class="sem-caveat" data-reveal>
           dvt doesn't replace a semantic layer at the warehouse layer — if you need
           ad-hoc metric queries against raw tables, MetricFlow or Cube still do that well.
           But for visualization-layer governance — where is this metric shown, how is it
@@ -242,21 +215,21 @@ export const prerender = true;
       </div>
     </section>
 
-    <!-- The long game -->
-    <section class="section">
-      <div class="container long-game">
-        <h2>The long game</h2>
-        <p>
-          dvt's long-term moat is the <strong>spec format becoming an industry standard</strong> —
-          the thing every AI agent emits when building dashboards, the thing that travels
-          between tools, the thing that analytics engineers put in their repos.
+    <!-- Closing statement: dark, immersive -->
+    <section class="statement statement--dark" data-reveal>
+      <div class="container">
+        <span class="statement-kicker">The long game</span>
+        <p class="statement-quote">
+          The spec format becomes an industry standard — the thing every AI agent
+          emits when building dashboards, the thing that travels between tools,
+          the thing analytics engineers put in their repos.
         </p>
-        <p>
+        <p class="statement-foot">
           This is the dbt playbook: the spec and CLI became the standard, and that standard —
-          plus hosted Cloud, brand, and community — became the moat. The code of the engine
-          is not the moat. The spec is.
+          plus hosted Cloud, brand, and community — became the moat.
+          <strong>The code of the engine is not the moat. The spec is.</strong>
         </p>
-        <a href="/spec" class="btn-spec-link">See the spec →</a>
+        <a href="/spec" class="statement-cta">See the spec →</a>
       </div>
     </section>
 
@@ -265,10 +238,17 @@ export const prerender = true;
   <Footer />
 </Base>
 
+<script>
+  import '../scripts/reveal.ts';
+</script>
+
 <style>
   .page-hero {
-    padding: var(--space-16) 0 var(--space-12);
+    padding: var(--space-24) 0 var(--space-16);
     border-bottom: 1px solid var(--color-neutral-200);
+    background:
+      radial-gradient(80% 120% at 0% 0%, rgba(79, 70, 229, 0.05), transparent 60%),
+      radial-gradient(70% 120% at 100% 0%, rgba(91, 191, 186, 0.06), transparent 55%);
   }
 
   .eyebrow {
@@ -281,20 +261,20 @@ export const prerender = true;
   }
 
   .page-hero h1 {
-    font-size: clamp(var(--text-3xl), 5vw, 56px);
+    font-size: clamp(var(--text-4xl), 6vw, 64px);
     font-weight: 800;
-    line-height: 1.1;
+    line-height: 1.05;
     letter-spacing: -0.03em;
     color: var(--color-neutral-900);
     margin-bottom: var(--space-5);
-    max-width: 700px;
+    max-width: 800px;
   }
 
   .lead {
-    font-size: var(--text-lg);
+    font-size: var(--text-xl);
     color: var(--color-neutral-600);
-    line-height: 1.65;
-    max-width: 600px;
+    line-height: 1.6;
+    max-width: 620px;
   }
 
   .section { padding: var(--space-16) 0; }
@@ -305,206 +285,220 @@ export const prerender = true;
     border-bottom: 1px solid var(--color-neutral-200);
   }
 
-  .section h2 {
-    font-size: var(--text-2xl);
+  .band-title {
+    font-size: clamp(var(--text-2xl), 3vw, var(--text-3xl));
     font-weight: 700;
+    letter-spacing: -0.02em;
     color: var(--color-neutral-900);
     margin-bottom: var(--space-6);
   }
-
-  .section-lead {
+  .band-sub {
     font-size: var(--text-base);
     color: var(--color-neutral-600);
     margin-bottom: var(--space-8);
-    max-width: 540px;
+    max-width: 560px;
   }
 
-  /* Thesis */
-  .thesis-block {
+  /* ── Full-bleed statements ──────────────────────────────────────── */
+  .statement { padding: var(--space-24) 0; }
+  .statement--light {
+    background:
+      radial-gradient(60% 100% at 0% 50%, rgba(91, 191, 186, 0.07), transparent 60%),
+      var(--color-white);
+  }
+  .statement--light .statement-quote {
     border-left: 3px solid var(--color-brand-mark);
     padding-left: var(--space-8);
-    max-width: 720px;
-  }
-
-  .thesis-quote {
-    font-size: clamp(var(--text-lg), 2.5vw, var(--text-xl));
+    max-width: 880px;
+    font-size: clamp(var(--text-xl), 3.4vw, 34px);
     font-weight: 500;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
     color: var(--color-neutral-800);
-    line-height: 1.6;
-    font-style: italic;
   }
+  .statement--light em { color: var(--color-brand-navy); font-style: italic; }
 
-  /* Stack diagram */
+  .statement--dark {
+    background:
+      radial-gradient(90% 140% at 100% 0%, rgba(79, 70, 229, 0.25), transparent 55%),
+      var(--color-brand-navy);
+  }
+  .statement--dark .statement-kicker {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-brand-teal-light);
+  }
+  .statement--dark .statement-quote {
+    margin-top: var(--space-5);
+    max-width: 860px;
+    font-size: clamp(var(--text-xl), 3.6vw, 36px);
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+    color: var(--color-white);
+  }
+  .statement-foot {
+    margin-top: var(--space-6);
+    max-width: 640px;
+    font-size: var(--text-base);
+    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.72);
+  }
+  .statement-foot strong { color: var(--color-white); }
+  .statement-cta {
+    display: inline-flex;
+    margin-top: var(--space-8);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--color-brand-teal-light);
+  }
+  .statement-cta:hover { color: var(--color-white); }
+
+  /* ── Stack diagram ──────────────────────────────────────────────── */
   .two-col {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1.1fr 0.9fr;
     gap: var(--space-16);
     align-items: center;
   }
   @media (max-width: 768px) {
-    .two-col { grid-template-columns: 1fr; }
+    .two-col { grid-template-columns: 1fr; gap: var(--space-8); }
   }
-
   .col-text p {
     color: var(--color-neutral-700);
     line-height: 1.7;
     margin-bottom: var(--space-4);
+  }
+  .col-text h2 {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-5);
   }
 
   .stack-diagram {
     background: var(--color-white);
     border: 1px solid var(--color-neutral-200);
     border-radius: var(--radius-lg);
-    padding: var(--space-8);
+    padding: var(--space-12) var(--space-8);
     text-align: center;
+    box-shadow: var(--shadow-md);
   }
-
   .stack-row {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--space-3);
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-5);
     flex-wrap: wrap;
   }
-
   .stack-tool {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 4px;
-    padding: var(--space-3) var(--space-5);
+    padding: var(--space-4) var(--space-6);
     background: var(--color-neutral-100);
     border: 1px solid var(--color-neutral-200);
     border-radius: var(--radius-lg);
-    min-width: 72px;
+    min-width: 84px;
   }
   .stack-tool.dvt {
-    background: rgba(91, 191, 186, 0.1);
+    background: rgba(91, 191, 186, 0.12);
     border-color: var(--color-brand-mark);
+    box-shadow: 0 0 0 4px rgba(91, 191, 186, 0.12);
   }
-
   .tool-name {
     font-family: var(--font-mono);
-    font-size: var(--text-base);
+    font-size: var(--text-lg);
     font-weight: 600;
     color: var(--color-neutral-800);
   }
   .stack-tool.dvt .tool-name { color: var(--color-brand-navy); }
-
   .tool-role {
     font-size: 11px;
     color: var(--color-neutral-400);
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
-
-  .stack-arrow { color: var(--color-neutral-300); font-size: var(--text-lg); }
+  .stack-arrow { color: var(--color-neutral-300); font-size: var(--text-xl); }
   .stack-label { font-size: var(--text-xs); color: var(--color-neutral-400); }
 
-  /* Personas */
+  /* ── Personas ───────────────────────────────────────────────────── */
   .persona-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: var(--space-4);
+    gap: var(--space-5);
   }
-
   .persona-card {
     border: 1px solid var(--color-neutral-200);
     border-radius: var(--radius-lg);
     padding: var(--space-6);
+    background: var(--color-white);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   }
-
+  .persona-card:hover {
+    border-color: var(--color-brand-mark);
+    box-shadow: var(--shadow-md);
+  }
   .persona-card h3 {
     font-size: var(--text-base);
     font-weight: 600;
     color: var(--color-neutral-900);
     margin-bottom: var(--space-3);
   }
-
   .persona-card p {
     font-size: var(--text-sm);
     color: var(--color-neutral-600);
     line-height: 1.65;
     margin-bottom: var(--space-3);
   }
-
   .persona-signal {
     font-style: italic;
-    color: var(--color-neutral-400) !important;
+    color: var(--color-neutral-500) !important;
     border-top: 1px solid var(--color-neutral-100);
     padding-top: var(--space-3);
     margin-bottom: 0 !important;
   }
 
-  /* Why now */
-  .reasons {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-8);
-  }
-
-  .reason {
-    display: flex;
-    gap: var(--space-6);
-    align-items: flex-start;
-  }
-
+  /* ── Why now ────────────────────────────────────────────────────── */
+  .reasons { display: flex; flex-direction: column; gap: var(--space-8); }
+  .reason { display: flex; gap: var(--space-6); align-items: flex-start; }
   .reason-num {
     font-family: var(--font-mono);
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--color-brand-mark);
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    color: var(--color-neutral-200);
     flex-shrink: 0;
-    padding-top: 3px;
-    min-width: 28px;
+    min-width: 64px;
+    line-height: 1;
   }
-
   .reason h3 {
-    font-size: var(--text-base);
+    font-size: var(--text-lg);
     font-weight: 600;
     color: var(--color-neutral-900);
     margin-bottom: var(--space-2);
   }
-
   .reason p {
-    font-size: var(--text-sm);
+    font-size: var(--text-base);
     color: var(--color-neutral-600);
     line-height: 1.65;
+    max-width: 60ch;
   }
 
-  /* Long game */
-  .long-game {
-    max-width: 640px;
-  }
-
-  .long-game p {
-    color: var(--color-neutral-700);
-    line-height: 1.7;
-    margin-bottom: var(--space-5);
-  }
-
-  .btn-spec-link {
-    display: inline-flex;
-    align-items: center;
-    font-size: var(--text-base);
-    font-weight: 600;
-    color: var(--color-brand-navy);
-    transition: color var(--transition-fast);
-  }
-  .btn-spec-link:hover { color: var(--color-brand-mark); }
-
-  /* Semantic layer section */
+  /* ── Semantic layer ─────────────────────────────────────────────── */
   .sem-split {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--space-8);
+    gap: var(--space-6);
     margin-bottom: var(--space-8);
   }
   @media (max-width: 768px) {
     .sem-split { grid-template-columns: 1fr; }
   }
-
   .sem-problem, .sem-answer {
     padding: var(--space-6);
     border-radius: var(--radius-lg);
@@ -515,7 +509,6 @@ export const prerender = true;
     background: rgba(91, 191, 186, 0.06);
     border-color: rgba(91, 191, 186, 0.3);
   }
-
   .sem-problem h3, .sem-answer h3 {
     font-size: var(--text-sm);
     font-weight: 600;
@@ -525,7 +518,6 @@ export const prerender = true;
   }
   .sem-problem h3 { color: var(--color-neutral-400); }
   .sem-answer h3 { color: var(--color-brand-mark); }
-
   .sem-problem p, .sem-answer p {
     font-size: var(--text-sm);
     color: var(--color-neutral-600);
@@ -534,35 +526,26 @@ export const prerender = true;
   }
   .sem-problem p:last-child, .sem-answer p:last-child { margin-bottom: 0; }
 
-  .sem-usecases {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    margin-bottom: var(--space-6);
-  }
-
+  .sem-usecases { display: flex; flex-direction: column; gap: var(--space-4); margin-bottom: var(--space-6); }
   .sem-case {
     border: 1px solid var(--color-neutral-200);
     border-radius: var(--radius-lg);
     padding: var(--space-5) var(--space-6);
     background: var(--color-white);
+    border-left: 3px solid var(--color-brand-mark);
   }
-
   .sem-case-q {
-    font-size: var(--text-sm);
+    font-size: var(--text-base);
     font-weight: 600;
-    font-style: italic;
-    color: var(--color-neutral-700);
+    color: var(--color-neutral-800);
     margin-bottom: var(--space-2);
   }
-
   .sem-case p {
     font-size: var(--text-sm);
     color: var(--color-neutral-600);
     line-height: 1.65;
     margin: 0;
   }
-
   .sem-caveat {
     font-size: var(--text-sm);
     color: var(--color-neutral-400);
@@ -570,5 +553,6 @@ export const prerender = true;
     border-top: 1px solid var(--color-neutral-200);
     padding-top: var(--space-4);
     margin-top: var(--space-2);
+    max-width: 70ch;
   }
 </style>

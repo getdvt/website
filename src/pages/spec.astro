@@ -3,6 +3,10 @@ import Base from '../layouts/Base.astro';
 import Nav from '../components/Nav.astro';
 import Handraise from '../components/Handraise.astro';
 import Footer from '../components/Footer.astro';
+import SpecPlayground from '../components/SpecPlayground.astro';
+import ChartCarousel from '../components/ChartCarousel.astro';
+import ChartGallery from '../components/ChartGallery.astro';
+import { totalChartCount } from '../data/charts';
 
 export const prerender = true;
 
@@ -10,129 +14,19 @@ export const prerender = true;
 // demo.dvt.dev (app.dvt.dev is reserved for the eventual authenticated product).
 const BUILDER_URL = 'https://demo.dvt.dev/builder';
 
-const example1Spec = `{
-  "schemaVersion": 1,
-  "meta": { "title": "Monthly Revenue" },
-  "theme": {
-    "tokens": {
-      "semantic": {
-        "chart.series.1": "#4F46E5",
-        "chart.axis.label.color": "#71717A",
-        "chart.grid.line.color": "#F4F4F5"
-      }
-    }
-  },
-  "layout": {
-    "columns": 24,
-    "items": {
-      "lg": [{ "i": "rev", "x": 0, "y": 0, "w": 24, "h": 10 }]
-    }
-  },
-  "panels": [{
-    "id": "rev",
-    "type": "chart:bar",
-    "title": "Monthly Revenue",
-    "data": {
-      "sourceId": "warehouse-prod",
-      "query": "SELECT month, SUM(revenue) AS revenue FROM analytics.public.sales GROUP BY month"
-    },
-    "spec": {
-      "xAxis": { "type": "category", "name": "Month" },
-      "yAxis": { "type": "value", "name": "Revenue ($k)" },
-      "series": [{ "type": "bar", "dataKey": "revenue", "barMaxWidth": 48 }]
-    }
-  }]
-}`;
-
-const example2Spec = `{
-  "schemaVersion": 1,
-  "meta": { "title": "Growth Dashboard" },
-  "layout": {
-    "columns": 24,
-    "items": {
-      "lg": [
-        { "i": "kpi-arr",   "x": 0,  "y": 0, "w": 8, "h": 4 },
-        { "i": "kpi-users", "x": 8,  "y": 0, "w": 8, "h": 4 },
-        { "i": "kpi-nrr",   "x": 16, "y": 0, "w": 8, "h": 4 },
-        { "i": "wau-trend", "x": 0,  "y": 4, "w": 14, "h": 9 },
-        { "i": "rev-mix",   "x": 14, "y": 4, "w": 10, "h": 9 }
-      ]
-    }
-  },
-  "panels": [
-    {
-      "id": "kpi-arr",
-      "type": "metric",
-      "title": "ARR",
-      "data": { "metricRef": "metric.arr.current" },
-      "spec": { "format": "currency", "comparison": "mom" }
-    },
-    {
-      "id": "wau-trend",
-      "type": "chart:line",
-      "title": "Weekly Active Users",
-      "data": { "metricRef": "metric.wau.weekly_series" },
-      "spec": {
-        "series": [{ "type": "line", "smooth": true, "areaStyle": {} }]
-      }
-    },
-    {
-      "id": "rev-mix",
-      "type": "chart:bar",
-      "title": "Revenue by Plan",
-      "spec": { "series": [{ "type": "bar", "stack": "plan" }] }
-    }
-  ]
-}`;
-
-const example3Spec = `// Claude receives this prompt via the dvt MCP server:
-// "Create a funnel dashboard showing signup → activation → paid
-//  conversion for the last 30 days. Use our brand colors."
-
-// Claude calls dvt_dashboard_apply_spec with:
-{
-  "schemaVersion": 1,
-  "meta": {
-    "title": "Signup Funnel — Last 30 days",
-    "createdBy": { "actorType": "agent", "actorId": "claude-opus-4" }
-  },
-  "layout": {
-    "columns": 24,
-    "items": {
-      "lg": [
-        { "i": "funnel",    "x": 0,  "y": 0, "w": 12, "h": 12 },
-        { "i": "cvr-trend", "x": 12, "y": 0, "w": 12, "h": 12 }
-      ]
-    }
-  },
-  "panels": [
-    {
-      "id": "funnel",
-      "type": "chart:funnel",
-      "title": "Conversion Funnel",
-      "data": { "metricRef": "metric.funnel.signup_to_paid_30d" },
-      "spec": {
-        "steps": ["Signup", "Activated", "Trial", "Paid"],
-        "series": [{ "type": "funnel", "label": { "show": true } }]
-      }
-    },
-    {
-      "id": "cvr-trend",
-      "type": "chart:line",
-      "title": "Paid Conversion Rate (trailing 90d)",
-      "data": { "metricRef": "metric.cvr.paid_90d_series" },
-      "spec": {
-        "yAxis": { "type": "value", "axisLabel": { "formatter": "{value}%" } },
-        "series": [{ "type": "line", "smooth": true }]
-      }
-    }
-  ]
-}`;
+const features = [
+  { icon: '◑', title: 'Themes & tokens', body: 'Every visual property — down to the gap between an axis and its title — is a named, storable token. Org and dashboard themes cascade.' },
+  { icon: '⊞', title: 'Metric KPIs', body: 'Stat panels with currency/percent formatting, period comparisons, deltas, and inline sparklines — declared, not configured by hand.' },
+  { icon: '⚡', title: 'AI authoring via MCP', body: 'Claude POSTs a valid spec through the dvt MCP server and the dashboard appears — no GUI clicks, no screenshots, no pasted JSON.' },
+  { icon: '✓', title: 'Validate → preview → apply', body: 'Validate any spec before saving, preview changes before applying. Same spec → same pixels, deterministically, every time.' },
+  { icon: '◉', title: 'Geo & maps', body: 'Choropleths and geographic flows over bundled USA / world boundaries — or drive geography straight from a GeoJSON column.' },
+  { icon: '❝', title: 'Built-in doc layer', body: 'Panels carry their own intent, assumptions, and the exact query that built them — the documentation travels inside the spec.' },
+];
 ---
 
 <Base
   title="The dvt JSON Dashboard Spec — open format, REST API + MCP"
-  description="Every dvt dashboard is a versioned JSON spec — stored as a database record, updated via REST API or MCP, authored by humans and AI agents alike. Open format. No deploy pipeline."
+  description="Every dvt dashboard is a versioned JSON spec — stored as a database record, updated via REST API or MCP, authored by humans and AI agents alike. 30+ chart and table types. Open format."
 >
   <Nav />
   <main>
@@ -157,10 +51,22 @@ const example3Spec = `// Claude receives this prompt via the dvt MCP server:
       </div>
     </section>
 
-    <!-- DAD concept -->
-    <section class="section section-alt">
+    <!-- Live spec ⇄ render playground -->
+    <section class="section pg-section">
       <div class="container">
-        <h2>Dashboards as Data (DAD)</h2>
+        <div class="section-head">
+          <span class="kicker">Edit the spec, watch it render</span>
+          <h2>Left is the source of truth. Right is what ships.</h2>
+          <p>The whole dashboard is the JSON on the left — flip between examples and see the same engine dvt ships render it live.</p>
+        </div>
+        <SpecPlayground />
+      </div>
+    </section>
+
+    <!-- DAD concept -->
+    <section class="section section-alt" data-reveal>
+      <div class="container">
+        <h2 class="band-title">Dashboards as Data (DAD)</h2>
         <div class="dad-grid">
           <div class="dad-item">
             <div class="dad-icon">◎</div>
@@ -186,222 +92,49 @@ const example3Spec = `// Claude receives this prompt via the dvt MCP server:
       </div>
     </section>
 
-    <!-- Example 1 -->
-    <section class="section">
+    <!-- Chart showcase: carousel + gallery -->
+    <section class="section gallery-section">
       <div class="container">
-        <div class="example-header">
-          <span class="example-num">Example 1</span>
-          <h2>A simple bar chart</h2>
-          <p>The smallest meaningful spec: one panel, one query, a handful of visual properties.</p>
-        </div>
-        <div class="example-layout">
-          <div class="code-pane">
-            <div class="code-label">dashboard.json</div>
-            <pre class="code-block"><code>{example1Spec}</code></pre>
-          </div>
-          <div class="preview-pane">
-            <div class="preview-label">Renders as</div>
-            <div class="dashboard-preview">
-              <div class="panel-header">Monthly Revenue</div>
-              <!-- SVG bar chart mockup -->
-              <svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" class="chart-svg">
-                <!-- Grid lines -->
-                <line x1="48" y1="20"  x2="390" y2="20"  stroke="#F4F4F5" stroke-width="1"/>
-                <line x1="48" y1="60"  x2="390" y2="60"  stroke="#F4F4F5" stroke-width="1"/>
-                <line x1="48" y1="100" x2="390" y2="100" stroke="#F4F4F5" stroke-width="1"/>
-                <line x1="48" y1="140" x2="390" y2="140" stroke="#F4F4F5" stroke-width="1"/>
-                <!-- X axis -->
-                <line x1="48" y1="160" x2="390" y2="160" stroke="#E4E4E7" stroke-width="1"/>
-                <!-- Y axis labels -->
-                <text x="40" y="23"  text-anchor="end" font-size="9" fill="#A1A1AA">$400k</text>
-                <text x="40" y="63"  text-anchor="end" font-size="9" fill="#A1A1AA">$300k</text>
-                <text x="40" y="103" text-anchor="end" font-size="9" fill="#A1A1AA">$200k</text>
-                <text x="40" y="143" text-anchor="end" font-size="9" fill="#A1A1AA">$100k</text>
-                <!-- Bars (Jan–Jun with ascending trend + variation) -->
-                <rect x="60"  y="128" width="36" height="32" rx="3" fill="#4F46E5" opacity="0.85"/>
-                <rect x="115" y="112" width="36" height="48" rx="3" fill="#4F46E5" opacity="0.85"/>
-                <rect x="170" y="96"  width="36" height="64" rx="3" fill="#4F46E5" opacity="0.9"/>
-                <rect x="225" y="80"  width="36" height="80" rx="3" fill="#4F46E5" opacity="0.9"/>
-                <rect x="280" y="60"  width="36" height="100" rx="3" fill="#4F46E5"/>
-                <rect x="335" y="40"  width="36" height="120" rx="3" fill="#4F46E5"/>
-                <!-- X axis labels -->
-                <text x="78"  y="175" text-anchor="middle" font-size="9" fill="#A1A1AA">Jan</text>
-                <text x="133" y="175" text-anchor="middle" font-size="9" fill="#A1A1AA">Feb</text>
-                <text x="188" y="175" text-anchor="middle" font-size="9" fill="#A1A1AA">Mar</text>
-                <text x="243" y="175" text-anchor="middle" font-size="9" fill="#A1A1AA">Apr</text>
-                <text x="298" y="175" text-anchor="middle" font-size="9" fill="#A1A1AA">May</text>
-                <text x="353" y="175" text-anchor="middle" font-size="9" fill="#A1A1AA">Jun</text>
-                <!-- Y axis title -->
-                <text x="10" y="100" text-anchor="middle" font-size="9" fill="#A1A1AA" transform="rotate(-90 10 100)">Revenue ($k)</text>
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Example 2 -->
-    <section class="section section-alt">
-      <div class="container">
-        <div class="example-header">
-          <span class="example-num">Example 2</span>
-          <h2>A multi-panel growth dashboard</h2>
-          <p>KPI metrics across the top, a trend line and stacked bar in the main grid — all from one spec.</p>
-        </div>
-        <div class="example-layout">
-          <div class="code-pane">
-            <div class="code-label">growth-dashboard.json</div>
-            <pre class="code-block"><code>{example2Spec}</code></pre>
-          </div>
-          <div class="preview-pane">
-            <div class="preview-label">Renders as</div>
-            <div class="dashboard-preview dashboard-preview--multi">
-              <!-- KPI row -->
-              <div class="kpi-row">
-                <div class="kpi-card">
-                  <div class="kpi-label">ARR</div>
-                  <div class="kpi-value">$1.2M</div>
-                  <div class="kpi-delta kpi-delta--up">↑ 18% MoM</div>
-                </div>
-                <div class="kpi-card">
-                  <div class="kpi-label">Weekly Active Users</div>
-                  <div class="kpi-value">4,821</div>
-                  <div class="kpi-delta kpi-delta--up">↑ 7% MoM</div>
-                </div>
-                <div class="kpi-card">
-                  <div class="kpi-label">Net Revenue Retention</div>
-                  <div class="kpi-value">118%</div>
-                  <div class="kpi-delta kpi-delta--up">↑ 3pp</div>
-                </div>
-              </div>
-              <!-- Chart row -->
-              <div class="chart-row">
-                <!-- Line chart mockup -->
-                <div class="mini-panel">
-                  <div class="mini-panel-title">Weekly Active Users</div>
-                  <svg viewBox="0 0 220 100" xmlns="http://www.w3.org/2000/svg" class="chart-svg-sm">
-                    <defs>
-                      <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#4F46E5" stop-opacity="0.2"/>
-                        <stop offset="100%" stop-color="#4F46E5" stop-opacity="0"/>
-                      </linearGradient>
-                    </defs>
-                    <line x1="20" y1="10" x2="210" y2="10" stroke="#F4F4F5" stroke-width="1"/>
-                    <line x1="20" y1="35" x2="210" y2="35" stroke="#F4F4F5" stroke-width="1"/>
-                    <line x1="20" y1="60" x2="210" y2="60" stroke="#F4F4F5" stroke-width="1"/>
-                    <line x1="20" y1="80" x2="210" y2="80" stroke="#E4E4E7" stroke-width="1"/>
-                    <path d="M25,70 C45,65 55,55 70,50 S95,38 110,35 S135,28 150,22 S175,16 195,12"
-                          stroke="#4F46E5" stroke-width="2" fill="none" stroke-linecap="round"/>
-                    <path d="M25,70 C45,65 55,55 70,50 S95,38 110,35 S135,28 150,22 S175,16 195,12 L195,80 L25,80 Z"
-                          fill="url(#areaGrad)"/>
-                    <text x="25"  y="92" font-size="7" fill="#A1A1AA" text-anchor="middle">W1</text>
-                    <text x="72"  y="92" font-size="7" fill="#A1A1AA" text-anchor="middle">W4</text>
-                    <text x="120" y="92" font-size="7" fill="#A1A1AA" text-anchor="middle">W8</text>
-                    <text x="168" y="92" font-size="7" fill="#A1A1AA" text-anchor="middle">W12</text>
-                  </svg>
-                </div>
-                <!-- Stacked bar mockup -->
-                <div class="mini-panel">
-                  <div class="mini-panel-title">Revenue by Plan</div>
-                  <svg viewBox="0 0 160 100" xmlns="http://www.w3.org/2000/svg" class="chart-svg-sm">
-                    <line x1="20" y1="80" x2="150" y2="80" stroke="#E4E4E7" stroke-width="1"/>
-                    <!-- Stacked bars: Starter (light teal) + Pro (teal) + Enterprise (navy) -->
-                    <rect x="28" y="60" width="20" height="20" rx="2" fill="#4F46E5" opacity="0.4"/>
-                    <rect x="28" y="44" width="20" height="16" rx="2" fill="#4F46E5" opacity="0.7"/>
-                    <rect x="28" y="34" width="20" height="10" rx="2" fill="#16263A" opacity="0.6"/>
-
-                    <rect x="56" y="55" width="20" height="25" rx="2" fill="#4F46E5" opacity="0.4"/>
-                    <rect x="56" y="36" width="20" height="19" rx="2" fill="#4F46E5" opacity="0.7"/>
-                    <rect x="56" y="24" width="20" height="12" rx="2" fill="#16263A" opacity="0.6"/>
-
-                    <rect x="84" y="48" width="20" height="32" rx="2" fill="#4F46E5" opacity="0.4"/>
-                    <rect x="84" y="28" width="20" height="20" rx="2" fill="#4F46E5" opacity="0.7"/>
-                    <rect x="84" y="14" width="20" height="14" rx="2" fill="#16263A" opacity="0.6"/>
-
-                    <rect x="112" y="42" width="20" height="38" rx="2" fill="#4F46E5" opacity="0.4"/>
-                    <rect x="112" y="22" width="20" height="20" rx="2" fill="#4F46E5" opacity="0.7"/>
-                    <rect x="112" y="10" width="20" height="12" rx="2" fill="#16263A" opacity="0.6"/>
-
-                    <text x="38"  y="92" font-size="7" fill="#A1A1AA" text-anchor="middle">Q1</text>
-                    <text x="66"  y="92" font-size="7" fill="#A1A1AA" text-anchor="middle">Q2</text>
-                    <text x="94"  y="92" font-size="7" fill="#A1A1AA" text-anchor="middle">Q3</text>
-                    <text x="122" y="92" font-size="7" fill="#A1A1AA" text-anchor="middle">Q4</text>
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Example 3: AI authored -->
-    <section class="section">
-      <div class="container">
-        <div class="example-header">
-          <span class="example-num">Example 3</span>
-          <h2>AI-authored via MCP</h2>
+        <div class="section-head" data-reveal>
+          <span class="kicker">One format, {totalChartCount}+ visual types</span>
+          <h2>Every chart is a few lines of spec.</h2>
           <p>
-            Claude receives a natural-language prompt through the dvt MCP server,
-            generates a valid spec, and applies it directly — no copy-paste, no GUI.
+            From a bar chart to an animated chart race, from sankey flows to cohort heat tables —
+            the same declarative JSON describes them all. No imperative drawing code in the authoring surface.
           </p>
         </div>
-        <div class="example-layout">
-          <div class="code-pane">
-            <div class="code-label">Claude + dvt MCP</div>
-            <pre class="code-block"><code>{example3Spec}</code></pre>
-          </div>
-          <div class="preview-pane">
-            <div class="preview-label">Renders as</div>
-            <div class="dashboard-preview dashboard-preview--funnel">
-              <div class="chart-row">
-                <!-- Funnel mockup -->
-                <div class="mini-panel">
-                  <div class="mini-panel-title">Conversion Funnel</div>
-                  <svg viewBox="0 0 180 130" xmlns="http://www.w3.org/2000/svg" class="chart-svg-sm">
-                    <!-- Funnel steps -->
-                    <polygon points="20,15 160,15 145,42 35,42" fill="#4F46E5" opacity="0.9"/>
-                    <text x="90" y="33" text-anchor="middle" font-size="8" fill="white" font-weight="600">Signup — 10,000</text>
 
-                    <polygon points="35,47 145,47 130,74 50,74" fill="#4F46E5" opacity="0.7"/>
-                    <text x="90" y="65" text-anchor="middle" font-size="8" fill="white" font-weight="600">Activated — 6,200</text>
+        <div data-reveal>
+          <ChartCarousel />
+        </div>
 
-                    <polygon points="50,79 130,79 115,106 65,106" fill="#4F46E5" opacity="0.5"/>
-                    <text x="90" y="97" text-anchor="middle" font-size="8" fill="#16263A" font-weight="600">Trial — 2,400</text>
+        <div class="gallery-wrap" data-reveal>
+          <ChartGallery />
+        </div>
+      </div>
+    </section>
 
-                    <polygon points="65,111 115,111 105,125 75,125" fill="#16263A" opacity="0.7"/>
-                    <text x="90" y="121" text-anchor="middle" font-size="8" fill="white" font-weight="600">Paid — 840</text>
-                  </svg>
-                </div>
-                <!-- CVR trend mockup -->
-                <div class="mini-panel">
-                  <div class="mini-panel-title">Paid CVR (trailing 90d)</div>
-                  <svg viewBox="0 0 220 100" xmlns="http://www.w3.org/2000/svg" class="chart-svg-sm">
-                    <line x1="20" y1="15" x2="210" y2="15" stroke="#F4F4F5" stroke-width="1"/>
-                    <line x1="20" y1="40" x2="210" y2="40" stroke="#F4F4F5" stroke-width="1"/>
-                    <line x1="20" y1="65" x2="210" y2="65" stroke="#F4F4F5" stroke-width="1"/>
-                    <line x1="20" y1="80" x2="210" y2="80" stroke="#E4E4E7" stroke-width="1"/>
-                    <!-- CVR line with slight upward trend and dip -->
-                    <path d="M25,68 C40,65 55,60 75,62 S105,58 120,52 S155,44 175,40 S195,36 205,32"
-                          stroke="#4F46E5" stroke-width="2" fill="none" stroke-linecap="round"/>
-                    <text x="8"  y="18" font-size="7" fill="#A1A1AA">12%</text>
-                    <text x="8"  y="43" font-size="7" fill="#A1A1AA">9%</text>
-                    <text x="8"  y="68" font-size="7" fill="#A1A1AA">6%</text>
-                  </svg>
-                </div>
-              </div>
-              <div class="ai-badge">
-                <span class="ai-badge-dot"></span>
-                Generated by Claude via <code>dvt_dashboard_apply_spec</code>
+    <!-- Feature strip -->
+    <section class="section section-alt" data-reveal>
+      <div class="container">
+        <h2 class="band-title">More than charts</h2>
+        <p class="band-sub">The spec carries everything a dashboard needs — not just the picture.</p>
+        <div class="feature-grid">
+          {features.map((f) => (
+            <div class="feature">
+              <div class="feature-icon">{f.icon}</div>
+              <div>
+                <h3>{f.title}</h3>
+                <p>{f.body}</p>
               </div>
             </div>
-          </div>
+          ))}
         </div>
       </div>
     </section>
 
     <!-- Schema note -->
-    <section class="section section-alt">
+    <section class="section" data-reveal>
       <div class="container schema-note">
         <h2>Open spec, published schema</h2>
         <p>
@@ -422,6 +155,11 @@ const example3Spec = `// Claude receives this prompt via the dvt MCP server:
   </main>
   <Footer />
 </Base>
+
+<script>
+  import '../scripts/charts.ts';
+  import '../scripts/reveal.ts';
+</script>
 
 <style>
   .page-hero {
@@ -463,232 +201,113 @@ const example3Spec = `// Claude receives this prompt via the dvt MCP server:
     border-bottom: 1px solid var(--color-neutral-200);
   }
 
+  .pg-section { padding-top: var(--space-12); }
+
+  /* Section heads */
+  .section-head { max-width: 640px; margin-bottom: var(--space-8); }
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-brand-mark);
+  }
+  .section-head h2 {
+    font-size: clamp(var(--text-2xl), 3.5vw, var(--text-4xl));
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: var(--color-neutral-900);
+    margin: var(--space-3) 0 var(--space-3);
+  }
+  .section-head p {
+    font-size: var(--text-base);
+    color: var(--color-neutral-600);
+    line-height: 1.65;
+  }
+  .band-title {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-2);
+  }
+  .band-sub {
+    font-size: var(--text-sm);
+    color: var(--color-neutral-500);
+    margin-bottom: var(--space-8);
+  }
+
   /* DAD grid */
   .dad-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: var(--space-6);
+    margin-top: var(--space-8);
   }
-
   .dad-item {
     padding: var(--space-8);
     background: var(--color-white);
     border: 1px solid var(--color-neutral-200);
     border-radius: var(--radius-lg);
   }
-
   .dad-icon {
     font-size: 20px;
     margin-bottom: var(--space-3);
     color: var(--color-brand-mark);
   }
-
   .dad-item h3 {
     font-size: var(--text-sm);
     font-weight: 600;
     color: var(--color-neutral-900);
     margin-bottom: var(--space-2);
   }
-
   .dad-item p {
     font-size: var(--text-sm);
     color: var(--color-neutral-600);
     line-height: 1.6;
   }
 
-  /* Examples */
-  .example-header {
-    margin-bottom: var(--space-8);
-  }
+  /* Gallery section spacing */
+  .gallery-wrap { margin-top: var(--space-12); }
 
-  .example-num {
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-    font-weight: 600;
-    color: var(--color-brand-mark);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-
-  .example-header h2 {
-    font-size: var(--text-2xl);
-    font-weight: 700;
-    color: var(--color-neutral-900);
-    margin: var(--space-2) 0 var(--space-2);
-  }
-
-  .example-header p {
-    font-size: var(--text-sm);
-    color: var(--color-neutral-500);
-  }
-
-  .example-layout {
+  /* Feature strip */
+  .feature-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-6);
-    align-items: start;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--space-5);
   }
-  @media (max-width: 900px) {
-    .example-layout { grid-template-columns: 1fr; }
-  }
-
-  .code-label, .preview-label {
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-    color: var(--color-neutral-400);
-    margin-bottom: var(--space-2);
-    letter-spacing: 0.04em;
-  }
-
-  .code-block {
-    background: var(--color-neutral-950);
-    border-radius: var(--radius-lg);
+  .feature {
+    display: flex;
+    gap: var(--space-4);
+    align-items: flex-start;
     padding: var(--space-5);
-    overflow-x: auto;
-    overflow-y: auto;
-    max-height: 480px;
-    margin: 0;
-  }
-
-  .code-block code {
-    font-family: var(--font-mono);
-    font-size: 11.5px;
-    line-height: 1.65;
-    color: #e2e8f0;
-    white-space: pre;
-  }
-
-  /* Dashboard preview pane */
-  .dashboard-preview {
     background: var(--color-white);
     border: 1px solid var(--color-neutral-200);
     border-radius: var(--radius-lg);
-    overflow: hidden;
   }
-
-  .panel-header {
-    padding: 10px var(--space-4);
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--color-neutral-700);
-    border-bottom: 1px solid var(--color-neutral-100);
-    background: var(--color-neutral-50);
-  }
-
-  .chart-svg {
-    display: block;
-    width: 100%;
-    padding: var(--space-3) var(--space-3) var(--space-2);
-    font-family: var(--font-ui);
-  }
-
-  /* Multi-panel preview */
-  .dashboard-preview--multi,
-  .dashboard-preview--funnel {
-    padding: var(--space-3);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .kpi-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-2);
-  }
-
-  .kpi-card {
-    background: var(--color-neutral-50);
-    border: 1px solid var(--color-neutral-100);
-    border-radius: var(--radius-md);
-    padding: var(--space-3);
-  }
-
-  .kpi-label {
-    font-size: 10px;
-    color: var(--color-neutral-400);
-    margin-bottom: 4px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .kpi-value {
-    font-size: var(--text-lg);
-    font-weight: 700;
-    color: var(--color-neutral-900);
-    line-height: 1;
-    margin-bottom: 4px;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .kpi-delta {
-    font-size: 10px;
-    font-weight: 500;
-  }
-  .kpi-delta--up { color: var(--color-success); }
-  .kpi-delta--down { color: var(--color-error); }
-
-  .chart-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-2);
-  }
-
-  .mini-panel {
-    background: var(--color-neutral-50);
-    border: 1px solid var(--color-neutral-100);
-    border-radius: var(--radius-md);
-    padding: var(--space-3) var(--space-3) var(--space-2);
-  }
-
-  .mini-panel-title {
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--color-neutral-500);
-    margin-bottom: var(--space-2);
-  }
-
-  .chart-svg-sm {
-    display: block;
-    width: 100%;
-    font-family: var(--font-ui);
-  }
-
-  /* AI badge */
-  .ai-badge {
+  .feature-icon {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    font-size: 10px;
-    color: var(--color-neutral-400);
-    padding: var(--space-2) var(--space-3);
-    background: var(--color-neutral-50);
-    border: 1px solid var(--color-neutral-100);
+    justify-content: center;
+    font-size: 18px;
+    color: var(--color-brand-mark);
+    background: rgba(91, 191, 186, 0.1);
     border-radius: var(--radius-md);
   }
-
-  .ai-badge-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--color-brand-mark);
-    flex-shrink: 0;
-    animation: pulse 2s ease-in-out infinite;
+  .feature h3 {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--color-neutral-900);
+    margin-bottom: 4px;
   }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-
-  .ai-badge code {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    background: var(--color-neutral-100);
-    padding: 1px 4px;
-    border-radius: 3px;
+  .feature p {
+    font-size: var(--text-sm);
     color: var(--color-neutral-600);
+    line-height: 1.6;
   }
 
   /* Schema note */
@@ -705,7 +324,6 @@ const example3Spec = `// Claude receives this prompt via the dvt MCP server:
     margin-bottom: var(--space-4);
     font-size: var(--text-sm);
   }
-
   .btn-access-inline {
     display: inline-flex;
     align-items: center;
@@ -716,6 +334,7 @@ const example3Spec = `// Claude receives this prompt via the dvt MCP server:
   }
   .btn-access-inline:hover { color: var(--color-brand-mark); }
 
+  /* Hero CTAs */
   .hero-cta-row {
     display: flex;
     flex-wrap: wrap;

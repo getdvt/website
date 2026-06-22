@@ -1,0 +1,122 @@
+---
+import { Code } from 'astro:components';
+// Progressive-disclosure spec viewer: collapsed by default (native <details>,
+// zero JS for the toggle), Shiki-highlighted at build time, with a copy button.
+interface Props {
+  code: string;
+  lang?: 'json' | 'js';
+  filename?: string;
+  open?: boolean;
+}
+const { code, lang = 'json', filename, open = false } = Astro.props;
+---
+
+<details class="spec-reveal" open={open}>
+  <summary>
+    <svg class="chev" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"
+      ><path d="M4 2.5 7.5 6 4 9.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg
+    >
+    <span class="label">View spec</span>
+    {filename && <span class="filename">{filename}</span>}
+  </summary>
+  <div class="spec-body">
+    <button class="copy-btn" type="button" data-copy aria-label="Copy spec">
+      <span class="copy-default">Copy</span>
+      <span class="copy-done">Copied</span>
+    </button>
+    <Code code={code} lang={lang} theme="github-dark" />
+  </div>
+</details>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.spec-reveal [data-copy]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const code = btn.parentElement?.querySelector('code')?.textContent ?? '';
+      try {
+        await navigator.clipboard.writeText(code);
+        btn.classList.add('is-copied');
+        setTimeout(() => btn.classList.remove('is-copied'), 1400);
+      } catch {
+        /* clipboard unavailable */
+      }
+    });
+  });
+</script>
+
+<style>
+  .spec-reveal {
+    border-top: 1px solid var(--color-neutral-200);
+    margin-top: var(--space-3);
+  }
+  .spec-reveal summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) 0 0;
+    cursor: pointer;
+    list-style: none;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-neutral-500);
+    transition: color var(--transition-fast);
+    user-select: none;
+  }
+  .spec-reveal summary::-webkit-details-marker {
+    display: none;
+  }
+  .spec-reveal summary:hover {
+    color: var(--color-brand-indigo);
+  }
+  .chev {
+    transition: transform var(--transition-fast);
+    flex-shrink: 0;
+  }
+  .spec-reveal[open] .chev {
+    transform: rotate(90deg);
+  }
+  .filename {
+    margin-left: auto;
+    color: var(--color-neutral-400);
+  }
+  .spec-body {
+    position: relative;
+    margin-top: var(--space-3);
+  }
+  .spec-body :global(pre) {
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    font-size: 11.5px;
+    line-height: 1.6;
+    border: 1px solid var(--color-neutral-800);
+    overflow-x: auto;
+  }
+  .copy-btn {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    z-index: 2;
+    padding: 4px 10px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--color-neutral-300);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+  }
+  .copy-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--color-white);
+  }
+  .copy-done {
+    display: none;
+    color: var(--color-brand-teal-light);
+  }
+  .copy-btn.is-copied .copy-default {
+    display: none;
+  }
+  .copy-btn.is-copied .copy-done {
+    display: inline;
+  }
+</style>

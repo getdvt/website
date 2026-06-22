@@ -1,0 +1,180 @@
+---
+import EChart from './EChart.astro';
+import SpecReveal from './SpecReveal.astro';
+import type { ChartDef } from '../data/charts';
+
+interface Props {
+  chart: ChartDef;
+  height?: string;
+}
+const { chart, height = '220px' } = Astro.props;
+
+// Heat cell tint: map 0–100 onto an indigo wash.
+const heatBg = (v: number) => {
+  const a = Math.max(0, Math.min(1, (v - 45) / 55));
+  return `rgba(79, 70, 229, ${(0.06 + a * 0.5).toFixed(3)})`;
+};
+const heatFg = (v: number) => (v >= 80 ? '#fff' : 'var(--color-neutral-700)');
+---
+
+<article class="chart-card">
+  <header class="cc-head">
+    <div class="cc-titles">
+      <h3>{chart.title}</h3>
+      <p>{chart.blurb}</p>
+    </div>
+    <code class="cc-type">{chart.dvtType}</code>
+  </header>
+
+  <div class="cc-stage">
+    {chart.kind === 'table' && chart.table ? (
+      <div class="cc-table-wrap">
+        <table class="cc-table">
+          <thead>
+            <tr>
+              {chart.table.columns.map((c) => (
+                <th class={c.align === 'right' ? 'r' : ''}>{c.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {chart.table.rows.map((row) => (
+              <tr>
+                {chart.table!.columns.map((c) => {
+                  const cell = row[c.key];
+                  return (
+                    <td
+                      class={[c.align === 'right' ? 'r' : '', cell?.tone ? `tone-${cell.tone}` : ''].join(' ')}
+                      style={cell?.heat !== undefined ? `background:${heatBg(cell.heat)};color:${heatFg(cell.heat)}` : undefined}
+                    >
+                      {cell?.bar !== undefined ? (
+                        <span class="cell-bar">
+                          <span class="cell-bar-fill" style={`width:${cell.bar}%`}></span>
+                          <span class="cell-bar-label">{cell.v}</span>
+                        </span>
+                      ) : (
+                        cell?.v
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ) : (
+      chart.option && (
+        <EChart option={chart.option} height={height} animate={chart.animate} label={`${chart.title} chart`} />
+      )
+    )}
+  </div>
+
+  <SpecReveal code={chart.spec} lang="json" />
+</article>
+
+<style>
+  .chart-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--color-white);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  }
+  .chart-card:hover {
+    border-color: var(--color-brand-mark);
+    box-shadow: var(--shadow-md);
+  }
+  .cc-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+  }
+  .cc-titles h3 {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--color-neutral-900);
+    margin-bottom: 2px;
+  }
+  .cc-titles p {
+    font-size: var(--text-xs);
+    color: var(--color-neutral-500);
+    line-height: 1.5;
+    max-width: 38ch;
+  }
+  .cc-type {
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--color-brand-mark);
+    background: rgba(91, 191, 186, 0.1);
+    padding: 2px 7px;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+  }
+  .cc-stage {
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Tables */
+  .cc-table-wrap {
+    overflow-x: auto;
+  }
+  .cc-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+  }
+  .cc-table th {
+    text-align: left;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-neutral-400);
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+  .cc-table td {
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--color-neutral-100);
+    color: var(--color-neutral-700);
+    font-variant-numeric: tabular-nums;
+  }
+  .cc-table .r {
+    text-align: right;
+  }
+  .tone-up {
+    color: var(--color-success);
+    font-weight: 600;
+  }
+  .tone-down {
+    color: var(--color-error);
+    font-weight: 600;
+  }
+  .tone-muted {
+    color: var(--color-neutral-400);
+  }
+  .cell-bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .cell-bar-fill {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--color-brand-indigo);
+    flex-shrink: 0;
+    min-width: 4px;
+  }
+  .cell-bar-label {
+    font-size: var(--text-xs);
+    color: var(--color-neutral-500);
+  }
+</style>
