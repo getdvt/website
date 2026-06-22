@@ -10,7 +10,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "generate-types": "wrangler types"
+    "generate-types": "wrangler types",
+    "check:chart-types": "node scripts/check-chart-types.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^13.6.1",

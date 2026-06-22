@@ -1,0 +1,44 @@
+name: Chart-type drift check
+
+# Every dvtType string in src/data/charts.ts must resolve to a member of dvt's
+# canonical PanelType enum, which is VENDORED into src/data/panel-types.json.
+#
+# The enum is vendored because getdvt/dvt is private and CI has no token to read
+# it live. There is also no public schema URL for the enum. The vendored copy is
+# refreshed locally via scripts/sync-panel-types.sh (needs getdvt/dvt checked out
+# as a sibling), then committed. This PR-triggered job therefore catches:
+#   - A hand-edit of charts.ts that introduces a typo or an invented dvtType.
+#   - A stale panel-types.json after a manual refresh that wasn't committed.
+#
+# What it does NOT catch: a silent upstream rename in getdvt/dvt while both
+# files here sit unchanged. That requires a manual refresh + PR to surface.
+# Don't promote this to a required check without accounting for that gap.
+#
+# No npm install required — the script has zero external dependencies.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/data/charts.ts'
+      - 'src/data/panel-types.json'
+      - 'scripts/check-chart-types.mjs'
+      - '.github/workflows/chart-types-drift.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    name: chart-types-drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Assert all dvtType values are valid PanelType members
+        run: node scripts/check-chart-types.mjs
