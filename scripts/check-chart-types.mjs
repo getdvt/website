@@ -12,8 +12,11 @@
 //   - PR trigger (paths filter) catches a hand-edit of charts.ts that
 //     introduces a typo or an invented type, and catches a stale panel-types.json
 //     after a manual refresh that didn't get committed.
-//   - It does NOT catch a silent upstream rename in getdvt/dvt while both files
-//     here sit unchanged — that requires a manual refresh + PR.
+//   - UPSTREAM drift (a silent rename in getdvt/dvt while both local files sit
+//     unchanged) is caught by the weekly `upstream-sweep` job in
+//     .github/workflows/chart-types-drift.yml, which reads origin/main's enum live
+//     via `gh api` (gated on the DVT_SCHEMA_READ_TOKEN secret). The sweep is a
+//     no-op until that secret is provisioned.
 //
 // Zero external dependencies: reads two local files, pure Node built-ins.
 //
