@@ -1,0 +1,30 @@
+name: TruffleHog weekly scan
+
+# Weekly full-history secret scan using TruffleHog with --only-verified to
+# surface only confirmed live credentials. Also runnable on demand.
+#
+# Not a required PR check — schedule jobs don't run on pull_request events.
+# Findings appear in the Actions log; wire an alert if needed.
+
+on:
+  schedule:
+    - cron: '42 4 * * 1'   # Mondays 04:42 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trufflehog:
+    name: TruffleHog full-history scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+
+      - name: Run TruffleHog (verified secrets only)
+        uses: trufflesecurity/trufflehog@30d5bb91af1a771378349dbbb0c82129392acf70 # v3.95.6
+        with:
+          extra_args: --only-verified
