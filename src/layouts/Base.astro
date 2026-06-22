@@ -5,16 +5,40 @@ interface Props {
   title?: string;
   description?: string;
   ogImage?: string;
+  /** Page-specific schema.org node(s) appended to the global @graph (e.g. BlogPosting, BreadcrumbList). */
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
 }
 
 const {
   title = 'dvt — Dashboards as Versioned JSON Specs',
   description = 'Dashboards as data. AI-native, fully-customizable, open data viz tool — dashboards as versioned JSON specs.',
   ogImage = '/og-image.png',
+  jsonLd,
 } = Astro.props;
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 const ogImageURL = new URL(ogImage, Astro.site);
+
+// Global site entities, always present. Pages may append their own nodes
+// (BlogPosting, BreadcrumbList, …) via the `jsonLd` prop.
+const graph: Record<string, unknown>[] = [
+  {
+    "@type": "Organization",
+    "name": "dvt",
+    "url": "https://dvt.dev",
+    "logo": "https://dvt.dev/logo.svg",
+    "description": "Open, AI-native data viz tool — dashboards as versioned JSON specs."
+  },
+  {
+    "@type": "SoftwareApplication",
+    "name": "dvt",
+    "url": "https://dvt.dev",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "description": "Open data viz tool where every dashboard is a versioned JSON spec — authored by humans and AI agents alike via REST API or MCP."
+  },
+  ...(jsonLd ? [jsonLd].flat() : []),
+];
 ---
 
 <!doctype html>
@@ -57,27 +81,12 @@ const ogImageURL = new URL(ogImage, Astro.site);
     <!-- RSS autodiscovery -->
     <link rel="alternate" type="application/rss+xml" title="dvt blog" href="/rss.xml" />
 
-    <!-- Structured data -->
+    <!-- Structured data. Escape `<` to < so a `</script>` substring in any
+         field (e.g. a post title) can't break out of the script block. -->
     <script type="application/ld+json" set:html={JSON.stringify({
       "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "Organization",
-          "name": "dvt",
-          "url": "https://dvt.dev",
-          "logo": "https://dvt.dev/logo.svg",
-          "description": "Open, AI-native data viz tool — dashboards as versioned JSON specs."
-        },
-        {
-          "@type": "SoftwareApplication",
-          "name": "dvt",
-          "url": "https://dvt.dev",
-          "applicationCategory": "BusinessApplication",
-          "operatingSystem": "Web",
-          "description": "Open data viz tool where every dashboard is a versioned JSON spec — authored by humans and AI agents alike via REST API or MCP."
-        }
-      ]
-    })} />
+      "@graph": graph
+    }).replace(/</g, '\\u003c')} />
 
     <!--
       Cloudflare Web Analytics beacon.

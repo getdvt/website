@@ -8,11 +8,12 @@ interface Props {
   title: string;
   description: string;
   pubDate: Date;
+  updatedDate?: Date;
   author?: string;
   ogImage?: string;
 }
 
-const { title, description, pubDate, author = 'Collin Austad', ogImage } = Astro.props;
+const { title, description, pubDate, updatedDate, author = 'Collin Austad', ogImage = '/og-image.png' } = Astro.props;
 
 const formattedDate = pubDate.toLocaleDateString('en-US', {
   year: 'numeric',
@@ -20,9 +21,37 @@ const formattedDate = pubDate.toLocaleDateString('en-US', {
   day: 'numeric',
 });
 const isoDate = pubDate.toISOString();
+
+const postURL = new URL(Astro.url.pathname, Astro.site).href;
+const imageURL = new URL(ogImage, Astro.site).href;
+
+// Page-specific structured data: the article itself + its breadcrumb trail.
+// Appended to the global @graph by Base.astro.
+const jsonLd = [
+  {
+    "@type": "BlogPosting",
+    "headline": title,
+    "description": description,
+    "datePublished": isoDate,
+    "dateModified": (updatedDate ?? pubDate).toISOString(),
+    "author": { "@type": "Person", "name": author },
+    "publisher": { "@type": "Organization", "name": "dvt", "logo": { "@type": "ImageObject", "url": "https://dvt.dev/logo.svg" } },
+    "image": imageURL,
+    "url": postURL,
+    "mainEntityOfPage": { "@type": "WebPage", "@id": postURL },
+  },
+  {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://dvt.dev/" },
+      { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://dvt.dev/blog/" },
+      { "@type": "ListItem", "position": 3, "name": title, "item": postURL },
+    ],
+  },
+];
 ---
 
-<Base title={`${title} — dvt`} description={description} ogImage={ogImage}>
+<Base title={`${title} — dvt`} description={description} ogImage={ogImage} jsonLd={jsonLd}>
   <Nav />
   <main>
     <article>
