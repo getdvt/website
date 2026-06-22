@@ -25,6 +25,13 @@ const year = new Date().getFullYear();
       <a href="mailto:collin@dvt.dev">Contact</a>
     </nav>
   </div>
+
+  <div class="container">
+    <p class="legal">
+      dbt is a trademark of dbt Labs, Inc. dlt is a trademark of dltHub. dvt is
+      not affiliated with or endorsed by either.
+    </p>
+  </div>
 </footer>
 
 <style>
@@ -66,5 +73,12 @@ const year = new Date().getFullYear();
   }
   .links a:hover {
     color: var(--color-neutral-700);
+  }
+
+  .legal {
+    margin: var(--space-4) 0 0;
+    font-size: var(--text-xs);
+    line-height: 1.5;
+    color: var(--color-neutral-400);
   }
 </style>
