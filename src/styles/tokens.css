@@ -14,6 +14,18 @@
   --color-brand-mark:         #5BBFBA; /* icon bars — distinct from brand-teal */
   --color-brand-navy:         #16263A; /* wordmark on light bg */
 
+  /* ── Chart series palette ("Cool Analytical") ──────────────────── */
+  /* Mirrors the product default categorical palette (DVT-742): the dvt
+     web echarts-theme FALLBACK_PALETTE / exec-light preset. The demo
+     gallery in src/data/charts.ts uses these as literals (ECharts options
+     are serialized to JSON and can't resolve CSS vars) — keep in sync. */
+  --chart-series-1: #4F46E5; /* indigo */
+  --chart-series-2: #1F9E96; /* teal   */
+  --chart-series-3: #5B9BD5; /* sky    */
+  --chart-series-4: #E0A93B; /* amber  */
+  --chart-series-5: #8B7EC8; /* violet */
+  --chart-series-6: #64748B; /* slate  */
+
   /* ── Neutral palette (Zinc ramp) ───────────────────────────────── */
   /* Full ramp declared so referenced steps never silently fall back. */
   --color-neutral-950:  #0A0A0B;
