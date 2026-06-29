@@ -85,6 +85,12 @@ export const prerender = true;
           by dvt. We'd rather tell you exactly where your data goes than make a claim we can't stand
           behind.
         </p>
+        <p class="precise-note">
+          <strong>Retention:</strong> we don't keep personal data indefinitely. When a user or
+          organization leaves, a daily job scrubs their personal details — email, name, avatar —
+          within 90 days, keeping only de-identified records so historical usage stays intact.
+          Image exports are deleted within 30 days.
+        </p>
       </div>
     </section>
 
@@ -134,8 +140,52 @@ export const prerender = true;
       </div>
     </section>
 
-    <!-- AI governance -->
+    <!-- Continuous security testing -->
     <section class="section">
+      <div class="container">
+        <h2>Continuous security testing</h2>
+        <p class="section-lead">
+          Security isn't a once-a-year checkbox for us. Every change to dvt runs through a battery
+          of automated security tests in CI, and each run leaves a timestamped, retained artifact —
+          the evidence trail behind our readiness posture.
+        </p>
+        <div class="control-grid">
+          <div class="control">
+            <h3>Static analysis (SAST)</h3>
+            <p>CodeQL scans our Go and TypeScript on every pull request to catch code-level vulnerabilities before they merge.</p>
+          </div>
+          <div class="control">
+            <h3>Dependency scanning (SCA)</h3>
+            <p>Dependencies are continuously scanned for known CVEs and auto-patched, and every CI action is pinned to a full commit SHA.</p>
+          </div>
+          <div class="control">
+            <h3>Secret scanning</h3>
+            <p>Secrets are blocked before they can be pushed and scanned across our full history, with platform push protection enforced.</p>
+          </div>
+          <div class="control">
+            <h3>Dynamic testing (DAST)</h3>
+            <p>A layered pyramid runs against the live app: contract fuzzing against our OpenAPI schema, passive and active web-app scanning, and live-surface vulnerability templates.</p>
+          </div>
+          <div class="control">
+            <h3>Tenant-isolation tests</h3>
+            <p>Automated checks assert one organization cannot reach another's objects, and server-side request forgery is blocked by an enforced denylist.</p>
+          </div>
+          <div class="control">
+            <h3>Change control</h3>
+            <p>Every change is peer-reviewed against a required gate before merge, and database migrations are applied through CI — never by hand.</p>
+          </div>
+        </div>
+        <p class="precise-note">
+          <strong>The honest limit:</strong> automated testing is broad and continuous, but it
+          doesn't replace a third-party penetration test. We don't have one under contract yet, and
+          we'll commission one when an enterprise engagement calls for it. We'd rather name the gap
+          than imply coverage we don't have.
+        </p>
+      </div>
+    </section>
+
+    <!-- AI governance -->
+    <section class="section section-alt">
       <div class="container">
         <h2>AI authoring &amp; your data</h2>
         <p class="section-lead">
@@ -152,7 +202,7 @@ export const prerender = true;
     </section>
 
     <!-- Reporting a vulnerability -->
-    <section class="section section-alt">
+    <section class="section">
       <div class="container">
         <h2>Reporting a vulnerability</h2>
         <p class="section-lead">
@@ -171,17 +221,17 @@ export const prerender = true;
     </section>
 
     <!-- Compliance status -->
-    <section class="section">
+    <section class="section section-alt">
       <div class="container">
-        <h2>Compliance</h2>
+        <h2>Compliance &amp; SOC 2 posture</h2>
         <p class="section-lead">
-          We're an early-stage company and we'd rather be straight with you than imply a badge we
-          don't hold.
+          We're an early-stage company, and we'd rather be straight with you than imply a badge we
+          don't hold. Our stance is continuous readiness now, formal audit when a deal calls for it.
         </p>
         <ul class="prose-list">
-          <li>dvt is <strong>not yet SOC 2 audited.</strong> Our controls are designed to map to the common security criteria, and we'll pursue a formal audit when an enterprise engagement calls for it.</li>
-          <li>Our architecture is our strongest control: because your raw data stays in your warehouse, the scope of what we hold is small by design.</li>
-          <li>We maintain a current list of the third-party services that support dvt — see <a href="/subprocessors">subprocessors</a>.</li>
+          <li>dvt is <strong>not yet SOC 2 audited.</strong> We hold continuous, audit-grade readiness: our controls map to the SOC 2 Common Criteria, and the timestamped artifacts our CI produces form the evidence trail an audit is built from. We'll pursue a formal Type II audit when an enterprise engagement calls for it.</li>
+          <li><strong>Architecture is our strongest control.</strong> Because your raw data stays in your warehouse, the scope of what we hold is small by design — the most direct answer to the hardest question on any security questionnaire.</li>
+          <li>We keep a current <a href="/subprocessors">subprocessor list</a> and a <a href="/trust">trust center</a> with the artifacts a security review needs.</li>
         </ul>
         <p class="contact-line">
           Running a security review or need a DPA? Email

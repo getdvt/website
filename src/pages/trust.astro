@@ -1,0 +1,251 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+
+export const prerender = true;
+
+const artifacts = [
+  {
+    title: 'Security overview',
+    desc: 'How data flows, what we store, encryption, access controls, and our continuous testing program.',
+    href: '/security',
+    cta: 'Read the overview',
+  },
+  {
+    title: 'Subprocessors',
+    desc: 'Every third-party service that supports dvt, what each one processes, and where.',
+    href: '/subprocessors',
+    cta: 'View subprocessors',
+  },
+  {
+    title: 'Vulnerability disclosure',
+    desc: 'Our machine-readable security policy and good-faith research commitment.',
+    href: '/.well-known/security.txt',
+    cta: 'security.txt',
+  },
+  {
+    title: 'Security contact',
+    desc: 'Report an issue, request a DPA, or run a security review with our team.',
+    href: 'mailto:security@dvt.dev',
+    cta: 'security@dvt.dev',
+  },
+];
+---
+
+<Base
+  title="Trust center — dvt"
+  description="dvt's trust center: how we handle your data, the controls behind it, and the artifacts a security review needs — in one place."
+>
+  <Nav />
+  <main>
+    <section class="page-hero">
+      <div class="container">
+        <div class="eyebrow">Trust</div>
+        <h1>Trust center</h1>
+        <p class="lead">
+          Everything a security review needs, in one place. dvt pushes queries down to your
+          warehouse and returns only the rows needed to render a chart — so your raw data never has
+          to live in our infrastructure. Here's how we back that up.
+        </p>
+      </div>
+    </section>
+
+    <!-- Data handling at a glance -->
+    <section class="section">
+      <div class="container">
+        <h2>Data handling at a glance</h2>
+        <div class="control-grid">
+          <div class="control">
+            <h3>We don't host your data</h3>
+            <p>Queries run in your warehouse, on your compute. Only result rows return, in memory, and they're discarded after rendering — never persisted to our database.</p>
+          </div>
+          <div class="control">
+            <h3>Credentials stay encrypted</h3>
+            <p>Warehouse credentials are envelope-encrypted; our database holds only ciphertext, and the key that unwraps them never leaves the engine tier.</p>
+          </div>
+          <div class="control">
+            <h3>Least-privilege access</h3>
+            <p>Capability-based roles gate every action, every record is scoped to an organization, and sensitive actions land in an append-only audit log.</p>
+          </div>
+          <div class="control">
+            <h3>Data is retained briefly</h3>
+            <p>Personal data from departed accounts is scrubbed within 90 days, and image exports are deleted within 30. We keep only what we need.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Artifacts -->
+    <section class="section section-alt">
+      <div class="container">
+        <h2>Questionnaire-ready artifacts</h2>
+        <p class="section-lead">
+          The documents and policies a vendor-security review asks for. If you need something that
+          isn't here — a DPA, a completed questionnaire, or advance notice of subprocessor changes —
+          email <a href="mailto:security@dvt.dev">security@dvt.dev</a>.
+        </p>
+        <div class="resource-grid">
+          {artifacts.map((a) => (
+            <a class="resource-card" href={a.href}>
+              <h3>{a.title}</h3>
+              <p>{a.desc}</p>
+              <span class="resource-cta">{a.cta} →</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- Compliance roadmap -->
+    <section class="section">
+      <div class="container">
+        <h2>Compliance roadmap</h2>
+        <p class="section-lead">
+          We hold continuous, audit-grade readiness and pursue formal certification when a deal
+          calls for it — readiness now, audit on demand.
+        </p>
+        <ul class="prose-list">
+          <li><strong>SOC 2 — readiness now, audit on trigger.</strong> dvt is not yet SOC 2 audited. Our controls map to the SOC 2 Common Criteria, and our CI produces a continuous, timestamped evidence trail. We'll commission a formal Type II audit when an enterprise engagement calls for it.</li>
+          <li><strong>Continuous security testing.</strong> Static analysis, dependency and secret scanning, and a layered dynamic-testing pyramid run on every change — see the <a href="/security">security overview</a> for the full program.</li>
+          <li><strong>Penetration testing.</strong> We don't have a third-party pentest under contract yet; automated testing doesn't replace one, and we'll commission it when an enterprise engagement calls for it.</li>
+        </ul>
+        <p class="contact-line">
+          Need a DPA, a security questionnaire completed, or a call with our team? Email
+          <a href="mailto:security@dvt.dev">security@dvt.dev</a>.
+        </p>
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .page-hero {
+    padding: var(--space-16) 0 var(--space-12);
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+  .eyebrow {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-brand-mark);
+    margin-bottom: var(--space-4);
+  }
+  .page-hero h1 {
+    font-size: clamp(var(--text-3xl), 5vw, 56px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-5);
+  }
+  .lead {
+    font-size: var(--text-lg);
+    color: var(--color-neutral-600);
+    line-height: 1.65;
+    max-width: 660px;
+  }
+
+  .section { padding: var(--space-16) 0; }
+  .section-alt {
+    padding: var(--space-16) 0;
+    background: var(--color-neutral-50);
+    border-top: 1px solid var(--color-neutral-200);
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+  .section h2 {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-6);
+  }
+  .section-lead {
+    font-size: var(--text-base);
+    color: var(--color-neutral-600);
+    margin-bottom: var(--space-8);
+    max-width: 640px;
+    line-height: 1.7;
+  }
+
+  .control-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6);
+  }
+  @media (max-width: 768px) {
+    .control-grid { grid-template-columns: 1fr; }
+  }
+  .control h3 {
+    font-size: var(--text-base);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-2);
+  }
+  .control p {
+    color: var(--color-neutral-700);
+    line-height: 1.7;
+  }
+
+  .resource-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-5);
+  }
+  @media (max-width: 768px) {
+    .resource-grid { grid-template-columns: 1fr; }
+  }
+  .resource-card {
+    display: block;
+    background: var(--color-white);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  }
+  .resource-card:hover {
+    border-color: var(--color-brand-mark);
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--color-neutral-900) 8%, transparent);
+  }
+  .resource-card h3 {
+    font-size: var(--text-base);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-2);
+  }
+  .resource-card p {
+    color: var(--color-neutral-600);
+    line-height: 1.6;
+    margin-bottom: var(--space-4);
+  }
+  .resource-cta {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-brand-mark);
+  }
+
+  .prose-list {
+    list-style: none;
+    max-width: 760px;
+  }
+  .prose-list li {
+    position: relative;
+    padding-left: var(--space-6);
+    margin-bottom: var(--space-4);
+    color: var(--color-neutral-700);
+    line-height: 1.7;
+  }
+  .prose-list li::before {
+    content: "—";
+    position: absolute;
+    left: 0;
+    color: var(--color-brand-mark);
+    font-weight: 700;
+  }
+  .contact-line {
+    margin-top: var(--space-6);
+    color: var(--color-neutral-700);
+  }
+</style>
