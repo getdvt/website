@@ -1,0 +1,29 @@
+# Cloudflare Worker — trial retention sweep cron (DVT-783 / ADR-0052 D5)
+#
+# A scheduled-only Worker: on each cron tick it POSTs to the dvt-api trial-sweep
+# endpoint, which purges the content of Gallery-trial orgs ≥30 days past
+# trial_ends_at that never converted, plus their R2 artifacts. This Worker holds
+# NO delete logic — it is purely the trigger. All scoping and safety guards live
+# in the API (server/internal/repo/trial.go SweepExpiredTrials; the org row is
+# never deleted — organizations_guard_delete trigger).
+#
+# Deploy:   cd workers/trial-sweep && npx wrangler deploy
+# Secrets:  npx wrangler secret put TRIAL_PROVISION_KEY
+#           npx wrangler secret put TRIAL_CRON_SECRET
+#   (values must match TRIAL_PROVISION_KEY / TRIAL_CRON_SECRET on the dvt-api Fly app)
+# Tail:     npx wrangler tail dvt-trial-sweep
+
+name = "dvt-trial-sweep"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# Daily at 03:00 UTC. The sweep is idempotent and cheap when nothing is eligible
+# (predicate: trial_ends_at < now()-30d AND converted_at IS NULL), and retention
+# is a 30-day boundary, so a daily cadence is ample.
+[triggers]
+crons = ["0 3 * * *"]
+
+[vars]
+# dvt-api direct origin — MUST bypass Cloudflare (the app.dvt.dev proxy returns
+# CF 1010 on these internal paths). Non-secret.
+SWEEP_URL = "https://dvt-api.fly.dev/internal/trial/sweep"
