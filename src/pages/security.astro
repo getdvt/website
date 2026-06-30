@@ -152,11 +152,11 @@ export const prerender = true;
         <div class="control-grid">
           <div class="control">
             <h3>Static analysis (SAST)</h3>
-            <p>CodeQL scans our Go and TypeScript on every pull request to catch code-level vulnerabilities before they merge.</p>
+            <p>Static analyzers — gosec, bandit, and Semgrep — scan our Go, Python, and TypeScript on every pull request to catch code-level vulnerabilities before they merge.</p>
           </div>
           <div class="control">
             <h3>Dependency scanning (SCA)</h3>
-            <p>Dependencies are continuously scanned for known CVEs and auto-patched, and every CI action is pinned to a full commit SHA.</p>
+            <p>Dependencies are continuously scanned for known CVEs, with automated upgrade PRs, and CI actions are pinned to commit SHAs to harden the supply chain.</p>
           </div>
           <div class="control">
             <h3>Secret scanning</h3>
@@ -229,7 +229,7 @@ export const prerender = true;
           don't hold. Our stance is continuous readiness now, formal audit when a deal calls for it.
         </p>
         <ul class="prose-list">
-          <li>dvt is <strong>not yet SOC 2 audited.</strong> We hold continuous, audit-grade readiness: our controls map to the SOC 2 Common Criteria, and the timestamped artifacts our CI produces form the evidence trail an audit is built from. We'll pursue a formal Type II audit when an enterprise engagement calls for it.</li>
+          <li>dvt is <strong>not yet SOC 2 audited.</strong> We hold continuous, evidence-backed readiness: our controls map to the SOC 2 Common Criteria, and the timestamped artifacts our CI produces form the evidence trail an audit is built from. We'll pursue a formal Type II audit when an enterprise engagement calls for it.</li>
           <li><strong>Architecture is our strongest control.</strong> Because your raw data stays in your warehouse, the scope of what we hold is small by design — the most direct answer to the hardest question on any security questionnaire.</li>
           <li>We keep a current <a href="/subprocessors">subprocessor list</a> and a <a href="/trust">trust center</a> with the artifacts a security review needs.</li>
         </ul>
