@@ -1,0 +1,31 @@
+# Cloudflare Worker — scheduled-exports runner cron (DVT-727 / ADR-0051 §5)
+#
+# A scheduled-only Worker: on each cron tick it POSTs to the dvt-api exports
+# tick endpoint, which selects due export schedules, renders each dashboard,
+# and fans the artifact out to the schedule's delivery channels. This Worker
+# holds NO runner logic — it is purely the trigger. All selection, idempotency
+# (UNIQUE(schedule_id, fired_at)), fire-time re-authorization, and delivery live
+# in the API (server/internal/api/export_runner.go). Mirrors the sandbox reaper.
+#
+# Deploy:   cd workers/exports-runner && npx wrangler deploy
+# Secrets:  npx wrangler secret put EXPORTS_INTERNAL_KEY
+#           npx wrangler secret put EXPORTS_CRON_SECRET
+#   (values must match the EXPORTS_* secrets on the dvt-api Fly app)
+# Tail:     npx wrangler tail dvt-exports-runner
+
+name = "dvt-exports-runner"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# Hourly. The tick is idempotent (a retried/overlapping tick computes the same
+# quantized fired_at and the UNIQUE constraint prevents a second run), so an
+# hourly cadence is safe. NOTE (ADR-0051 §6): with an hourly trigger, a
+# sub-hourly cron expression coalesces to one fire per tick — the UI (DVT-730)
+# surfaces that "more often than hourly" is not honored until this cadence rises.
+[triggers]
+crons = ["0 * * * *"]
+
+[vars]
+# dvt-api direct origin — MUST bypass Cloudflare (the app.dvt.dev proxy returns
+# CF 1010 on these internal paths). Non-secret.
+TICK_URL = "https://dvt-api.fly.dev/internal/exports/tick"
