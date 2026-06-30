@@ -2186,6 +2186,228 @@ This tool is far cheaper than `dvt_dashboard_get(format="full")` when you only n
 | Metric-level assumptions (joins, filters, grain) | `meta.panels[id].assumptions[]` | Agent / research |
 | Data-quality caveats for this element | `meta.panels[id].notes` | Agent / research |
 
+## Scheduled exports (DVT-731, DVT-791, ADR-0051)
+
+Recurring PDF or PNG exports let a dashboard deliver itself on a schedule — no human
+has to remember to check.  **Use a scheduled export** when someone wants the same
+dashboard on a recurring cadence (a Monday exec digest, an end-of-month report);
+**use a one-off render** (`dvt_dashboard_render`) when they want the artifact once,
+right now.  Six tools cover the full lifecycle:
+
+| Tool | Verb | Permission | Purpose |
+|------|------|-----------|---------|
+| `dvt_export_schedule_preview` | dry-run | `dashboard:write` | Validate a recurrence and see the next fire times **before** creating/updating — persists nothing |
+| `dvt_export_schedule_create`  | write   | `dashboard:write` | Create a schedule, add recipients, wire Slack channels in one call |
+| `dvt_export_schedule_list`    | read    | `dashboard:read`  | List all schedules for a dashboard |
+| `dvt_export_schedule_get`     | read    | `dashboard:read`  | Fetch one schedule with its recipients + run state |
+| `dvt_export_schedule_update`  | write   | `dashboard:write` | Partially update a schedule (merge patch) |
+| `dvt_export_schedule_delete`  | write   | `dashboard:write` | Permanently delete a schedule and its run history |
+
+**Recommended agent workflow:** `preview` the recurrence → `create` the schedule →
+`list`/`get` to confirm → `update` to adjust → `delete` when retired.  Previewing
+first turns an opaque cron string into concrete timestamps you can sanity-check
+against the audience's calendar, so you never ship a schedule that fires at 3am.
+
+### Previewing a recurrence — `dvt_export_schedule_preview`
+
+The "see before committing" tool.  Call it before `create` or `update` to confirm
+a cron or preset fires at the intended wall-clock times — it validates the
+expression and returns the next fire times **without persisting anything**.
+
+```
+dvt_export_schedule_preview(
+    dashboard_id = "<uuid>",
+    cron         = "*/15 9-17 * * 1-5",   # every 15 min, 9am–5pm, weekdays
+    timezone     = "America/New_York",
+    count        = 5,                       # next N occurrences (default 5, clamped 1–20)
+)
+# → { "cron": "*/15 9-17 * * 1-5",
+#     "timezone": "America/New_York",
+#     "nextRuns": ["2026-06-30T13:00:00Z", "2026-06-30T13:15:00Z", ...] }  # UTC
+```
+
+Supply `cron` **or** `preset` (same preset shape as `create`), not both.  The cron
+is evaluated in `timezone` (IANA name, default `UTC`); every returned `nextRuns`
+timestamp is in UTC.  On bad input the tool returns a structured error whose message
+describes the exact validation failure — a bad cron expression or unknown timezone
+(the server's rejection reason is carried in the error `detail`), or supplying both
+or neither recurrence (caught with a `suggestion` before the call is made).
+
+> The Go API is the **only** cron parser in the stack — the engine and web both defer
+> to it (DVT-746).  Preview therefore returns the same fire times the server runner
+> will actually use, so what you preview is what you get.
+
+### Creating a schedule — `dvt_export_schedule_create`
+
+One tool call composes the full setup: create the schedule, add email recipients,
+and wire Slack channels.
+
+```
+dvt_export_schedule_create(
+    dashboard_id = "<uuid>",
+    format       = "pdf",           # "pdf" | "png"
+    preset       = { "kind": "weekly", "dayOfWeek": 1, "atHour": 9 },
+    timezone     = "America/New_York",
+    title        = "Monday morning exec digest",
+    recipients   = ["ceo@acme.com", "cfo@acme.com"],
+    slack_channels = [
+        { "label": "#leadership", "webhook_url": "https://hooks.slack.com/..." }
+    ],
+)
+```
+
+**Recurrence — pick one, not both:**
+
+- **`cron`** — a raw 5-field POSIX expression (`"MIN HOUR DOM MON DOW"`).  Use when
+  you need a schedule that no preset can express (e.g. every 15th and last day of
+  the month).  Validation is server-side; a 400 response carries a `suggestion` with
+  the corrected form.
+- **`preset`** — the simpler, self-documenting option for common patterns:
+
+  | `kind`    | Extra fields                              | Example cron |
+  |-----------|-------------------------------------------|--------------|
+  | `hourly`  | `atMinute` (default 0)                    | `"0 * * * *"` |
+  | `daily`   | `atHour`, `atMinute`                      | `"0 9 * * *"` |
+  | `weekly`  | `atHour`, `atMinute`, `dayOfWeek` (0=Sun) | `"0 9 * * 1"` |
+  | `monthly` | `atHour`, `atMinute`, `dayOfMonth` (1–28) | `"0 9 15 * *"` |
+
+Always supply `timezone` (IANA name, e.g. `"America/New_York"`) so the cron fires
+at the right wall-clock time for the audience — default is `UTC`.
+
+**Slack is the live delivery channel today.** Slack incoming webhooks (DVT-729) are
+the only channel the runner currently delivers to.  **Email delivery is forthcoming
+(DVT-728)** — you can already add email `recipients` and they go through the approval
+flow below, but the runner does not yet send the email itself, so for an export that
+must actually land somewhere now, wire a Slack channel.
+
+**Recipients:** internal org members are `active` immediately; external addresses
+enter `pending_approval` and must be approved by a dashboard owner or org admin
+before they would receive deliveries (once email delivery ships).
+
+**Slack channels:** each entry needs `label` (a friendly name, e.g. `"#leadership"`)
+and `webhook_url` (a Slack incoming webhook URL).  Get the webhook from Slack →
+*Apps → Incoming Webhooks → Add to Slack*, pick the target channel, and copy the
+`https://hooks.slack.com/services/…` URL it generates.
+
+### Listing schedules — `dvt_export_schedule_list`
+
+```
+dvt_export_schedule_list(dashboard_id="<uuid>")
+```
+
+Returns all schedules for the dashboard.  The `recipients` array is populated only
+for `dashboard:write` callers (split read model — PII protection); read-only callers
+see schedule metadata without recipient PII.  Slack `destinations` are **not**
+surfaced by `list`/`get` today — inspect or manage them via the REST
+`…/destinations` endpoints (a dedicated MCP read is a planned follow-up, DVT-799).
+
+### Fetching one schedule — `dvt_export_schedule_get`
+
+```
+dvt_export_schedule_get(dashboard_id="<uuid>", schedule_id="<uuid>")
+```
+
+Returns the full `ExportSchedule` record for a single schedule, including its
+recurrence (`cron`, `timezone`), `format`, `enabled` flag, and run state
+(`nextRunAt`, `lastRunAt`).  As with `list`, the `recipients` array (email + approval
+status) is populated only for `dashboard:write` callers.  Slack `destinations` are
+**not** returned here today (same as `list` — manage them via the REST
+`…/destinations` endpoints; MCP read is the DVT-799 follow-up).  A 404 means the
+schedule or dashboard is not visible to the caller's key.
+
+Per-delivery run logs are **not** surfaced here — only the schedule-level
+`lastRunAt`.  A dedicated runs endpoint is deferred (DVT-744).
+
+### Updating a schedule — `dvt_export_schedule_update`
+
+A merge patch: only the fields you pass are changed; omit a field to leave it as-is.
+
+```
+dvt_export_schedule_update(
+    dashboard_id = "<uuid>",
+    schedule_id  = "<uuid>",
+    preset       = { "kind": "weekly", "dayOfWeek": 5, "atHour": 17 },  # move to Fri 5pm
+    enabled      = false,                                               # pause it
+)
+```
+
+Patchable fields: `title`, `format`, `enabled`, `timezone`, and the recurrence
+(`cron` **or** `preset` — not both; omit both to leave the recurrence unchanged).
+`timezone` is independently patchable: change it alone to shift an existing schedule
+to a new wall-clock zone without touching its cron.  When `cron` or `timezone`
+changes, `next_run_at` is recomputed atomically server-side, so the next fire
+reflects the new recurrence immediately.
+
+**Out of scope:** this tool does not edit recipients or Slack destinations — manage
+those via the REST `…/recipients` and `…/destinations` endpoints (a dedicated MCP
+tool for recipient/destination mutation is a planned follow-up).
+
+**Tip:** run `dvt_export_schedule_preview` with the new recurrence first to confirm
+the fire times before patching.
+
+### Deleting a schedule — `dvt_export_schedule_delete`
+
+```
+dvt_export_schedule_delete(dashboard_id="<uuid>", schedule_id="<uuid>")
+```
+
+Hard delete — removes the schedule, all recipients, all Slack destinations, and the
+full delivery run history.  Irreversible.  Confirm the schedule id from
+`dvt_export_schedule_list` before calling.
+
+### Worked example — from a request to a confirmed schedule
+
+> **User:** "Post the revenue dashboard to our #finance Slack every weekday morning
+> at 8am Eastern."
+
+**1 — Preview the recurrence first** (turn the ask into concrete fire times the user
+can confirm; nothing is persisted yet):
+
+```
+dvt_export_schedule_preview(
+    dashboard_id = "rev-dash-uuid",
+    preset       = { "kind": "daily", "atHour": 8, "atMinute": 0 },  # weekday-only → see note
+    timezone     = "America/New_York",
+)
+# → nextRuns: ["2026-06-30T12:00:00Z", "2026-07-01T12:00:00Z", ...]  (08:00 EDT = 12:00Z)
+```
+
+The `daily` preset fires every day; "every weekday" needs a raw cron, so preview that
+instead and confirm it skips the weekend:
+
+```
+dvt_export_schedule_preview(
+    dashboard_id = "rev-dash-uuid",
+    cron         = "0 8 * * 1-5",        # 08:00, Mon–Fri
+    timezone     = "America/New_York",
+)
+# → nextRuns: ["2026-06-30T12:00:00Z" (Tue), ... skips Sat/Sun ...]
+```
+
+**2 — Create the schedule** with the confirmed cron and the Slack channel:
+
+```
+dvt_export_schedule_create(
+    dashboard_id   = "rev-dash-uuid",
+    format         = "pdf",
+    cron           = "0 8 * * 1-5",
+    timezone       = "America/New_York",
+    title          = "Weekday revenue digest → #finance",
+    slack_channels = [{ "label": "#finance", "webhook_url": "https://hooks.slack.com/services/…" }],
+)
+# → { "id": "sched-uuid", "nextRunAt": "2026-06-30T12:00:00Z", ... }
+```
+
+**3 — Confirm** the schedule is wired as intended:
+
+```
+dvt_export_schedule_get(dashboard_id="rev-dash-uuid", schedule_id="sched-uuid")
+# → nextRunAt + recurrence; tell the user "first delivery Tue 8:00am ET."
+```
+
+To pause it later, `dvt_export_schedule_update(..., enabled=false)`; to retire it,
+`dvt_export_schedule_delete(...)`.
+
 ## Rules
 
 - No JS functions in specs — use `format` objects and the `{ "$dvtRef": "formatter:pie-label@1" }` ref instead. `$dvtRef` ids are **versioned** (`<kind>:<name>@<version>`, e.g. `formatter:usd-compact@1`) and must be one of the registered ids — an unknown or unversioned ref is rejected at write time (ADR-0016).
