@@ -42,17 +42,26 @@ export interface Family {
 }
 
 /* ── shared palette + base fragments ─────────────────────────────── */
+// "Cool Analytical" chart-series palette — mirrors the product default
+// (dvt web echarts-theme FALLBACK_PALETTE / exec-light preset, DVT-742).
+// Declared as --chart-series-N tokens in styles/tokens.css; kept as literals
+// here because ECharts options are serialized to JSON (no CSS var resolution).
+// NOTE: these are chart-series slots, NOT brand primitives — e.g. `teal`
+// (#1F9E96, series-2) is distinct from --color-brand-teal (#0D9488).
 const C = {
   indigo: '#4F46E5',
+  teal:   '#1F9E96',
+  sky:    '#5B9BD5',
+  amber:  '#E0A93B',
+  violet: '#8B7EC8',
+  slate:  '#64748B',
+  // supporting tones (not part of the categorical cycle)
   indigoLight: '#818CF8',
-  teal: '#0D9488',
-  mark: '#5BBFBA',
-  navy: '#16263A',
-  amber: '#F59E0B',
-  rose: '#EF4444',
-  green: '#10B981',
+  navy:        '#16263A', // dark anchor for stacked segments / wordmark-tone
+  green:       '#10B981', // financial up (candlestick)
+  rose:        '#EF4444', // financial down (candlestick)
 };
-const PALETTE = [C.indigo, C.mark, C.teal, C.indigoLight, C.navy, C.amber];
+const PALETTE = [C.indigo, C.teal, C.sky, C.amber, C.violet, C.slate];
 
 const FONT = 'Inter, -apple-system, BlinkMacSystemFont, sans-serif';
 const axisLabel = { color: '#A1A1AA', fontSize: 11, fontFamily: FONT };
@@ -114,7 +123,7 @@ const comparison: ChartDef[] = [
       color: PALETTE, textStyle, grid: { ...grid, left: 8 }, tooltip,
       xAxis: valY(),
       yAxis: { type: 'category', data: ['Free', 'Startup', 'SMB', 'Mid-Market', 'Enterprise'], axisLabel, axisLine: baseAxisLine, axisTick: { show: false } },
-      series: [{ type: 'bar', data: [40, 92, 180, 264, 322], barMaxWidth: 18, itemStyle: { color: C.mark, borderRadius: [0, 4, 4, 0] } }],
+      series: [{ type: 'bar', data: [40, 92, 180, 264, 322], barMaxWidth: 18, itemStyle: { color: C.sky, borderRadius: [0, 4, 4, 0] } }],
     },
     spec: `{ "type": "chart:bar:horizontal",
   "spec": { "series": [{ "type": "bar" }],
@@ -206,7 +215,7 @@ const trend: ChartDef[] = [
       yAxis: valY(),
       series: [
         { name: 'This year', type: 'line', smooth: true, data: [40, 52, 49, 63, 71, 68, 84, 95], showSymbol: false, lineStyle: { width: 2.5, color: C.indigo } },
-        { name: 'Last year', type: 'line', smooth: true, data: [30, 34, 38, 41, 44, 48, 52, 58], showSymbol: false, lineStyle: { width: 2, color: C.mark, type: 'dashed' } },
+        { name: 'Last year', type: 'line', smooth: true, data: [30, 34, 38, 41, 44, 48, 52, 58], showSymbol: false, lineStyle: { width: 2, color: C.sky, type: 'dashed' } },
       ],
     },
     spec: `{ "type": "chart:line:smooth",
@@ -247,7 +256,7 @@ const trend: ChartDef[] = [
     title: 'Theme river',
     blurb: 'Streamgraph — how stream volumes rise and fall over time.',
     option: {
-      color: [C.indigo, C.mark, C.amber], textStyle, tooltip: { ...tooltipItem },
+      color: [C.indigo, C.sky, C.amber], textStyle, tooltip: { ...tooltipItem },
       singleAxis: { type: 'time', axisLabel, axisLine: baseAxisLine, top: 12, bottom: 24, left: 12, right: 16 },
       series: [{
         type: 'themeRiver', emphasis: { itemStyle: { shadowBlur: 8 } },
@@ -304,7 +313,7 @@ const partToWhole: ChartDef[] = [
         data: [
           { value: 100, name: 'Signup', itemStyle: { color: C.indigo } },
           { value: 62, name: 'Activated', itemStyle: { color: C.indigoLight } },
-          { value: 24, name: 'Trial', itemStyle: { color: C.mark } },
+          { value: 24, name: 'Trial', itemStyle: { color: C.sky } },
           { value: 8, name: 'Paid', itemStyle: { color: C.navy } },
         ],
       }],
@@ -325,7 +334,7 @@ const partToWhole: ChartDef[] = [
         levels: [{ itemStyle: { borderColor: '#fff', borderWidth: 2, gapWidth: 2 } }],
         data: [
           { name: 'Engineering', value: 42, itemStyle: { color: C.indigo }, children: [{ name: 'Compute', value: 24 }, { name: 'Storage', value: 18 }] },
-          { name: 'Sales', value: 30, itemStyle: { color: C.mark } },
+          { name: 'Sales', value: 30, itemStyle: { color: C.sky } },
           { name: 'Marketing', value: 18, itemStyle: { color: C.teal } },
           { name: 'G&A', value: 12, itemStyle: { color: C.navy } },
         ],
@@ -346,7 +355,7 @@ const partToWhole: ChartDef[] = [
         itemStyle: { borderColor: '#fff', borderWidth: 1.5 },
         data: [
           { name: 'NA', value: 50, itemStyle: { color: C.indigo }, children: [{ name: 'US', value: 38 }, { name: 'CA', value: 12 }] },
-          { name: 'EMEA', value: 34, itemStyle: { color: C.mark }, children: [{ name: 'UK', value: 16 }, { name: 'DE', value: 10 }, { name: 'FR', value: 8 }] },
+          { name: 'EMEA', value: 34, itemStyle: { color: C.sky }, children: [{ name: 'UK', value: 16 }, { name: 'DE', value: 10 }, { name: 'FR', value: 8 }] },
           { name: 'APAC', value: 22, itemStyle: { color: C.teal }, children: [{ name: 'JP', value: 12 }, { name: 'AU', value: 10 }] },
         ],
       }],
@@ -382,7 +391,7 @@ const correlation: ChartDef[] = [
         type: 'scatter',
         data: ([[20, 60, 30], [35, 88, 60], [48, 70, 22], [55, 120, 90], [70, 95, 45], [82, 140, 70]] as number[][])
           .map(([x, y, s]) => ({ value: [x, y], symbolSize: Math.round(Math.sqrt(s) * 4.5) })),
-        itemStyle: { color: C.mark, opacity: 0.7 },
+        itemStyle: { color: C.sky, opacity: 0.7 },
       }],
     },
     spec: `{ "type": "chart:scatter",
@@ -485,7 +494,7 @@ const flow: ChartDef[] = [
         lineStyle: { color: '#D4D4D8', width: 1 },
         data: [
           { name: 'dvt', symbolSize: 26, itemStyle: { color: C.indigo } },
-          { name: 'dbt', symbolSize: 18, itemStyle: { color: C.mark } },
+          { name: 'dbt', symbolSize: 18, itemStyle: { color: C.sky } },
           { name: 'dlt', symbolSize: 16, itemStyle: { color: C.teal } },
           { name: 'Claude', symbolSize: 18, itemStyle: { color: C.navy } },
           { name: 'Warehouse', symbolSize: 20, itemStyle: { color: C.amber } },
