@@ -1598,6 +1598,109 @@ for tables). `valueType` — as above.
 A column-level `contextMenu` on a `table` column **merges below** the panel-level menu
 (panel actions first, then that column's actions).
 
+### Exploration patterns — composing interactivity into a story
+
+The section above is the **mechanics** (how to wire a filter, a drill, an overlay). This is
+the **craft**: *when* to reach for them. A dashboard becomes explorable by adding one of a
+small number of **progressive-disclosure moves** on top of an already-coherent authored story
+— the Martini Glass stem (see `docs/04-design-knowledge/analytical-narrative.md`). Interactivity
+is not a feature you sprinkle on; it is a leg of the narrative that must earn its place.
+
+**Gate — is interactivity even warranted?** A dashboard that answers **one question** needs no
+controls. Do **not** put a filter, drill, or overlay on a single-panel dashboard, or on a
+dashboard whose whole point is a fixed answer-first readout (most executive summaries). Add an
+exploration move only when the reader will plausibly ask "…and what about *this* slice / *this*
+row / *this* other metric?" **after** they've read the authored takeaway. If they won't, ship it flat.
+
+**The self-check (run before adding any control).** For every interactive element, answer both:
+
+1. **Which insight changes** when the reader acts on it? (name the new question it answers)
+2. **Which panel visibly re-renders** to surface that insight? (name the target panel id / page)
+
+If you can't answer *both* concretely, it is **cargo-cult interactivity** — a control that
+reshapes nothing the reader cares about — and you should cut it. (`dvt_spec_validate` warns
+when a control's `param` is wired to nothing — a `targets`/`targetPage` that no panel consumes —
+so fix that rather than ship a control that reshapes nothing.)
+
+**Placement.** Exploration affordances live **below** the authored intro, never above it — the
+headline + KPI strip + insight sentence must read on their own first, *then* filters/drill.
+A reader who never touches a control still gets the whole story.
+
+The canonical moves, smallest to largest:
+
+**1 — KPI/mark → drill-to-detail (DVT-141).** A summary mark answers "how much"; a right-click
+`drill` opens a detail page answering "why". Use when each summary category has a meaningful,
+same-shape breakdown a reader will want on demand.
+
+```json
+{ "id": "rev-by-region", "type": "chart:bar", "title": "Revenue by region",
+  "data": { "sourceId": "db", "query": "SELECT region, SUM(amount) AS revenue FROM orders GROUP BY 1 ORDER BY 2 DESC" },
+  "contextMenu": { "actions": [
+    { "type": "drill", "label": "Break down {category}", "targetPage": "region-detail",
+      "param": "region", "valueFrom": "category", "valueType": "string" } ] },
+  "spec": { "series": [{ "type": "bar", "dataField": "revenue" }] } }
+// region-detail's panels read %(region)s from data.params — the clicked value, never string-interpolated.
+```
+
+*When NOT to use:* if the "detail" page would just repeat the same numbers, or there's only one
+category worth seeing — that's drill-to-nowhere. A drill whose target page doesn't answer the
+question the click implies is worse than no drill.
+
+**2 — Metric switcher via param binding (ADR-0028).** A `segmented` filter sets a param that the
+panel's query consumes in a `CASE`, letting one chart pivot between measures on the same axis.
+Use when two–three measures share a frame ("revenue vs. orders vs. AOV over time") and showing
+all at once would clutter.
+
+```json
+{ "id": "metric-switch", "type": "filter", "title": "Measure",
+  "spec": { "control": "segmented", "param": "measure", "valueField": "value", "valueType": "string",
+            "values": [ {"value":"revenue","label":"Revenue"}, {"value":"orders","label":"Orders"} ],
+            "default": "revenue" } }
+// the trend panel's query: SELECT month, CASE WHEN %(measure)s = 'revenue' THEN SUM(amount)
+//   ELSE COUNT(*) END AS value FROM orders GROUP BY 1 ORDER BY 1 — the value is bound and compared, never used as an identifier.
+```
+
+*When NOT to use:* to switch a **column name** or table dynamically — params bind *values*, not
+SQL identifiers (ADR-0028). If the measures don't share a y-axis or reading, use small multiples
+or separate panels instead of a switcher.
+
+**3 — Filter that reshapes the story (DVT-140 / DVT-170).** A `filter-bar` of slicers re-queries
+the whole page so the same narrative can be read for any segment. Use for a dashboard an analyst
+audience will slice repeatedly (by region, segment, date window) — the exploratory leg of a
+Martini Glass. Multi-select binds an array (`in` / `not-in`, DVT-170).
+
+```json
+{ "id": "controls", "type": "filter-bar", "title": "Filters", "spec": { "panels": ["region-f", "date-f"] } }
+{ "id": "region-f", "type": "filter", "title": "Region",
+  "data": { "sourceId": "db", "query": "SELECT DISTINCT region FROM orders ORDER BY 1" },
+  "spec": { "control": "multiselect", "param": "region", "valueField": "region",
+            "chrome": "none", "allLabel": "All regions", "unsetMode": "null" } }
+// each re-queried panel guards the predicate: WHERE (%(region)s IS NULL OR region IN %(region)s) — unsetMode:"null" means "no selection" shows all (ADR-0028 Amendment 1).
+```
+
+*When NOT to use:* on a fixed answer-first exec dashboard, or when a filter would let a reader
+land on an empty/misleading slice. If only one segment matters, pre-filter in SQL and state it
+in the title — don't make the reader rediscover the point.
+
+**4 — Detail-on-demand overlay (ADR-0036 / expand, DVT-136).** A `contextMenu` `openOverlay` opens
+a **hidden page** as a modal/drawer *over* the current page — deep detail without leaving the
+story. Use when the detail is occasional and shouldn't cost a page/tab or a navigation away.
+
+```json
+{ "contextMenu": { "actions": [
+  { "type": "openOverlay", "label": "Inspect {category}", "targetPage": "order-inspector",
+    "present": "drawer", "size": "lg", "param": "region", "valueFrom": "category" } ] } }
+// order-inspector is a hidden page (not in the tab bar); the bound param scopes the overlay only, discarded on close.
+```
+
+*When NOT to use:* for content the reader needs side-by-side with the base page (use a real page
+or panel), or when a plain `drill` navigation is clearer. Degrades to a `drill` in renderers
+without overlay support, so don't hide load-bearing content behind an overlay-only path.
+
+**Reachability.** Whichever move you choose, the exploration leg must be **reachable from the
+intro** — a drill affordance on the panel that motivates it, a filter-bar directly under the
+headline. Interactivity the reader can't find is the same as no interactivity.
+
 ### Animated / temporal charts — playback over a time dimension (ADR-0034)
 
 Three chart types replay **one query result as frames** over a time/sequence column —
