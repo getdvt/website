@@ -34,7 +34,8 @@ Builder (`/builder`) to see it render live.
 (`00000000-0000-0000-0000-000000000000`) and the server generates one (the generated id is
 injected into the stored spec and returned on create). Never copy an id from an example or an
 existing dashboard — dashboard ids are globally unique, and a colliding id is rejected with
-**409 `id-conflict`**.
+**409 `id-conflict`** (exception: retrying a create whose spec is identical to what's already
+stored replays the existing dashboard with a 200 — safe to retry after a network blip).
 
 - Use **`pages`** for multi-tab dashboards; each page has its own `layout` + `panels`.
   (If you use `pages`, the top-level `panels`/`layout` can be empty.)
@@ -2120,7 +2121,7 @@ Place a format where a value renders: `"axisLabel": { "format": {…} }`, a tabl
 - Before authoring, classify the request — the two execution paths have very different costs.
 - **Surgical edit** — the user names an existing element and a specific change ("change the Q3 revenue KPI to red", "fix the funnel title typo", "make this axis start at zero"). Read that one element with `dvt_element_get`, then apply a `dvt_element_patch`. Do NOT run the full audit→narrative→design method and do NOT re-send the whole spec — it wastes tokens and risks rebuilding panels the user didn't ask you to touch.
 - **Block-level reads, not full-spec reads.** If you don't already know the element's id, read the dashboard ONCE with `dvt_dashboard_get(format="concise")` (manifest + `provenanceSummary`, no heavy spec) or `dvt_dashboard_docs` (cheap doc tree) to locate the page/element id, then pull ONLY that element via `dvt_element_get`. Never load the full page spec (`dvt_dashboard_get(format="full")`) just to change one panel.
-- **Full build** — the user wants something new or exploratory ("help me understand our sales", "build a pipeline dashboard", "restructure this to tell a story"). Run the full authoring method below and author via `dvt_dashboard_apply_spec`.
+- **Full build** — the user wants something new or exploratory ("help me understand our sales", "build a pipeline dashboard", "restructure this to tell a story"). Run the full authoring method below. **Interactive session** (a user is watching): persist via the incremental flow in "Persisting the build" (§4b) below, not a single full-spec apply. **Headless/batch run:** persist via a single full-spec `dvt_dashboard_apply_spec` call.
 - When in doubt (an edit spanning several elements, or one that changes the dashboard's story), prefer the full method. A single named property on a single named element is the clear signal for the surgical path.
 
 ## Authoring method — audit, narrate, target audience, design, verify
@@ -2223,7 +2224,10 @@ Record the answer in **`meta.decisions`** with a recognizable prefix so it's eas
 exec wants a fast daily scan, not a narrative."` There is no dedicated schema field for build
 style (unlike `meta.audience`, which is a schema-validated enum) — this is an **authoring
 convention only**, so `dvt_spec_validate` neither requires nor enforces it. Set it before step 4
-(Design) so the layout-format rubric below has an answer to consume.
+(Design) so the layout-format rubric below has an answer to consume. The server also surfaces a
+warn-severity provenance suggestion on `meta.decisions` (DVT-881) when a 3+ panel spec has no
+"Build style:" entry, so a missed omission still shows up in both the preview plan and the persist
+response.
 
 ### 4. Design — encoding and layout in service of the message
 
@@ -2304,7 +2308,25 @@ than assuming.
 
 **If an option isn't in a served catalog, it doesn't exist — never offer or author it.**
 
+### 4b. Persisting the build — incremental is the interactive default (ADR-0057 Amendment 1)
+
+Design and preview are unchanged: finish the staged design pass (§4a), assemble the complete intended spec, run `dvt_dashboard_apply_spec(preview=true)` on it, and SHOW the user the plan (§3b and the preview-first rule above). What changes is how you persist.
+
+**Interactive sessions (a user is watching): persist incrementally.**
+
+1. **Shell first.** Apply a minimal shell — `meta` + `theme` + the first page with `panels: []` (valid: `panels` has no minimum) — without `preview`. The dashboard now exists in the Builder within seconds; tell the user to open it and watch it grow.
+2. **Panel by panel.** `dvt_element_create` each panel (~1–2KB each), narrating as you go ("page 1/3: panel 4/6 — revenue trend"). **Always pass an explicit, stable `slug`** derived from the panel's title/id in the design (e.g. `revenue-trend`) — never leave it empty. An empty slug is regenerated fresh on every call, so a lost-response retry after a create that actually landed will duplicate the panel; an explicit slug makes the create idempotent (see step 4). Pass the optional per-breakpoint `layout` param when your design carries responsive (md/sm) geometry; flat x/y/w/h is fine otherwise. Create later pages with `dvt_page_create` as you reach them; fix ordering at the end with `dvt_pages_reorder`.
+3. **Render checkpoint per page — never per panel.** `dvt_dashboard_render_inline` after each page completes. The render budget is 10/hour per org; a per-panel cadence will exhaust it mid-build.
+4. **If one element fails,** surface the server's Problem `detail`/`suggestion` verbatim and retry that one element — the retry re-sends 1–2KB, not the whole spec. This retry is safe **because** step 2's explicit slug makes it idempotent: if the original create actually landed and only the response was lost, the retry gets a 409 slug-taken — treat that as success (the panel is already there) and move on, don't error out or duplicate it. A briefly incomplete dashboard is expected here; the user is watching it assemble.
+5. **Final integrity pass.** `dvt_dashboard_get` the persisted dashboard, run `dvt_spec_validate` on the returned spec plus `dvt_dashboard_check_overlap`, and surface any remaining provenance warns to the user.
+
+**Headless/scheduled runs (no user watching): keep the single full-spec apply** — transactional, all-or-nothing; never leave a half-built dashboard unattended.
+
+Record which persist path you took in `meta.decisions` (e.g. `"Persist: incremental (interactive)"` or `"Persist: single apply (headless run)"`).
+
 ### 5. Build, then SEE it — verify and iterate
+
+Headless/batch runs and edit flows (surgical edits, §"Choosing your approach") persist via the single-apply path below; interactive net-new builds persist via the incremental flow in §4b above.
 
 1. Write the spec (mechanics above). Bind each panel to a fully-qualified `query`.
 2. Validate with `dvt_spec_validate` — fix field errors and heed `warnings` (typos, and panels that will render EMPTY).
