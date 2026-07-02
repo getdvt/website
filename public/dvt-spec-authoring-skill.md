@@ -75,12 +75,16 @@ Builder (`/builder`) to see it render live.
 
 ## Panel types
 
-Two MCP reference tools cover this table in depth: `dvt_chart_reference` for every
-`chart:*` type (option summary + property-path drill-down, sourced from ECharts'
-own docs) and `dvt_block_reference` for the non-chart, dvt-native block types
-(`kpi`, `hero`, `html`, `table`, `filter-bar`, `container`, `section` — same
-catalog → type-summary → property-path drill-down shape). Call the matching one
-before authoring an unfamiliar type.
+Four MCP reference tools ground the authoring flow in what's actually served, never
+prose recall: `dvt_chart_reference` for every `chart:*` type (option summary +
+property-path drill-down, sourced from ECharts' own docs), `dvt_block_reference` for
+the non-chart, dvt-native block types (`kpi`, `hero`, `html`, `table`, `filter-bar`,
+`container`, `section` — same catalog → type-summary → property-path drill-down
+shape), `dvt_page_reference` for the available page layout modes, and
+`dvt_interaction_reference` for the shipped interactivity surface (filters, brush,
+context-menu actions, drill, params). Call the matching one before authoring an
+unfamiliar type — see **Design flow** below for how the four compose into a staged
+build.
 
 | `type` | Renders | Key `spec` fields |
 | --- | --- | --- |
@@ -2225,12 +2229,53 @@ sketches an HTML-slot page mode — full custom HTML/CSS in place of the panel g
 neither `grid` nor `canvas` fits well. Treat it as a soft dependency only: don't author against
 it, and don't tell a user it's available; check ADR-0059's status before relying on it.
 
-**No `dvt_layout_recommend` MCP tool — this is a settled design decision (head-of-product).** With
-only two real layout formats, a written rubric is enough; an MCP tool to automate this one pick
-isn't worth the surface area yet. Don't add one on your own initiative — revisit this call once
-the HTML-slot mode above actually ships and there's a real three-way decision worth automating.
+**`dvt_page_reference` catalogs the modes; the pick stays rubric-driven (founder decision, DVT-857,
+2026-07-02, superseding the DVT-831 no-catalog-tool call).** Call `dvt_page_reference()` with no arguments to enumerate the page layout modes
+(`grid`, `canvas`) with their `whenToUse`/summary — that catalog is what tells you the modes exist
+and gives fit guidance; it does not choose one for you. The actual pick still runs through the
+rubric above (build style + brief characteristics). There is still **no `dvt_layout_recommend`**
+MCP tool — a recommender that maps build style → format automatically remains out of scope. Don't
+add one on your own initiative — revisit this call once the HTML-slot mode above actually ships
+and there's a real three-way decision worth automating.
 
 **Let the chart reference drive selection.** Call `dvt_chart_reference()` with no arguments to get the catalog — every chart type with a one-line `whenToUse` and `dataShapes` tags (`time-series`, `part-to-whole`, `correlation`, `flow`, `distribution`, `hierarchy`, `geo`, `categorical-comparison`, `ranking`, `multivariate`, `network`, `single-kpi`). Match your profiled data's shape to a type, then call `dvt_chart_reference(chart_type)` for its option summary and `dvt_chart_reference(chart_type, property_path)` to drill into a specific property before you author it. Validate the result with `dvt_spec_validate`.
+
+### 4a. Design flow — ground every choice in a served catalog (no guessing)
+
+Design (step 4) is not a single decision — it's four mechanical stages, each grounded in a
+served MCP catalog. At every stage below, **call the named tool and pick from what it returns** —
+never recall options from memory or prose, and never offer a user something the catalog didn't
+serve. Work the stages in order; each stage's output constrains the next.
+
+| Stage | Tool | Grounds |
+|---|---|---|
+| 1. Page | `dvt_page_reference()` | Which page layout modes exist, with fit guidance |
+| 2. Blocks & charts | `dvt_chart_reference()` / `dvt_block_reference()` | Which panel types fit the data shapes and key questions |
+| 3. Specs | `dvt_chart_reference(type, property_path)` / `dvt_block_reference(type, property_path)` | Exactly which properties exist on the chosen page/panel |
+| 4. Interactivity | `dvt_interaction_reference()` | Which interactivity surface is actually shipped |
+
+**1 — Page.** Call `dvt_page_reference()` with no arguments to enumerate the available page
+layout modes and their fit guidance. Where the build-style answer (§3b) doesn't already force
+the pick, present the modes as options to the user before committing. Choose using the
+layout-format rubric above, then call `dvt_page_reference(mode)` to drill into the chosen mode's
+declaration shape.
+
+**2 — Blocks & charts.** Call `dvt_chart_reference()` / `dvt_block_reference()` to match panel
+types to the data shapes you profiled (step 1) and the key questions you set (step 2). Before
+authoring the full spec, propose a sample layout — a panel-by-panel sketch (type, purpose, rough
+position) — and get user confirmation.
+
+**3 — Specs.** For each chosen panel type, and for the page itself, drill down with
+`property_path` to fetch exactly which properties exist. Declare only served properties — never
+author a field you haven't confirmed exists. Validate with `dvt_spec_validate`.
+
+**4 — Interactivity.** Call `dvt_interaction_reference()` with no arguments to enumerate the
+shipped interactivity surface (filter controls, brush cross-filter, context-menu actions, drill,
+params). Run the gate and self-check from **Exploration patterns** above to decide WHAT to add,
+then offer the user the grounded options — filters, drill-downs, context-menu actions — rather
+than assuming.
+
+**If an option isn't in a served catalog, it doesn't exist — never offer or author it.**
 
 ### 5. Build, then SEE it — verify and iterate
 
