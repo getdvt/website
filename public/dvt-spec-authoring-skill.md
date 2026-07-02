@@ -16,7 +16,7 @@ Builder (`/builder`) to see it render live.
 ```json
 {
   "schemaVersion": 1,
-  "id": "uuid-or-zeros",
+  "id": "00000000-0000-0000-0000-000000000000",
   "meta": { "title": "...", "brief": "one-line thesis",
             "findings": ["..."], "readme": "markdown", "decisions": ["..."],
             "tags": ["..."], "createdBy": { "actorType": "user", "actorId": "..." } },
@@ -29,6 +29,12 @@ Builder (`/builder`) to see it render live.
   "cache": { "ttlSeconds": 600, "enabled": true }
 }
 ```
+
+**`id`** — supply a fresh random UUID for each new dashboard, or pass the all-zeros UUID
+(`00000000-0000-0000-0000-000000000000`) and the server generates one (the generated id is
+injected into the stored spec and returned on create). Never copy an id from an example or an
+existing dashboard — dashboard ids are globally unique, and a colliding id is rejected with
+**409 `id-conflict`**.
 
 - Use **`pages`** for multi-tab dashboards; each page has its own `layout` + `panels`.
   (If you use `pages`, the top-level `panels`/`layout` can be empty.)
@@ -2146,6 +2152,18 @@ Prefer cuts with real variance — **time series, distributions, comparisons of 
 
 **Tier 1 hard gate (3+ panels) — the only Tier 1 gate.** Before you write a single panel, author `meta.brief` — one sentence that is the *answer*, not the topic — and `meta.keyQuestions` — the 2–4 questions the dashboard is designed to answer, in priority order (index 0 = the primary question). If you can't write the brief, you don't understand the data yet — go back to step 1. Check the `dvt_dashboard_apply_spec(preview=true)` result: `plan.provenance` carries advisory suggestions ranked `gate` / `warn` / `info` (ADR-0004 Amendment 1). A `gate`-severity suggestion on `meta.brief` for a 3+ panel dashboard means **refuse to finalize** — go back and write the brief before you call apply without `preview`. The server never rejects the spec itself (enforcement is advisory at persistence, ADR-0018); the skill — you — is the enforcement point. Don't escalate other concerns into this gate: `meta.purpose`, `meta.audience`, and `meta.keyQuestions` missing surface only as `warn` (Tier 2), and coherence/layout issues are the `narrative-coherence`/`layout-auditor` subagents' job (Tier 2/3), not a blocker here.
 
+**Preview-first is mandatory, not advisory.** For any net-new build or multi-panel change: call
+`dvt_dashboard_apply_spec(preview=true)`, SHOW the user the resulting plan (pages, panels,
+provenance suggestions), and only after that call apply without `preview`. Do not skip the show
+step under an "operate autonomously" framing — persisting an unreviewed dashboard is the failure
+mode, not the deliverable. In a headless/scheduled run with no user to show, still run the
+preview and record `"Preview: applied unattended (headless run)"` in `meta.decisions`.
+
+**Narrate the build.** A multi-panel build must not be a silent spinner: before authoring, tell
+the user the plan (pages and panels you intend to create); between tool calls, emit a one-line
+status ("page 1/3 applied: 6 panels"). If a call fails, surface the server's Problem
+`detail`/`suggestion` verbatim rather than retrying silently.
+
 - **Answer-first (Minto / SCQA):** lead with the conclusion, then the support. The first page and the top-left panel carry the headline; detail comes after.
 - **One question per page.** Order pages and panels so a reader gets the answer in the first few seconds and can drill into "why" below.
 - Open each page with a `text` panel stating that page's takeaway, using live `{{ field | agg | format }}` variables so the prose moves with the data.
@@ -2178,7 +2196,16 @@ Prefer cuts with real variance — **time series, distributions, comparisons of 
 
 Audience says *who* the dashboard is for; build style says *how* the user wants it built — a
 second, separate thing to decide alongside `meta.brief`/`meta.audience` in step 2/3, before you
-touch design or layout (step 4). Ask (or infer from the brief) which of three build styles fits:
+touch design or layout (step 4).
+
+**For a net-new build of 3+ panels in an interactive session, ASK the user — via your harness's
+user-question tool (e.g. `AskUserQuestion`) — which of the three build styles fits AND how they
+want pages structured, before the design pass. This question overrides any "operate
+autonomously" framing: build style is a product preference only the user can settle, not a
+detail to infer.** Infer instead of asking only when (a) the user already stated a preference
+earlier in this conversation, or (b) the run is headless/scheduled with no user to ask. Whichever
+branch you take, record it in `meta.decisions` — including, when you inferred, that you inferred
+and why.
 
 - **quick KPI wall** — a dense grid of scorecards/metric-strips, minimal narrative chrome, fastest
   to build and scan.
