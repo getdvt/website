@@ -78,7 +78,10 @@ stored replays the existing dashboard with a 200 — safe to retry after a netwo
   not consulted for narrow stacking.)
 - **`layout.mode`** defaults to `"grid"` (the 24-column grid above). Set
   `"mode": "canvas"` for an immersive, full-bleed, scroll-driven layout (sections +
-  free-form blocks + motion) — see **Canvas mode** below. One spec, two layout shapes.
+  free-form blocks + motion) — see **Canvas mode** below. Set `"mode": "htmlSlots"`
+  for an author-written HTML page where live panels mount at `<dvt-slot ref="panelId">`
+  markers — dvt Full only, never Core — see **HTML-slots mode** below. One spec, three
+  layout shapes.
 
 ## Panel types
 
@@ -1861,6 +1864,60 @@ illegibly; a `divider` or generous empty geometry gives breathing room. Verify t
 way (§4) — render at desktop width and read it; motion is off in the capture so you see
 the final frame.
 
+## HTML-slots mode — author-written pages with live panel mounts
+
+Set **`layout.mode: "htmlSlots"`** plus **`layout.html`** (required) to author a full
+custom HTML/CSS page template that replaces the grid entirely (ADR-0059) — the grid and
+canvas layout fields (`columns`/`rowHeight`/`items`/`sections`) are unused. `panels[]`
+still holds the real content; the page just decides where they mount. htmlSlots is
+always **`conformance: "full"`** — it is the escape hatch, never portable/Core.
+
+**Default to `grid` unless the user explicitly asks for a bespoke HTML page.** htmlSlots
+trades portability and easy layout editing for total layout freedom — reach for it only
+when the brief is genuinely bespoke.
+
+**When to use:** a print-like report, an editorial/magazine-style page, a one-off
+branded layout the 24-column grid can't express. Not for everyday KPI walls or analyst
+views — use `grid` for those, `canvas` for scroll-driven narratives.
+
+**Slot rules:** panels mount wherever `<dvt-slot ref="panelId"></dvt-slot>` markers
+appear in `layout.html` — the markers ARE the slot manifest; there is no separate
+declaration. `ref` must match `^[A-Za-z0-9_-]{1,64}$` and must reference an EXISTING id
+in `panels[]`. `ref` is the *only* allowed attribute on a `<dvt-slot>` — no inline
+config, no children; any other attribute is stripped. A dangling `ref` (no matching
+panel) renders empty; a duplicate `ref` mounts that panel more than once. A `<dvt-slot>`
+nested in a non-HTML namespace (e.g. inside `<svg>`) is dropped.
+
+**Sanitizer:** `layout.html` passes the same DOMPurify gate as `html` panels —
+`<script>`, `javascript:` URLs, and `on*` handlers are stripped; `<style>` is allowed.
+Scope your style selectors under an authored wrapper class (e.g. `.my-report h1 { … }`)
+— styles currently apply document-wide, not just to your frame (DVT-890 tracks tighter
+scoping; don't rely on isolation yet).
+
+**No interpolation:** unlike a panel's own `html`, `layout.html` is never interpolated —
+no `{{ field | agg | format }}` — it has no bound query result of its own. All live data
+lives in the panels mounted into the slots, not the frame.
+
+**Theme tokens:** author frame text/surfaces with the same theme vocabulary as `html`
+panels — `var(--ink)`, `var(--muted)`, `var(--accent)`, `var(--accent-2)`. Untinted
+authored text renders default-dark and disappears on dark themes — always tint it.
+
+**The frame is inert by design:** the authored HTML is a non-interactive decorative
+frame (`pointer-events: none`) — only mounted `<dvt-slot>` subtrees re-enable pointer
+events. Authored `<a>` links and buttons in the frame don't respond to clicks. Put every
+interactive affordance (links, buttons, filters) inside a panel, never in the frame.
+
+```json
+"layout": {
+  "mode": "htmlSlots",
+  "html": "<div class=\"quarterly-report\"><style>.quarterly-report{padding:48px;font-family:inherit;}.quarterly-report h1{font-size:36px;font-weight:800;color:var(--ink);margin-bottom:8px;}.quarterly-report .subhead{color:var(--muted);margin-bottom:32px;}.quarterly-report .stat-row{display:flex;gap:24px;margin-bottom:32px;}.quarterly-report .stat-row > div{flex:1;}</style><h1>Q3 Board Report</h1><div class=\"subhead\">Prepared for the board — revenue and growth overview</div><div class=\"stat-row\"><div><dvt-slot ref=\"headline-revenue\"></dvt-slot></div><div><dvt-slot ref=\"headline-growth\"></dvt-slot></div></div><dvt-slot ref=\"trend-chart\"></dvt-slot></div>"
+}
+```
+
+`headline-revenue`, `headline-growth`, and `trend-chart` must each be a real `panels[]`
+id — the same referential-integrity discipline as grid `items[].i` and canvas
+`blocks[].ref`.
+
 ## Theme & tokens (the customization engine)
 
 Tokens are a 3-tier tree (`primitive` → `semantic` → `component`). Any value may be
@@ -2213,7 +2270,9 @@ and why.
 - **immersive / free-form report** — a scroll-driven, full-bleed story (canvas mode) with motion
   and one idea per section.
 - **custom / bespoke look** — a heavier design pass (custom theming, HTML escape hatches,
-  non-standard treatment) — still grid or canvas underneath, but with more art direction.
+  non-standard treatment) — usually still grid or canvas underneath with more art direction; a
+  fully bespoke print-like/editorial page the user explicitly asks for is `htmlSlots` instead
+  (see the layout-format rubric below).
 
 ⚠️ **ADR-0057 guardrail — this question is presentation-only.** It's about build STYLE/LAYOUT
 preference, never about the data itself — never use it to discover warehouse schema, tables, or
@@ -2237,7 +2296,7 @@ response.
 - **Group and align** related panels; keep ≤ ~8–12 per page. Don't crowd — the renderer adapts label density to panel width automatically, so trust it instead of cramming.
 - **For a narrative showpiece, reach for canvas mode** (`layout.mode: "canvas"`): one idea per scrolling section, a `hero` + `stat` opener, motion on entrance. Scrollytelling (Segel & Heer, author-driven) is the canvas analogue of answer-first paging — see Canvas mode.
 
-**Layout-format rubric — map the build style to `layout.mode` (DVT-831).** Two real layout
+**Layout-format rubric — map the build style to `layout.mode` (DVT-831).** Three real layout
 formats exist today; pick with a short rubric, not a guess. Read the build style you recorded in
 `meta.decisions` (step 3b) plus the brief's own characteristics — panel count, narrative weight,
 audience — and map to a format:
@@ -2249,25 +2308,26 @@ audience — and map to a format:
 | immersive / free-form report | narrative showpiece, one idea per scrolling section, exec/prospect-facing | `canvas` (`layout.mode: "canvas"`, ADR-0027) |
 | custom / bespoke, still tile-oriented | non-standard theming or HTML blocks, but panels stay tiled | `grid` |
 | custom / bespoke, scroll-driven | non-standard theming, sectioned scroll story, motion | `canvas` |
+| custom / bespoke, print-like/editorial page explicitly requested | bespoke branded HTML page, print/editorial layout the grid can't express | `htmlSlots` (`layout.mode: "htmlSlots"`, ADR-0059, dvt Full only) |
 
 `grid` (`layout.mode` omitted, or set to `"grid"`) is the default — the 24-column tile grid used
 above, right for KPI walls and analyst views. `canvas` (`layout.mode: "canvas"`) is for immersive,
-full-bleed, scroll-driven decks — see **Canvas mode** below. When the build style doesn't cleanly
-map (most "custom/bespoke" answers), let the brief's characteristics from the table break the tie.
+full-bleed, scroll-driven decks — see **Canvas mode** below. `htmlSlots` (`layout.mode:
+"htmlSlots"`) is for author-written HTML pages with live panel mounts — see **HTML-slots mode**
+below; default to `grid` unless the user explicitly asks for a bespoke HTML page. When the build
+style doesn't cleanly map (most "custom/bespoke" answers), let the brief's characteristics from
+the table break the tie.
 
-*A future third option is not available yet.* DVT-828 / ADR-0059 (**Proposed**, not yet ratified)
-sketches an HTML-slot page mode — full custom HTML/CSS in place of the panel grid — for cases
-neither `grid` nor `canvas` fits well. Treat it as a soft dependency only: don't author against
-it, and don't tell a user it's available; check ADR-0059's status before relying on it.
+htmlSlots shipped via ADR-0059 (schema #708, renderer #713) — it is available today, not a future
+option; see **HTML-slots mode** above for the full authoring contract.
 
 **`dvt_page_reference` catalogs the modes; the pick stays rubric-driven (founder decision, DVT-857,
 2026-07-02, superseding the DVT-831 no-catalog-tool call).** Call `dvt_page_reference()` with no arguments to enumerate the page layout modes
-(`grid`, `canvas`) with their `whenToUse`/summary — that catalog is what tells you the modes exist
-and gives fit guidance; it does not choose one for you. The actual pick still runs through the
-rubric above (build style + brief characteristics). There is still **no `dvt_layout_recommend`**
-MCP tool — a recommender that maps build style → format automatically remains out of scope. Don't
-add one on your own initiative — revisit this call once the HTML-slot mode above actually ships
-and there's a real three-way decision worth automating.
+(`grid`, `canvas`, `htmlSlots`) with their `whenToUse`/summary — that catalog is what tells you the
+modes exist and gives fit guidance; it does not choose one for you. The actual pick still runs
+through the rubric above (build style + brief characteristics). There is still **no
+`dvt_layout_recommend`** MCP tool — a recommender that maps build style → format automatically
+remains out of scope. Don't add one on your own initiative.
 
 **Let the chart reference drive selection.** Call `dvt_chart_reference()` with no arguments to get the catalog — every chart type with a one-line `whenToUse` and `dataShapes` tags (`time-series`, `part-to-whole`, `correlation`, `flow`, `distribution`, `hierarchy`, `geo`, `categorical-comparison`, `ranking`, `multivariate`, `network`, `single-kpi`). Match your profiled data's shape to a type, then call `dvt_chart_reference(chart_type)` for its option summary and `dvt_chart_reference(chart_type, property_path)` to drill into a specific property before you author it. Validate the result with `dvt_spec_validate`.
 
