@@ -2555,7 +2555,7 @@ right now.  Six tools cover the full lifecycle:
 | Tool | Verb | Permission | Purpose |
 |------|------|-----------|---------|
 | `dvt_export_schedule_preview` | dry-run | `dashboard:write` | Validate a recurrence and see the next fire times **before** creating/updating — persists nothing |
-| `dvt_export_schedule_create`  | write   | `dashboard:write` | Create a schedule, add recipients, wire Slack channels in one call |
+| `dvt_export_schedule_create`  | write   | `dashboard:write` | Create a schedule, add recipients, wire webhook destinations (Slack / Teams / Google Chat) in one call; optionally scope to a single chart panel (`panel_id`, PNG-only) |
 | `dvt_export_schedule_list`    | read    | `dashboard:read`  | List all schedules for a dashboard |
 | `dvt_export_schedule_get`     | read    | `dashboard:read`  | Fetch one schedule with its recipients + run state |
 | `dvt_export_schedule_update`  | write   | `dashboard:write` | Partially update a schedule (merge patch) |
@@ -2598,7 +2598,7 @@ or neither recurrence (caught with a `suggestion` before the call is made).
 ### Creating a schedule — `dvt_export_schedule_create`
 
 One tool call composes the full setup: create the schedule, add email recipients,
-and wire Slack channels.
+and wire webhook destinations (Slack, Teams, or Google Chat).
 
 ```
 dvt_export_schedule_create(
@@ -2609,7 +2609,9 @@ dvt_export_schedule_create(
     title        = "Monday morning exec digest",
     recipients   = ["ceo@acme.com", "cfo@acme.com"],
     slack_channels = [
-        { "label": "#leadership", "webhook_url": "https://hooks.slack.com/..." }
+        { "label": "#leadership", "webhook_url": "https://hooks.slack.com/services/…" },
+        { "label": "exec-team", "webhook_url": "https://prod-12.westus.logic.azure.com/workflows/…",
+          "kind": "teams_workflows" },
     ],
 )
 ```
@@ -2632,20 +2634,39 @@ dvt_export_schedule_create(
 Always supply `timezone` (IANA name, e.g. `"America/New_York"`) so the cron fires
 at the right wall-clock time for the audience — default is `UTC`.
 
-**Slack is the live delivery channel today.** Slack incoming webhooks (DVT-729) are
-the only channel the runner currently delivers to.  **Email delivery is forthcoming
-(DVT-728)** — you can already add email `recipients` and they go through the approval
-flow below, but the runner does not yet send the email itself, so for an export that
-must actually land somewhere now, wire a Slack channel.
+**Element-grain exports (`panel_id`):** supply a panel id to export a single chart
+rather than the whole dashboard.  The server enforces PNG for panel-scoped schedules
+— always set `format="png"` when providing `panel_id`.  Panel ids come from the
+`panels[*].id` field in the dashboard spec; use `dvt_dashboard_get` to enumerate them.
+
+```
+dvt_export_schedule_create(
+    dashboard_id = "<uuid>",
+    panel_id     = "panel-revenue-trend",   # scope to one chart
+    format       = "png",                   # required when panel_id is set
+    preset       = { "kind": "daily", "atHour": 8 },
+    timezone     = "America/Chicago",
+    slack_channels = [{ "label": "#revenue", "webhook_url": "https://hooks.slack.com/services/…" }],
+)
+```
 
 **Recipients:** internal org members are `active` immediately; external addresses
 enter `pending_approval` and must be approved by a dashboard owner or org admin
-before they would receive deliveries (once email delivery ships).
+before they would receive deliveries.
 
-**Slack channels:** each entry needs `label` (a friendly name, e.g. `"#leadership"`)
-and `webhook_url` (a Slack incoming webhook URL).  Get the webhook from Slack →
-*Apps → Incoming Webhooks → Add to Slack*, pick the target channel, and copy the
-`https://hooks.slack.com/services/…` URL it generates.
+**Webhook destinations (`slack_channels`):** three destination kinds are supported
+(ADR-0051 §9, DVT-864).  Each entry in `slack_channels` needs `label` (a friendly
+name) and `webhook_url`.  `kind` is optional and defaults to `"slack_webhook"`.
+
+| `kind` | URL pattern | How to obtain the URL |
+|--------|------------|----------------------|
+| `slack_webhook` (default) | `https://hooks.slack.com/<path>` — https, exact host, no port, non-empty path | Slack → *Apps → Incoming Webhooks → Add to Slack* |
+| `teams_workflows` | `https://<label>.logic.azure.com/workflows/<path>` — port absent or 443 (integer-equal), no userinfo | Microsoft Teams → *Power Automate → Workflows → "Post to a channel when a webhook request is received"* |
+| `google_chat` | `https://chat.googleapis.com/v1/spaces/<path>` — exact host, no port, no userinfo | Google Chat Space → *Apps & integrations → Webhooks* |
+
+URL rules are enforced server-side (ADR-0051 §9) and the tool surfaces a 400 with a
+`suggestion` on mismatch.  The webhook secret is never returned on any read path
+(ADR-0012).
 
 ### Listing schedules — `dvt_export_schedule_list`
 
@@ -2654,10 +2675,10 @@ dvt_export_schedule_list(dashboard_id="<uuid>")
 ```
 
 Returns all schedules for the dashboard.  The `recipients` (email + approval status)
-and `destinations` (Slack channel label + last delivery status) arrays are populated
-only for `dashboard:write` callers (split read model — PII protection); read-only
-callers see schedule metadata only.  The webhook secret is never included in any
-read response (ADR-0012).
+and `destinations` (webhook destination label + kind + last delivery status) arrays
+are populated only for `dashboard:write` callers (split read model — PII protection);
+read-only callers see schedule metadata only.  The webhook secret is never included in
+any read response (ADR-0012).
 
 ### Fetching one schedule — `dvt_export_schedule_get`
 
@@ -2666,12 +2687,13 @@ dvt_export_schedule_get(dashboard_id="<uuid>", schedule_id="<uuid>")
 ```
 
 Returns the full `ExportSchedule` record for a single schedule, including its
-recurrence (`cron`, `timezone`), `format`, `enabled` flag, and run state
-(`nextRunAt`, `lastRunAt`).  As with `list`, the `recipients` (email + approval
-status) and `destinations` (Slack channel label + last delivery status) arrays are
-populated only for `dashboard:write` callers; absent/empty for read-only callers.
-The webhook secret is never included in any read response (ADR-0012).  A 404 means
-the schedule or dashboard is not visible to the caller's key.
+recurrence (`cron`, `timezone`), `format`, `enabled` flag, run state (`nextRunAt`,
+`lastRunAt`), and — when present — `panelId` (element-grain scope).  As with `list`,
+the `recipients` (email + approval status) and `destinations` (webhook destination
+label, `kind`, and last delivery status) arrays are populated only for
+`dashboard:write` callers; absent/empty for read-only callers.  The webhook secret
+is never included in any read response (ADR-0012).  A 404 means the schedule or
+dashboard is not visible to the caller's key.
 
 Per-delivery run logs are **not** surfaced here — only the schedule-level
 `lastRunAt`.  A dedicated runs endpoint is deferred (DVT-744).
@@ -2696,7 +2718,7 @@ to a new wall-clock zone without touching its cron.  When `cron` or `timezone`
 changes, `next_run_at` is recomputed atomically server-side, so the next fire
 reflects the new recurrence immediately.
 
-**Out of scope:** this tool does not edit recipients or Slack destinations — manage
+**Out of scope:** this tool does not edit recipients or webhook destinations — manage
 those via the REST `…/recipients` and `…/destinations` endpoints (a dedicated MCP
 tool for recipient/destination mutation is a planned follow-up).
 
@@ -2709,7 +2731,7 @@ the fire times before patching.
 dvt_export_schedule_delete(dashboard_id="<uuid>", schedule_id="<uuid>")
 ```
 
-Hard delete — removes the schedule, all recipients, all Slack destinations, and the
+Hard delete — removes the schedule, all recipients, all webhook destinations, and the
 full delivery run history.  Irreversible.  Confirm the schedule id from
 `dvt_export_schedule_list` before calling.
 
@@ -2742,7 +2764,7 @@ dvt_export_schedule_preview(
 # → nextRuns: ["2026-06-30T12:00:00Z" (Tue), ... skips Sat/Sun ...]
 ```
 
-**2 — Create the schedule** with the confirmed cron and the Slack channel:
+**2 — Create the schedule** with the confirmed cron and the webhook destination:
 
 ```
 dvt_export_schedule_create(
@@ -2751,6 +2773,7 @@ dvt_export_schedule_create(
     cron           = "0 8 * * 1-5",
     timezone       = "America/New_York",
     title          = "Weekday revenue digest → #finance",
+    # kind defaults to "slack_webhook"; use "teams_workflows" or "google_chat" for other platforms
     slack_channels = [{ "label": "#finance", "webhook_url": "https://hooks.slack.com/services/…" }],
 )
 # → { "id": "sched-uuid", "nextRunAt": "2026-06-30T12:00:00Z", ... }
