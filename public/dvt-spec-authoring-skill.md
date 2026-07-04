@@ -343,6 +343,23 @@ First datum / zero-sum / zero-prior render as `—`.
 "label": { "show": true, "derive": "percentOfTotal", "format": { "type": "percentage", "decimals": 0 } }
 ```
 
+**Label styling** (DVT-1002) — `label.rotate`, `label.fontSize`, `label.color` restyle the
+value-label text itself, on the same nine families as `spec.label` above (bar, bar:horizontal,
+line, line:smooth, line:step, area, scatter, pie, donut). **Not** compiled on `chart:bar:stacked`,
+`chart:bar:stacked-percent`, or `chart:funnel` — those stay on the escape-hatch
+`series[].label.*` passthrough, so a `spec.label.rotate`/`.fontSize`/`.color` there is a silent
+no-op.
+
+- `rotate` — label rotation in degrees, `-90`–`90`.
+- `fontSize` — label font size in pixels, `8`–`32`.
+- `color` — a CSS color string or a `{token}` reference (resolved before compilation); gated
+  through the same SSRF-safe color guard as `categoryColors`/`colorRules` — an unsafe value is
+  dropped and the authored/default label color is left untouched.
+
+```json
+"label": { "show": true, "rotate": -45, "fontSize": 11, "color": "{text.secondary}" }
+```
+
 **Funnel conversion rates** — on `chart:funnel`, top-level `spec.funnelRate` shows conversion % in the stage labels (no raw formatter needed):
 
 ```json
@@ -456,6 +473,24 @@ Four dvt-Core keys control the plot grid — no hand-written ECharts `splitLine`
 
 `agg`: `sum | avg | last | first | min | max | count | delta`. The strip shows the
 headline number, a ▲/▼ delta vs. the prior row, and a sparkline. Each metric accepts an optional **`description`** field — a plain-text explanation shown as a hover tooltip; falls back to `label` when not set. dvt Core (DVT-558).
+
+**Strip-wide display controls** (DVT-998), set on the `metric-strip` panel's own `spec` (siblings of `metrics[]`):
+
+- `sparklines` (boolean, default `true`) — show the trend sparkline on each tile. `false` hides sparklines strip-wide.
+- `delta` (boolean, default `true`) — show the ▲/▼ period-over-period chip on each tile. `false` hides the delta chip strip-wide.
+- `valueFontSize` (number, `16`–`64`, default `30`) — headline value font size in pixels, applied strip-wide.
+- `valueColor` (`ColorTokenValue` — literal hex/named color or a `{token}` ref, default `text.primary`) — headline value color, applied strip-wide. A tile's own `MetricItem.color` still wins over this for that tile (the existing per-tile-color-wins precedence).
+
+```json
+{ "type": "metric-strip", "title": "KPIs",
+  "data": { "sourceId": "db", "query": "SELECT month, SUM(amount) AS revenue ... GROUP BY 1 ORDER BY 1" },
+  "spec": {
+    "sparklines": false, "delta": true, "valueFontSize": 24, "valueColor": "{text.primary}",
+    "metrics": [
+      { "label": "Revenue", "valueField": "revenue", "agg": "sum",
+        "format": { "type": "currency", "currency": "USD", "compact": true }, "color": "{chart.series.1}" }
+    ] } }
+```
 
 ### kpi  ← single-value scorecard
 
@@ -1947,10 +1982,50 @@ the **font-family** slots below are a *closed allow-set*, not free text (see
 - `text.primary`, `text.secondary`, `text.muted`
 - `typography.fontFamily` (and any `*.family` token) — a **closed allow-set, not free text**. Use exactly one of these stacks (or a `"{typography.fontFamily}"` ref): `Inter Variable, Inter, sans-serif` · `Inter, sans-serif` · `JetBrains Mono, monospace` · `JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace` · `ui-sans-serif, system-ui, sans-serif` · `ui-serif, Georgia, serif` · `ui-monospace, monospace`. An off-list stack (e.g. `"Helvetica, Arial, sans-serif"`) is **rejected with a 422 by `dvt_spec_validate`** — a font stack has no safe-literal grammar, so the schema gates it as an enum, not free text (DVT-294, ADR-0032 §A3).
 
+**Start lean.** Don't scaffold all three token tiers by default. Prefer `theme.preset` plus a
+minimal `primitive` set (a couple of brand colors) and let the preset's `semantic`/`component`
+defaults carry the rest; only author `semantic` series tokens (`chart.series.1..6`) when you
+mean to override the preset's palette, and keep them as `{chart.series.N}` refs elsewhere in the
+spec (`colorRules`, `annotations`, etc.) rather than repeating literal hex values.
+
 **Per-panel overrides:** any panel may set `"overrides": { "panel.background": "#0F1E2E", "text.primary": "#E8EEF5", "chart.axis.label.color": "#8DA2B8", "chart.grid.line.color": "rgba(255,255,255,0.06)", "chart.series.1": "#5BBFBA" }`
 to restyle just that card. This is how you make one panel dark, recolor a single
 chart, or retint axes/gridlines — without touching the rest. A dark page is just a
 gradient `pages[].background` plus a shared dark `overrides` block on each card.
+
+### Dashboard-scoped overrides — `theme.overrides` (DVT-1006/1008, ADR-0014 Amendment 4)
+
+`theme.overrides` is a flat token map on `theme`, the dashboard-scoped analogue of a panel's own
+`overrides` — same token keys, same `ColorTokenValue` default-deny gate, but it applies to the
+**whole dashboard** instead of one card:
+
+```json
+{ "theme": {
+    "tokens": { "primitive": {}, "semantic": {} },
+    "overrides": { "chart.series.1": "#5BBFBA", "text.primary": "#1F2933" }
+} }
+```
+
+- **Full precedence (lowest → highest):** `builtin defaults → org branding baseline →
+  theme.preset → tokens.primitive → tokens.semantic → tokens.component → theme.overrides →
+  panel overrides`. `theme.overrides` sits **above every token tier, including `component`**,
+  and loses only to a panel's own `overrides` for the same key.
+- **Core wins over authored detail, field-wise (ADR-0014 Amendment 4):** an explicitly *present*
+  `theme.overrides` key (or panel `overrides` key) wins over hand-authored raw-ECharts detail for
+  the same visual property — key **presence** is the signal, not which tier it lives in. Today's
+  forced sinks are narrow and explicit:
+  - `chart.series.N` → that series' `itemStyle.color` (bar/line/scatter)
+  - `text.primary` → the chart's `textStyle.color`
+  - `typography.fontSize.base` → the chart's `textStyle.fontSize`
+  Everything else still wins through ordinary token resolution — no forced series/textStyle
+  clobber. Ambient token tiers (`primitive`/`semantic`/`component`) **never** force a value over
+  authored detail; only an explicitly present `theme.overrides` (or panel `overrides`) key does.
+- **Use sparingly, and never scaffold by default.** `theme.overrides` exists for explicit,
+  dashboard-wide intent — "force every chart's primary series to this exact teal," "force this
+  exact text color everywhere" — not a routine authoring habit on every new dashboard. Reach for
+  `theme.preset` + a lean primitive set first (see "Start lean" above); add a `theme.overrides`
+  entry only when you need to force a specific value that a token/preset wouldn't otherwise
+  resolve to.
 
 ### Theme presets — `exec-light` · `exec-dark` · `exec-brand` (A7/DVT-471, ADR-0043)
 
@@ -1966,8 +2041,9 @@ hand-authoring every token:
 - `theme.tokens` (with `primitive` + `semantic`) is **still required** alongside `preset` — leave
   the maps empty to take the preset as-is, or fill keys to override it.
 - **Precedence (lowest → highest):** `BUILTIN_DEFAULTS → org baseline → PRESET → your primitive →
-  semantic → component → per-element overrides`. So the dashboard's own tokens always win per-key,
-  and the preset sits **above** the org baseline.
+  semantic → component → theme.overrides → panel overrides`. So the dashboard's own tokens always
+  win per-key, and the preset sits **above** the org baseline. See "Dashboard-scoped overrides —
+  `theme.overrides`" above for the explicit-override tier between `component` and panel `overrides`.
 - **Org-brand inheritance:** `exec-brand` inherits org branding by **omitting** the accent palette
   (`chart.series.1`–`6`) and the page background (`color.page` / `page.background`) — the org
   baseline beneath the preset flows through for exactly those keys. Do **not** hard-code accent or
