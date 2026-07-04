@@ -71,7 +71,10 @@ stored replays the existing dashboard with a 200 — safe to retry after a netwo
   a `radial-gradient(...)`, or an image. Use it to make each page its own visual "world."
 - **`layout.items`** is keyed by breakpoint (`lg`, `md`, `sm`, `xs`). Each item:
   `{ "i": panelId, "x", "y", "w", "h" }` on a 24-column grid. `rowHeight` is ~30px;
-  a KPI strip ≈ `h:4`, a chart ≈ `h:7–8`. Author `lg` always. Below a 640px-wide
+  sizing rules of thumb (heights, not an ordering): a text/strip band ≈ `h:3–4`, a
+  chart ≈ `h:7–8`, a hero chart ≈ `h:10–11`. The page's *shape* comes from the
+  data's story (see the Authoring method), not from a fixed strip-then-charts
+  template. Author `lg` always. Below a 640px-wide
   container the renderer stacks the `lg` panels into one full-width column in
   reading order — author `sm`/`xs` items (with `layout.breakpoints`) only when you
   want to hand-tune that narrow view; they win over the automatic stack. (`md` is
@@ -1619,16 +1622,21 @@ A column-level `contextMenu` on a `table` column **merges below** the panel-leve
 ### Exploration patterns — composing interactivity into a story
 
 The section above is the **mechanics** (how to wire a filter, a drill, an overlay). This is
-the **craft**: *when* to reach for them. A dashboard becomes explorable by adding one of a
-small number of **progressive-disclosure moves** on top of an already-coherent authored story
-— the Martini Glass stem (see `docs/04-design-knowledge/analytical-narrative.md`). Interactivity
-is not a feature you sprinkle on; it is a leg of the narrative that must earn its place.
+the **craft**: *which* moves to reach for. A dashboard becomes explorable by composing a small
+number of **progressive-disclosure moves** on top of an already-coherent authored story
+— the Martini Glass stem (see `docs/04-design-knowledge/analytical-narrative.md`). A dashboard
+is an instrument, not a poster: it should answer the authored question *and* host the reader's
+follow-up questions.
 
-**Gate — is interactivity even warranted?** A dashboard that answers **one question** needs no
-controls. Do **not** put a filter, drill, or overlay on a single-panel dashboard, or on a
-dashboard whose whole point is a fixed answer-first readout (most executive summaries). Add an
-exploration move only when the reader will plausibly ask "…and what about *this* slice / *this*
-row / *this* other metric?" **after** they've read the authored takeaway. If they won't, ship it flat.
+**Default — net-new dashboards ship interactive.** Every net-new dashboard of 3+ panels ships
+with the **default interactivity package**: (a) at least one scoped `filter` (date-range or the
+primary dimension) opening the exploratory zone below the guided band; (b) a `contextMenu` on
+the hero chart and on every `table` (drill / filter / export actions); (c) a `drill` to a hidden
+detail page wherever a categorical breakdown has meaningful per-category detail. A brush
+cross-filter is optional, for 2+ panels sharing a time axis. Cut an individual control only when
+it fails the self-check below. Ship **fully flat** only for a single-question fixed readout, a
+kiosk loop, or a print/export target — and record that in `meta.decisions` as
+`"Interactivity: none — <reason>"` so reviewers can tell a decision from an omission.
 
 **The self-check (run before adding any control).** For every interactive element, answer both:
 
@@ -1641,7 +1649,7 @@ when a control's `param` is wired to nothing — a `targets`/`targetPage` that n
 so fix that rather than ship a control that reshapes nothing.)
 
 **Placement.** Exploration affordances live **below** the authored intro, never above it — the
-headline + KPI strip + insight sentence must read on their own first, *then* filters/drill.
+headline + top-band numbers + insight sentence must read on their own first, *then* filters/drill.
 A reader who never touches a control still gets the whole story.
 
 The canonical moves, smallest to largest:
@@ -2270,13 +2278,18 @@ branch you take, record it in `meta.decisions` — including, when you inferred,
 and why.
 
 - **quick KPI wall** — a dense grid of scorecards/metric-strips, minimal narrative chrome, fastest
-  to build and scan.
+  to build and scan. Build this only when the user **explicitly picks it** — and even a KPI wall
+  ships with the default scoped filter (see Exploration patterns).
 - **immersive / free-form report** — a scroll-driven, full-bleed story (canvas mode) with motion
   and one idea per section.
 - **custom / bespoke look** — a heavier design pass (custom theming, HTML escape hatches,
   non-standard treatment) — usually still grid or canvas underneath with more art direction; a
   fully bespoke print-like/editorial page the user explicitly asks for is `htmlSlots` instead
   (see the layout-format rubric below).
+
+When the user expresses no preference (they defer, or the run is headless), the default is a
+**narrative layout derived from the data's story** — an answer-first guided band opening into an
+interactive exploratory zone — never a KPI wall by default.
 
 ⚠️ **ADR-0057 guardrail — this question is presentation-only.** It's about build STYLE/LAYOUT
 preference, never about the data itself — never use it to discover warehouse schema, tables, or
@@ -2366,9 +2379,12 @@ author a field you haven't confirmed exists. Validate with `dvt_spec_validate`.
 
 **4 — Interactivity.** Call `dvt_interaction_reference()` with no arguments to enumerate the
 shipped interactivity surface (filter controls, brush cross-filter, context-menu actions, drill,
-params). Run the gate and self-check from **Exploration patterns** above to decide WHAT to add,
-then offer the user the grounded options — filters, drill-downs, context-menu actions — rather
-than assuming.
+params). Start from the **default interactivity package** in Exploration patterns above (scoped
+filter + context menus on hero/tables + drills where detail exists) and run the per-control
+self-check to tune it. **Include the package in the proposed layout sketch you present** — it is
+part of the design the user confirms, not an optional add-on they must request; note any control
+you cut (and why), and record a fully-flat choice as `"Interactivity: none — <reason>"` in
+`meta.decisions`.
 
 **If an option isn't in a served catalog, it doesn't exist — never offer or author it.**
 
