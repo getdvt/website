@@ -114,7 +114,7 @@ build.
 | `chart:treemap` | ECharts treemap (passthrough) | inline `series[].data` hierarchy (`{ name, value, children }`), `levels` |
 | `chart:sankey` | ECharts sankey | `sourceField`/`targetField`/`valueField` columns → nodes + links (or inline `series[].data` + `series[].links`) |
 | `chart:tree` | ECharts tree (passthrough) | inline `series[].data` hierarchy, `layout` (`orthogonal`/`radial`) |
-| `chart:sunburst` | ECharts sunburst (passthrough) | inline `series[].data` hierarchy (`{ name, value, children }`), `radius` |
+| `chart:sunburst` | ECharts sunburst (passthrough) | flat query rows via `hierarchyFields` (ordered inner→outer level columns) + `valueField`; or inline `series[].data` hierarchy (`{ name, value, children }`); `radius` — **Two binding modes: map flat query rows with `hierarchyFields` (inner→outer level columns) + `valueField`, or hand-author the nested inline `series[].data` tree (DVT-1101).** |
 | `chart:boxplot` | ECharts boxplot (passthrough) | inline `series[].data: [[min, Q1, median, Q3, max], …]` + category `xAxis.data` |
 | `chart:candlestick` | ECharts candlestick (passthrough) | inline `series[].data: [[open, close, low, high], …]` + category `xAxis.data` |
 | `chart:graph` | ECharts graph (passthrough) | inline `series[].data` (nodes) + `series[].links`, `layout: "force"`, `categories` |
@@ -151,6 +151,17 @@ Each panel may set `data: { "sourceId": "...", "query": "SELECT ..." }`. The fir
 returned column is the category/label axis; subsequent columns are bound by
 `series[].dataField` (chart) or `valueField` (metric/stacked). Charts that take an
 explicit field mapping (scatter/heatmap) name their columns via `xField`/`yField`/etc.
+
+**Canonical cartesian form — author the measure as `series[].dataField`.** For the plain
+value families (`chart:bar`/`chart:line`/`chart:area`), the single authored form used by
+every dvt example, seed demo, and golden spec is an explicit `series[].dataField` (the
+category axis comes from the first returned column, or an explicit `categoryField`/`xField`).
+Author to that form so specs stay consistent across surfaces. The renderer *also* tolerates a
+`series[]`-less **Core shorthand** — `valueField` (+`categoryField`) for bar, `yField`
+(+`xField`) for line/area — and synthesizes a single series from it (DVT-1085), but that is a
+render-time convenience, **not** the authored convention: prefer `series[].dataField`. (Note
+the nullish-coalescing edge the validator now flags: a present-but-empty `valueField: ""`
+wins over a set `yField` and renders blank — omit the field entirely rather than passing `""`.)
 
 **Always fully-qualify table names** as `database.schema.table` (e.g.
 `SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.ORDERS`). A connection may carry no default
@@ -537,7 +548,31 @@ core table `spec` shape:
 ```
 
 Each **`TableColumn`** is `{ field, label?, description?, format?, align?, sortable?,
-filterable?, conditionalFormat?, colorScale?, cell?, textStyle? }`.
+filterable?, conditionalFormat?, colorScale?, cell?, textStyle?, width?, wrap?, maxLines? }`.
+
+---
+
+#### Column width, wrapping & "See more" (ADR-0044 §3c)
+
+Three per-column layout fields, all authored the same way a person sets them in the
+tray (no separate AI path):
+
+- **`width`** — fixed column width in px (40–1200). Omit for auto-sizing. As soon as
+  **any** column pins a width the table switches to a fixed layout, so set widths on
+  the columns that need them and leave the rest to fill.
+- **`wrap`** — `true` lets a text column wrap onto multiple lines. Default (omitted) is
+  single-line: a long value widens the column, or, with a `width` set, clips to an
+  ellipsis. **Guideline:** enable `wrap` for text columns whose values commonly exceed
+  **~30 characters** (notes, descriptions, addresses, URLs) — don't leave long free-text
+  single-line.
+- **`maxLines`** — only meaningful with `wrap:true`. Clamps wrapped text to N lines
+  (1–20) and shows an explicit **See more / Show less** toggle when the value overflows,
+  expanding the full text in-cell. Use it for *really* long values so a few outliers
+  don't blow up row height. Omit for wrap-with-no-limit.
+
+```json
+{ "field": "notes", "wrap": true, "maxLines": 3, "width": 260 }
+```
 
 ---
 
@@ -804,11 +839,18 @@ URIs; SVG and unapproved hosts are blocked — renders a placeholder):
 }
 ```
 
-**`kind: "markdown"`** — renders the cell's string value as **sanitized inline
-markdown** (marked + DOMPurify; https/mailto links only; no `<img>`, no raw HTML).
+**`kind: "markdown"`** — renders the cell's string value as **sanitized markdown**
+(marked + DOMPurify; https/mailto links only; no `<img>`, no raw HTML). `mode` picks
+the grammar:
+
+- **`"inline"`** (default) — bold / italic / links / code only, stays on one logical
+  line. Backward-compatible with existing markdown cells.
+- **`"block"`** — full markdown: lists, headings, paragraphs, blockquote. Use for rich
+  multi-line cells; pair with `wrap: true` (and usually a `maxLines` "See more") so the
+  block content has room without stretching every row.
 
 ```jsonc
-{ "field": "notes", "cell": { "kind": "markdown" } }
+{ "field": "notes", "cell": { "kind": "markdown", "mode": "block" }, "wrap": true, "maxLines": 4 }
 ```
 
 ---
