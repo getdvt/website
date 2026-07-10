@@ -335,6 +335,8 @@ dvt Core, renderer-neutral ways to put numbers *on the chart* — no hand-writte
 
 **Value labels on marks** — top-level `spec.label` puts the formatted datum value on each mark. Works on bar/line/area, pie/donut, scatter (ignored on pivot/relational families). `position` defaults sensibly per type (bar→top, horizontal bar→right, pie/donut→outside, scatter→top).
 
+**Pie/donut labels are default-ON.** Unlike the cartesian families (default-OFF — they need an explicit `show:true`), pie/donut inherit ECharts' slice labels: labels paint unless you set `show:false`, and an absent `show` with any other label control set still applies it. Their value label is prefixed with the slice **name** (`"2019: 42.0%"`) since a pie has no axis to carry that identity. When a legend is shown on the **left/right**, the default label position moves from `outside` to `inside` (and the name prefix is dropped — the side legend already carries the names), so outside labels don't collide with the legend; a top/bottom legend, no legend, or an explicit `position` keeps `outside`.
+
 ```json
 { "type": "chart:bar",
   "spec": {
