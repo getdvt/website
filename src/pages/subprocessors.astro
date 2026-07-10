@@ -27,9 +27,9 @@ const subprocessors = [
   },
   {
     name: 'Cloudflare',
-    purpose: 'CDN, DNS, website hosting, and encrypted object storage (R2) for dashboard exports',
-    data: 'Website traffic; PNG/PDF export artifacts, encrypted and auto-deleted within 30 days',
-    region: 'Global edge (exports: eastern North America)',
+    purpose: 'CDN, DNS, website hosting, and encrypted object storage (R2) for dashboard exports and trial CSV uploads',
+    data: 'Website traffic; PNG/PDF export artifacts (encrypted, auto-deleted within 30 days); trial CSV uploads (encrypted Parquet, organization-scoped, deleted by an automated job after the trial ends)',
+    region: 'Global edge (exports & uploads: eastern North America)',
   },
   {
     name: 'Resend',

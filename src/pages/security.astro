@@ -64,32 +64,40 @@ export const prerender = true;
               <li>Dashboard <strong>specs</strong> (the JSON definition of your charts and layout)</li>
               <li>Account metadata — users, organizations, roles, audit logs</li>
               <li>Warehouse connection settings, with credentials <strong>encrypted</strong></li>
+              <li><strong>Trial CSV uploads</strong> — stored as Parquet in encrypted, organization-scoped object storage so your trial dashboards keep working</li>
             </ul>
           </div>
           <div class="store-card bad">
             <h3>What dvt does not store</h3>
             <ul>
-              <li>Your raw warehouse tables or datasets</li>
-              <li>Query results, in our metadata database — they transit memory per-request and are discarded</li>
+              <li>Your raw warehouse data — queries run in place; only the result rows dvt needs pass through memory per request, then are discarded</li>
+              <li>CSV uploads on a <strong>paid plan</strong> — durable upload storage is available only during a trial, not on paid workspaces</li>
               <li>Warehouse credentials in plaintext — we only ever hold ciphertext</li>
             </ul>
           </div>
         </div>
         <p class="precise-note">
           <strong>To be precise:</strong> query results pass through dvt's systems in memory to
-          render your charts and are not persisted to our database. Exports are the one nuance, and
-          there are two kinds: an <strong>image export</strong> (PNG or PDF) is stored encrypted,
-          scoped to your organization, and automatically deleted within 30 days — this is the one
-          place your data values land durably in our infrastructure. A <strong>data export</strong>
-          (CSV or XLSX) is streamed to you on request and audited, but <strong>never stored</strong>
-          by dvt. We'd rather tell you exactly where your data goes than make a claim we can't stand
-          behind.
+          render your charts and are not persisted to our database. Two things land durably in our
+          infrastructure, and both are bounded and disclosed here rather than glossed over. First,
+          if you upload a <strong>CSV during a trial</strong>, dvt stores it as Parquet in encrypted
+          object storage (Cloudflare R2) so your trial dashboards keep working — every object is
+          scoped to your organization by key, sits in a private bucket with no public access, and is
+          reachable only through a short-lived, server-minted signed URL; one organization can never
+          read another's objects, and an automated retention job deletes them after your trial ends.
+          This capability exists only during a trial — on a <strong>paid plan</strong>, durable upload
+          storage isn't available, and your data stays in your own warehouse. Second, an
+          <strong>image export</strong> (PNG or
+          PDF) is stored encrypted, scoped to your organization, and automatically deleted within 30
+          days. A <strong>data export</strong> (CSV or XLSX) is streamed to you on request and
+          audited, but <strong>never stored</strong> by dvt. We'd rather tell you exactly where your
+          data goes than make a claim we can't stand behind.
         </p>
         <p class="precise-note">
           <strong>Retention:</strong> we don't keep personal data indefinitely. When a user or
           organization leaves, a daily job scrubs their personal details — email, name, avatar —
           within 90 days, keeping only de-identified records so historical usage stays intact.
-          Image exports are deleted within 30 days.
+          Image exports are deleted within 30 days. Trial CSV uploads are deleted by an automated retention job after your trial ends.
         </p>
       </div>
     </section>
