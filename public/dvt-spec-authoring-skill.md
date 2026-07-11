@@ -1254,18 +1254,28 @@ both, and a target panel must declare **two** things:
 A binding whose param no target panel declares is wired to nothing — it renders fine
 but does nothing at runtime, and `dvt_spec_validate` warns about it. A
 `multiselect` control binds an **array** of selected values into an `IN`-list:
-write a bare named placeholder `WHERE region IN %(region)s` (no parens) and the
-engine expands it to one parameter-bound placeholder per selection — values are
-never spliced into SQL. **Clearing a multi-select to 0 selected = unset** ("show
-everything"), resolved per `unsetMode` below — not "show nothing" (ADR-0028
-Amendment 1).
+write a **self-contained parenthesized** placeholder `WHERE (region IN %(region)s)`
+and the engine expands it to one parameter-bound placeholder per selection — values
+are never spliced into SQL. **Clearing a multi-select to 0 selected binds an unset
+param.** What that does depends on `unsetMode` (below): under the default
+`"omit"` the key is dropped and each target panel falls back to its authored
+`data.params` default; under `"null"` the key binds SQL NULL and the engine
+rewrites the whole parenthesized `IN`/`NOT IN` predicate to the tautology `(1=1)` —
+**true "show everything,"** including rows where the dimension itself is NULL
+(DVT-1209, ADR-0028 Amendment 1). Use `unsetMode:"null"` when you want a cleared
+multi-select to mean "show everything." Do **not** hand-write a legacy
+`(%(k)s IS NULL OR col IN %(k)s)` guard for this — the lint flags it as an
+anti-pattern; the parenthesized bare form above is both the unset-safe and the
+lint-clean form. Note a **populated** `NOT IN` list still excludes NULL-dimension
+rows per SQL's normal three-valued logic — only the fully-unset case is rewritten
+to show everything.
 
 The multi-select control's UX affordances are **automatic — no spec field**: a
 tri-state **Select all / Clear all** bulk row, an in-list **search** box (appears once
 the option list exceeds 8), an **"N selected"** footer summary, and **batched Apply**
 (the re-query fires once on Apply, not per checkbox). For a `not-in` (exclude)
-multi-select, author the guarded `WHERE (%(k)s IS NULL OR col NOT IN %(k)s)` so an
-empty exclusion means "show all" rather than matching no rows.
+multi-select, author the same parenthesized bare form `WHERE (col NOT IN %(k)s)` with
+`unsetMode:"null"` so an empty exclusion means "show all" rather than matching no rows.
 
 **Filter selections round-trip in the URL.** When a viewer adjusts a filter, the
 selection is mirrored to the page URL (under an `f.<param>` query param), so a reload
@@ -1304,7 +1314,7 @@ value-source column holding each option's bound value; `labelField` defaults to 
 tooltip on hover + keyboard focus (`aria-describedby`).
 
 `control`: `select` (default) | `multiselect` (binds an array → `IN`-list; target query
-uses a bare `IN %(param)s`) | `date-range` | `number-range` | `search` | `toggle`
+uses the parenthesized bare form `(col IN %(param)s)`) | `date-range` | `number-range` | `search` | `toggle`
 (tri-state boolean switch; pair with `valueType:"boolean"`, binds a scalar boolean via
 the `equals` path; unset = no predicate when `unsetMode:"omit"`) | `number` (single
 `<input type=number>` binding one scalar to `param`; use with `operator: gt|gte|lt|lte|
@@ -1379,8 +1389,9 @@ for you. Two fields:
     **authored `params` default**. Author writes plain `WHERE col = %(k)s`. Use when
     there's a natural default value.
   - `"null"` — the key binds **SQL NULL**. Author writes the guarded predicate
-    `WHERE (%(k)s IS NULL OR col = %(k)s)`. Use for "show everything by default", for
-    `IN`-list multi-selects (`WHERE (%(k)s IS NULL OR col IN %(k)s)`), and it is
+    `WHERE (col = %(k)s OR %(k)s IS NULL)`. Use for "show everything by default", for
+    `IN`-list multi-selects (`WHERE (col IN %(k)s)` — the engine rewrites this
+    self-contained parenthesized predicate to `(1=1)` when unset, DVT-1209), and it is
     **required** for open-ended range sides.
 
 ```json
@@ -1391,7 +1402,7 @@ for you. Two fields:
 ```
 
 …with the target panel guarding the param so unset = everything:
-`WHERE (%(region)s IS NULL OR region = %(region)s)`. Unset is **omit or typed NULL
+`WHERE (region = %(region)s OR %(region)s IS NULL)`. Unset is **omit or typed NULL
 only** — never a sentinel string or client-built SQL.
 
 **The comparison operator (`operator`, ADR-0028 Amendment 1).** `operator` is
@@ -1408,7 +1419,7 @@ value still enters SQL only as a bound `%(k)s` parameter (never interpolated). D
 | `contains` | `WHERE col LIKE %(k)s ESCAPE '!'` | `%value%` (LIKE metachars `! % _` escaped) |
 | `starts-with` | `WHERE col LIKE %(k)s ESCAPE '!'` | `value%` |
 | `ends-with` | `WHERE col LIKE %(k)s ESCAPE '!'` | `%value` |
-| `not-in` | `WHERE col NOT IN %(k)s` | an array → parameter-bound `NOT IN`-list |
+| `not-in` | `WHERE (col NOT IN %(k)s)` | an array → parameter-bound `NOT IN`-list |
 | `in` / `between` | (multiselect / range — see those controls) | array / two bounds |
 | `gt` | `WHERE col > %(k)s` | a plain scalar (NOT LIKE-wrapped) |
 | `gte` | `WHERE col >= %(k)s` | a plain scalar |
@@ -1430,7 +1441,7 @@ column gets **two** filters (operator switching is author-time only).
             "operator": "contains", "unsetMode": "null", "targets": "all" } }
 ```
 
-…with the target panel: `WHERE (%(customer)s IS NULL OR customer LIKE %(customer)s ESCAPE '!')`.
+…with the target panel: `WHERE (customer LIKE %(customer)s ESCAPE '!' OR %(customer)s IS NULL)`.
 
 **Number range (`control: "number-range"`, `operator: "between"`, ADR-0028 Amendment 1
 — DVT-257).** A range filter binds **two** values, so it uses **two author-declared
@@ -1458,8 +1469,8 @@ binds typed **NULL**, which the guard reads as "no bound on that side."
 …with the target panel writing the dual-guarded predicate and declaring **both** keys:
 
 ```sql
-WHERE (%(amount_lo)s IS NULL OR amount >= %(amount_lo)s)
-  AND (%(amount_hi)s IS NULL OR amount <= %(amount_hi)s)
+WHERE (amount >= %(amount_lo)s OR %(amount_lo)s IS NULL)
+  AND (amount <= %(amount_hi)s OR %(amount_hi)s IS NULL)
 ```
 
 `"params": { "amount_lo": null, "amount_hi": null }`. A blank min **or** max is
@@ -1515,8 +1526,8 @@ range.
 keys (`"params": { "order_date_lo": null, "order_date_hi": null }`):
 
 ```sql
-WHERE (%(order_date_lo)s IS NULL OR order_date >= %(order_date_lo)s)
-  AND (%(order_date_hi)s IS NULL OR order_date <= %(order_date_hi)s)
+WHERE (order_date >= %(order_date_lo)s OR %(order_date_lo)s IS NULL)
+  AND (order_date <= %(order_date_hi)s OR %(order_date_hi)s IS NULL)
 ```
 
 **`filter-bar` — the de-blocky grouping band (DVT-551, dvt Core).** A `filter-bar`
@@ -1554,8 +1565,8 @@ The target panel writes the standard guarded predicates and declares both params
 
 ```sql
 where 1=1
-    and (%(is_active)s is null or is_active = %(is_active)s)
-    and (%(status)s is null or status = %(status)s)
+    and (is_active = %(is_active)s or %(is_active)s is null)
+    and (status = %(status)s or %(status)s is null)
 ```
 
 Spec fields on `filter-bar`: `panels` (required, ordered child ids) + `title?`
@@ -1780,7 +1791,7 @@ Martini Glass. Multi-select binds an array (`in` / `not-in`, DVT-170).
   "data": { "sourceId": "db", "query": "SELECT DISTINCT region FROM orders ORDER BY 1" },
   "spec": { "control": "multiselect", "param": "region", "valueField": "region",
             "chrome": "none", "allLabel": "All regions", "unsetMode": "null" } }
-// each re-queried panel guards the predicate: WHERE (%(region)s IS NULL OR region IN %(region)s) — unsetMode:"null" means "no selection" shows all (ADR-0028 Amendment 1).
+// each re-queried panel guards the predicate: WHERE (region IN %(region)s) — unsetMode:"null" means "no selection" rewrites to (1=1), so it shows all (DVT-1209, ADR-0028 Amendment 1).
 ```
 
 *When NOT to use:* on a fixed answer-first exec dashboard, or when a filter would let a reader
@@ -2691,7 +2702,7 @@ right now.  Six tools cover the full lifecycle:
 | Tool | Verb | Permission | Purpose |
 |------|------|-----------|---------|
 | `dvt_export_schedule_preview` | dry-run | `dashboard:write` | Validate a recurrence and see the next fire times **before** creating/updating — persists nothing |
-| `dvt_export_schedule_create`  | write   | `dashboard:write` | Create a schedule, add recipients, wire webhook destinations (Slack / Teams / Google Chat) in one call; optionally scope to a single chart panel (`panel_id`, PNG-only) |
+| `dvt_export_schedule_create`  | write   | `dashboard:write` | Create a schedule, add recipients, wire webhook destinations (Slack / Teams / Google Chat) in one call; optionally scope to a single chart panel (`panel_id`, PNG-only) or a single page (`page_id`, pdf/png) |
 | `dvt_export_schedule_list`    | read    | `dashboard:read`  | List all schedules for a dashboard |
 | `dvt_export_schedule_get`     | read    | `dashboard:read`  | Fetch one schedule with its recipients + run state |
 | `dvt_export_schedule_update`  | write   | `dashboard:write` | Partially update a schedule (merge patch) |
@@ -2783,6 +2794,27 @@ dvt_export_schedule_create(
     preset       = { "kind": "daily", "atHour": 8 },
     timezone     = "America/Chicago",
     slack_channels = [{ "label": "#revenue", "webhook_url": "https://hooks.slack.com/services/…" }],
+)
+```
+
+**Page-grain exports (`page_id`):** supply a page id to export a single dashboard
+page rather than the whole dashboard (DVT-1193).  Page ids come from the
+`pages[*].id` field in the spec; use `dvt_page_list` or `dvt_dashboard_get` to
+enumerate them.  Both `"pdf"` and `"png"` formats are supported (no PNG-only
+restriction — a page is a full layout).  Only multi-page dashboards have
+addressable pages: a single-page dashboard (top-level `panels`, no `pages[]`)
+returns a 400 — schedule the whole dashboard instead.  `page_id` and `panel_id`
+are mutually exclusive; a schedule targets the whole dashboard, one page, or one
+chart, never a combination.
+
+```
+dvt_export_schedule_create(
+    dashboard_id = "<uuid>",
+    page_id      = "pipeline-health",       # scope to one page
+    format       = "pdf",                   # pdf or png — both allowed
+    preset       = { "kind": "weekly", "atHour": 8, "dayOfWeek": 1 },
+    timezone     = "America/Chicago",
+    recipients   = ["exec-team@example.com"],
 )
 ```
 
