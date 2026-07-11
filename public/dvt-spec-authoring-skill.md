@@ -207,6 +207,22 @@ Keep `query` alongside `rows` so the SQL inspector still shows real SQL:
           "rows": [ { "category": "Software", "revenue": 1269315.62 } ] }
 ```
 
+**`data.query` MUST be executable SQL — never a natural-language description.**
+The panel's query inspector shows the string verbatim, and a live fetch executes it
+verbatim, so `"query": "weekly revenue by category (theme-river bands)"` is both
+dishonest and broken. This applies even when the panel renders from baked `rows` or
+inline `series[].data`: write the real SQL that produced the data (validate surfaces
+an advisory `query-sql` warning otherwise, DVT-1242). When the shown data was
+reshaped after the query (e.g. rows nested into a sunburst tree), append the note as
+a trailing SQL comment — executable statement first:
+
+```json
+"query": "SELECT c.region, c.segment, ROUND(SUM(o.amount)) AS rev FROM ... GROUP BY 1, 2\n-- derived: nested into region → segment children for the sunburst"
+```
+
+Only truly derivation-only documentation (no single producing statement exists) may
+be comment-only (`-- derived: …`).
+
 ### Tooltip — dvt Core extensions (DVT-301 / DVT-408)
 
 The tooltip sub-keys `fields`, `total`, `order`, `template`, and `crosshair` are *dvt Core* (portable, renderer-neutral). They are compiled + stripped before the ECharts tooltip passthrough — any other key under `tooltip` is the ECharts escape hatch. Tooltip enrichment works on bar/line/area, pie/donut, and scatter; ignored on pivot/relational families.
