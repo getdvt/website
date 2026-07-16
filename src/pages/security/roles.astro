@@ -1,0 +1,525 @@
+---
+import Base from '../../layouts/Base.astro';
+import Nav from '../../components/Nav.astro';
+import Footer from '../../components/Footer.astro';
+
+export const prerender = true;
+---
+
+<Base
+  title="Roles & permissions — dvt"
+  description="How dvt's four cumulative workspace roles, per-resource sharing, API-key scopes, and plan entitlements combine into an effective permission set."
+>
+  <Nav />
+  <main>
+    <!-- Hero -->
+    <section class="page-hero">
+      <div class="container">
+        <div class="eyebrow">Security</div>
+        <h1>Who can do what in dvt.</h1>
+        <p class="lead">
+          Four cumulative workspace roles set the baseline for every member. Per-resource sharing
+          can only widen that baseline; API-key scopes and plan entitlements can only narrow it.
+          This page exists so a security review doesn't have to ask.
+        </p>
+      </div>
+    </section>
+
+    <!-- Model at a glance -->
+    <section class="section">
+      <div class="container">
+        <h2>The model at a glance</h2>
+        <p class="section-lead">
+          Access is layered, and each layer only moves in one direction. A member's workspace role
+          sets their baseline across the org. Sharing grants can widen that baseline for one
+          resource — never narrow it. API-key scopes and the org's plan entitlement can only
+          narrow what a role or grant would otherwise allow — neither can grant more than the
+          underlying role has.
+        </p>
+        <div class="formula-box">
+          <code class="formula">
+            effective access = ( role &cap; API-key scopes &cap; plan ) &cup; per-resource sharing grant
+          </code>
+          <div class="formula-legend">
+            <span><strong>role &cap; API-key scopes &cap; plan</strong> — narrows only</span>
+            <span><strong>&cup; per-resource sharing grant</strong> — widens only, that resource only</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Four workspace roles -->
+    <section class="section section-alt">
+      <div class="container">
+        <h2>Four workspace roles</h2>
+        <p class="section-lead">
+          Roles are assigned per organization and are cumulative — each role includes everything
+          the role below it can do (owner &supe; admin &supe; editor &supe; viewer).
+        </p>
+        <div class="control-grid roles-grid">
+          <div class="control">
+            <h3>Viewer</h3>
+            <p>Read dashboards, sheets, and other resources they have access to; run queries; comment.</p>
+          </div>
+          <div class="control">
+            <h3>Editor</h3>
+            <p>Viewer, plus create and edit dashboards, sheets, and skills.</p>
+          </div>
+          <div class="control">
+            <h3>Admin</h3>
+            <p>Editor, plus manage members, sharing, warehouse connections, API keys, and the audit log.</p>
+          </div>
+          <div class="control">
+            <h3>Owner</h3>
+            <p>Admin, plus billing and organization-level settings, including promoting or demoting owners.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Full capability matrix -->
+    <!-- Matrix transcribed from dvt web/src/compiler/generated/authz-matrix.ts (generated from server/internal/authz, drift-locked in CI). Update this table whenever that file changes. -->
+    <section class="section">
+      <div class="container">
+        <h2>The full capability matrix</h2>
+        <p class="section-lead">
+          Every declared capability, and which roles include it. This table mirrors the same
+          authorization rules dvt's API enforces at request time: it is transcribed from dvt's
+          generated authz matrix — a test-locked artifact that cannot drift from what the server
+          enforces — and the same matrix is rendered live in-app under Members &rarr; Roles &amp;
+          permissions. Capability ids (e.g. <code class="inline-mono">dashboard:read</code>) are
+          the exact strings used as API-key scopes.
+        </p>
+        <div class="table-scroll">
+          <table class="matrix-table">
+            <thead>
+              <tr>
+                <th scope="col">Capability</th>
+                <th scope="col">Viewer</th>
+                <th scope="col">Editor</th>
+                <th scope="col">Admin</th>
+                <th scope="col">Owner</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="group-row"><th colspan="5" scope="colgroup">Dashboards</th></tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">dashboard:read</code> — View dashboards and their data</th>
+                <td>&check;</td><td>&check;</td><td>&check;</td><td>&check;</td>
+              </tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">dashboard:write</code> — Create and edit dashboards</th>
+                <td>&ndash;</td><td>&check;</td><td>&check;</td><td>&check;</td>
+              </tr>
+
+              <tr class="group-row"><th colspan="5" scope="colgroup">Data</th></tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">data:query</code> — Run queries behind panels</th>
+                <td>&check;</td><td>&check;</td><td>&check;</td><td>&check;</td>
+              </tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">data:export</code> — Export results and schedule exports</th>
+                <td>&check;</td><td>&check;</td><td>&check;</td><td>&check;</td>
+              </tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">data:read_cached</code> — Read cached query results</th>
+                <td>&check;</td><td>&check;</td><td>&check;</td><td>&check;</td>
+              </tr>
+
+              <tr class="group-row"><th colspan="5" scope="colgroup">Sheets</th></tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">sheet:read</code> — View sheets</th>
+                <td>&check;</td><td>&check;</td><td>&check;</td><td>&check;</td>
+              </tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">sheet:write</code> — Create and edit sheets</th>
+                <td>&ndash;</td><td>&check;</td><td>&check;</td><td>&check;</td>
+              </tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">sheet:delete</code> — Delete sheets</th>
+                <td>&ndash;</td><td>&check;</td><td>&check;</td><td>&check;</td>
+              </tr>
+
+              <tr class="group-row"><th colspan="5" scope="colgroup">Skills</th></tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">skill:read</code> — Use skills</th>
+                <td>&check;</td><td>&check;</td><td>&check;</td><td>&check;</td>
+              </tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">skill:write</code> — Create and edit skills</th>
+                <td>&ndash;</td><td>&check;</td><td>&check;</td><td>&check;</td>
+              </tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">skill:manage</code> — Publish and manage org skills</th>
+                <td>&ndash;</td><td>&ndash;</td><td>&check;</td><td>&check;</td>
+              </tr>
+
+              <tr class="group-row"><th colspan="5" scope="colgroup">Comments</th></tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">comment:read</code> — Read comment threads</th>
+                <td>&check;</td><td>&check;</td><td>&check;</td><td>&check;</td>
+              </tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">comment:write</code> — Write comments</th>
+                <td>&check;</td><td>&check;</td><td>&check;</td><td>&check;</td>
+              </tr>
+
+              <tr class="group-row"><th colspan="5" scope="colgroup">Sharing &amp; members</th></tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">share:manage</code> — Manage sharing and visibility</th>
+                <td>&ndash;</td><td>&ndash;</td><td>&check;</td><td>&check;</td>
+              </tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">member:manage</code> — Invite, remove, and set member roles</th>
+                <td>&ndash;</td><td>&ndash;</td><td>&check;</td><td>&check;</td>
+              </tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">member:manage_owners</code> — Promote or demote owners</th>
+                <td>&ndash;</td><td>&ndash;</td><td>&ndash;</td><td>&check;</td>
+              </tr>
+
+              <tr class="group-row"><th colspan="5" scope="colgroup">Workspace administration</th></tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">connection:manage</code> — Manage warehouse connections</th>
+                <td>&ndash;</td><td>&ndash;</td><td>&check;</td><td>&check;</td>
+              </tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">apikey:manage</code> — Manage API keys</th>
+                <td>&ndash;</td><td>&ndash;</td><td>&check;</td><td>&check;</td>
+              </tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">audit:read</code> — View audit log and admin analytics</th>
+                <td>&ndash;</td><td>&ndash;</td><td>&check;</td><td>&check;</td>
+              </tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">support_issue:manage</code> — Manage support issues</th>
+                <td>&ndash;</td><td>&ndash;</td><td>&check;</td><td>&check;</td>
+              </tr>
+
+              <tr class="group-row"><th colspan="5" scope="colgroup">Organization</th></tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">billing:manage</code> — Manage billing</th>
+                <td>&ndash;</td><td>&ndash;</td><td>&ndash;</td><td>&check;</td>
+              </tr>
+              <tr>
+                <th scope="row"><code class="inline-mono">org:manage</code> — Rename, rebrand, or delete the org</th>
+                <td>&ndash;</td><td>&ndash;</td><td>&ndash;</td><td>&check;</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="precise-note">
+          <strong>&check;</strong> = included in that role; <strong>&ndash;</strong> = not
+          included. Roles are cumulative, so a capability that appears at Editor also appears at
+          Admin and Owner.
+        </p>
+      </div>
+    </section>
+
+    <!-- Roles vs. sharing grants -->
+    <section class="section section-alt">
+      <div class="container">
+        <h2>Workspace roles vs. sharing grants</h2>
+        <p class="section-lead">
+          The matrix above is a member's workspace role — their baseline across everything in the
+          org. Sharing a dashboard or sheet grants extra access to that one resource only, and can
+          only widen what the workspace role already allows — a share can never take away what a
+          workspace role already gives.
+        </p>
+        <div class="table-scroll">
+          <table class="matrix-table grant-table">
+            <thead>
+              <tr>
+                <th scope="col">Sharing grant</th>
+                <th scope="col">On that resource, the person can&hellip;</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Viewer</strong></td>
+                <td>View it, run its queries, export, comment.</td>
+              </tr>
+              <tr>
+                <td><strong>Editor</strong></td>
+                <td>Everything Viewer can, plus edit it.</td>
+              </tr>
+              <tr>
+                <td><strong>Manage</strong></td>
+                <td>Everything Editor can, plus change its visibility and share it with others.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="precise-note">
+          <strong>Naming note:</strong> a Manage grant is admin of that one resource — it does not
+          make someone a workspace Admin. For example, a workspace Viewer given an Editor grant on
+          one dashboard can edit that dashboard and nothing else. Admins and Owners already hold
+          manage access everywhere, so grants never affect them.
+        </p>
+      </div>
+    </section>
+
+    <!-- API keys and plans narrow -->
+    <section class="section">
+      <div class="container">
+        <h2>API keys and plans can only narrow</h2>
+        <p class="section-lead">
+          Two more layers sit on top of a role, and both only ever restrict what it allows — never
+          add to it.
+        </p>
+        <div class="control-grid">
+          <div class="control">
+            <h3>API-key scopes</h3>
+            <p>
+              Scopes restrict a key to a subset of what its owner's role allows — a scope can
+              never grant a key more than the owner's role and plan already permit. An unscoped
+              key carries the owner's full effective role.
+            </p>
+          </div>
+          <div class="control">
+            <h3>Plan entitlements</h3>
+            <p>
+              A capability is exercised only if the org's current plan tier entitles it. Plan is
+              resolved fresh on every request, never snapshotted when a key is minted — so a
+              downgrade applies on the very next call, for every key regardless of when it was
+              created.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Agents -->
+    <section class="section section-alt">
+      <div class="container">
+        <h2>AI agents inherit your permissions</h2>
+        <p class="section-lead">
+          There is no special agent permission tier. When an AI agent operates dvt through the API
+          or MCP server, it holds the token of the user it acts for and can do exactly what that
+          user can do — no more, no less. Agent actions are recorded in the audit log, attributed
+          as agent activity. See <a href="/security">Security</a> for the broader story on AI and
+          your data.
+        </p>
+      </div>
+    </section>
+
+    <!-- Warehouse layer -->
+    <section class="section">
+      <div class="container">
+        <h2>Warehouse access is a separate layer</h2>
+        <p class="section-lead">
+          Everything above governs what a member can do in dvt — view, edit, share, administer. It
+          does not govern what rows and columns a warehouse query returns. The identity dvt
+          presents to your warehouse is set per connection: either a shared service credential, or
+          per-user OAuth passthrough, where your warehouse enforces that user's own row- and
+          column-level policies natively. The guarantee: a dvt Admin's workspace
+          role never grants more warehouse access than the connection's own credential has. See
+          <a href="/security">Security</a> for the full data-flow story.
+        </p>
+      </div>
+    </section>
+
+    <!-- Contact -->
+    <section class="section section-alt">
+      <div class="container">
+        <p class="contact-line">
+          Running a security review? Email
+          <a href="mailto:security@dvt.dev">security@dvt.dev</a> and we'll help.
+        </p>
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .page-hero {
+    padding: var(--space-16) 0 var(--space-12);
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+
+  .eyebrow {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-brand-mark);
+    margin-bottom: var(--space-4);
+  }
+
+  .page-hero h1 {
+    font-size: clamp(var(--text-3xl), 5vw, 56px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-5);
+    max-width: 720px;
+  }
+
+  .lead {
+    font-size: var(--text-lg);
+    color: var(--color-neutral-600);
+    line-height: 1.65;
+    max-width: 640px;
+  }
+
+  .section { padding: var(--space-16) 0; }
+  .section-alt {
+    padding: var(--space-16) 0;
+    background: var(--color-neutral-50);
+    border-top: 1px solid var(--color-neutral-200);
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+
+  .section h2 {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-6);
+  }
+
+  .section-lead {
+    font-size: var(--text-base);
+    color: var(--color-neutral-600);
+    margin-bottom: var(--space-8);
+    max-width: 700px;
+    line-height: 1.7;
+  }
+
+  /* Formula block */
+  .formula-box {
+    background: var(--color-white);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6) var(--space-8);
+    max-width: 760px;
+  }
+  .formula {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: var(--text-base);
+    color: var(--color-neutral-900);
+    background: var(--color-neutral-100);
+    border-radius: var(--radius-md);
+    padding: var(--space-4) var(--space-5);
+    margin-bottom: var(--space-4);
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .formula-legend {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--color-neutral-600);
+  }
+  .formula-legend strong {
+    font-family: var(--font-mono);
+    color: var(--color-brand-indigo);
+    font-weight: 600;
+  }
+
+  /* Control grid (reused for role cards) */
+  .control-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6);
+  }
+  .roles-grid { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 900px) {
+    .roles-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 768px) {
+    .control-grid { grid-template-columns: 1fr; }
+  }
+  .control h3 {
+    font-size: var(--text-base);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-2);
+  }
+  .control p {
+    color: var(--color-neutral-700);
+    line-height: 1.7;
+  }
+
+  /* Tables */
+  .table-scroll {
+    overflow-x: auto;
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-lg);
+    background: var(--color-white);
+  }
+  .matrix-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+  }
+  .matrix-table th,
+  .matrix-table td {
+    padding: var(--space-3) var(--space-4);
+    text-align: left;
+    border-bottom: 1px solid var(--color-neutral-100);
+  }
+  .matrix-table thead th {
+    color: var(--color-neutral-500);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+    border-bottom: 2px solid var(--color-neutral-200);
+    white-space: nowrap;
+  }
+  .matrix-table th:not(:first-child),
+  .matrix-table td:not(:first-child) {
+    text-align: center;
+    white-space: nowrap;
+  }
+  .matrix-table tbody tr:last-child td,
+  .matrix-table tbody tr:last-child th {
+    border-bottom: none;
+  }
+  .matrix-table tbody th[scope='row'] {
+    font-weight: 400;
+    text-align: left;
+    white-space: normal;
+  }
+  .matrix-table .group-row th {
+    background: var(--color-neutral-50);
+    color: var(--color-neutral-900);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 700;
+    text-align: left;
+  }
+  .grant-table td:first-child {
+    white-space: nowrap;
+  }
+
+  .inline-mono {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    color: var(--color-neutral-900);
+    background: var(--color-neutral-100);
+    border-radius: var(--radius-md);
+    padding: 1px 6px;
+  }
+
+  .precise-note {
+    margin-top: var(--space-6);
+    padding: var(--space-6);
+    background: var(--color-white);
+    border: 1px solid var(--color-neutral-200);
+    border-left: 3px solid var(--color-brand-mark);
+    border-radius: var(--radius-md);
+    color: var(--color-neutral-700);
+    line-height: 1.7;
+    max-width: 820px;
+  }
+
+  .contact-line {
+    color: var(--color-neutral-700);
+  }
+</style>
