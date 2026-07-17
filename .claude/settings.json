@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p *dvt-pr-review*)",
+      "Bash(rm -f *dvt-pr-review*)",
+      "Bash(printf 'pass *dvt-pr-review*)"
+    ]
+  }
+}
