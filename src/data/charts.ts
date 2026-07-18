@@ -29,9 +29,43 @@ export interface ChartDef {
   featured?: boolean;
 }
 
+/** One cell in a gallery table demo. Every field is optional so a cell can be a
+ *  bare value, a conditional-formatted value, an inline data bar, a heat tint,
+ *  or an in-cell visualization (sparkline / bullet / win-loss). */
+export interface TableCellDef {
+  v?: string;
+  /** semantic delta colour */
+  tone?: 'up' | 'down' | 'muted';
+  /** inline horizontal data bar, 0–100 */
+  bar?: number;
+  /** continuous colour-scale tint, 0–100 */
+  heat?: number;
+  /** in-cell sparkline series */
+  spark?: number[];
+  sparkKind?: 'line' | 'area' | 'bar';
+  /** in-cell bullet: actual vs target on a 0–max track */
+  bullet?: { value: number; target: number; max?: number };
+  /** in-cell win/loss/tie strip (1 | -1 | 0) */
+  winloss?: number[];
+  /** conditional-format background / text colour (any CSS colour) */
+  fill?: string;
+  fg?: string;
+  bold?: boolean;
+}
+
+export interface TableRowDef {
+  cells: Record<string, TableCellDef>;
+  /** 'group' = full-width group header; 'subtotal' / 'total' = emphasised summary row */
+  kind?: 'group' | 'subtotal' | 'total';
+  /** label for a group-header row */
+  label?: string;
+}
+
 export interface TableDef {
   columns: { key: string; label: string; align?: 'left' | 'right' }[];
-  rows: Record<string, { v: string; tone?: 'up' | 'down' | 'muted'; bar?: number; heat?: number }>[];
+  /** spanning header groups rendered as a second header row */
+  columnGroups?: { label: string; span: number }[];
+  rows: TableRowDef[];
 }
 
 export interface Family {
@@ -662,11 +696,14 @@ const animated: ChartDef[] = [
 ];
 
 /* ── TABLES ──────────────────────────────────────────────────────── */
+// Tables are dvt Core (rendered client-side over already-bound rows — never a
+// re-query, never a re-bill). The gallery shows the real vocabulary: conditional
+// formatting, colour scales, in-cell viz, grouping + subtotals, and pivots.
 const tables: ChartDef[] = [
   {
     dvtType: 'table',
     title: 'Metrics table',
-    blurb: 'Conditional formatting, deltas, and inline share bars.',
+    blurb: 'Conditional formatting, deltas, and inline share bars — all declared.',
     kind: 'table',
     table: {
       columns: [
@@ -676,21 +713,117 @@ const tables: ChartDef[] = [
         { key: 'share', label: 'Share' },
       ],
       rows: [
-        { seg: { v: 'Enterprise' }, rev: { v: '$1.05M' }, mom: { v: '+18%', tone: 'up' }, share: { v: '41%', bar: 41 } },
-        { seg: { v: 'Pro' }, rev: { v: '$735K' }, mom: { v: '+9%', tone: 'up' }, share: { v: '29%', bar: 29 } },
-        { seg: { v: 'Team' }, rev: { v: '$580K' }, mom: { v: '+4%', tone: 'up' }, share: { v: '23%', bar: 23 } },
-        { seg: { v: 'Starter' }, rev: { v: '$180K' }, mom: { v: '−6%', tone: 'down' }, share: { v: '7%', bar: 7 } },
+        { cells: { seg: { v: 'Enterprise' }, rev: { v: '$1.05M', bold: true }, mom: { v: '+18%', tone: 'up' }, share: { v: '41%', bar: 41 } } },
+        { cells: { seg: { v: 'Pro' }, rev: { v: '$735K' }, mom: { v: '+9%', tone: 'up' }, share: { v: '29%', bar: 29 } } },
+        { cells: { seg: { v: 'Team' }, rev: { v: '$580K' }, mom: { v: '+4%', tone: 'up' }, share: { v: '23%', bar: 23 } } },
+        { cells: { seg: { v: 'Starter' }, rev: { v: '$180K' }, mom: { v: '−6%', tone: 'down', fill: 'rgba(239,68,68,0.10)' }, share: { v: '7%', bar: 7 } } },
+      ],
+    },
+    spec: `{ "type": "table",
+  "spec": {
+    "columns": [
+      { "field": "revenue", "format": { "type": "currency", "currency": "USD" } },
+      { "field": "mom",     "format": { "type": "percentage" } },
+      { "field": "share",   "cell": { "kind": "bar" } }
+    ],
+    "conditionalFormat": [
+      { "where": { "field": "mom", "op": "lt", "value": 0 },
+        "apply": { "fill": "danger.subtle", "textColor": "danger", "weight": "bold" } }
+    ] } }`,
+  },
+  {
+    dvtType: 'table',
+    title: 'In-cell visualizations',
+    blurb: 'Sparklines, bullet bars, and win/loss strips rendered inside cells.',
+    kind: 'table',
+    table: {
+      columns: [
+        { key: 'metric', label: 'Metric' },
+        { key: 'trend', label: 'Trend (6mo)' },
+        { key: 'pace', label: 'Pace vs quota', align: 'left' },
+        { key: 'streak', label: 'Weekly W/L' },
+      ],
+      rows: [
+        { cells: { metric: { v: 'ARR' }, trend: { spark: [12, 14, 13, 17, 19, 22], sparkKind: 'area' }, pace: { bullet: { value: 82, target: 75, max: 100 } }, streak: { winloss: [1, 1, -1, 1, 1, 1] } } },
+        { cells: { metric: { v: 'Net new logos' }, trend: { spark: [8, 6, 9, 7, 10, 11], sparkKind: 'line' }, pace: { bullet: { value: 61, target: 70, max: 100 } }, streak: { winloss: [1, -1, 1, -1, 1, -1] } } },
+        { cells: { metric: { v: 'Churn' }, trend: { spark: [5, 6, 4, 4, 3, 3], sparkKind: 'bar' }, pace: { bullet: { value: 40, target: 50, max: 100 } }, streak: { winloss: [-1, 1, 1, 1, 1, 1] } } },
       ],
     },
     spec: `{ "type": "table",
   "spec": { "columns": [
-    { "field": "revenue", "format": "currency" },
-    { "field": "mom", "format": "percent", "conditional": true } ] } }`,
+    { "field": "trend",  "cell": { "kind": "sparkline", "type": "area",
+        "source": { "valuesFromColumns": ["m1","m2","m3","m4","m5","m6"] } } },
+    { "field": "pace",   "cell": { "kind": "bullet", "target": "quota" } },
+    { "field": "streak", "cell": { "kind": "winloss" } } ] } }`,
   },
   {
-    dvtType: 'table (retention)',
+    dvtType: 'table',
+    title: 'Grouped + subtotals',
+    blurb: 'Row grouping with per-group subtotals and a grand total.',
+    kind: 'table',
+    table: {
+      columns: [
+        { key: 'rep', label: 'Rep' },
+        { key: 'deals', label: 'Deals', align: 'right' },
+        { key: 'rev', label: 'Revenue', align: 'right' },
+      ],
+      rows: [
+        { kind: 'group', label: 'West' },
+        { cells: { rep: { v: 'A. Rivera' }, deals: { v: '14' }, rev: { v: '$420K' } } },
+        { cells: { rep: { v: 'J. Okafor' }, deals: { v: '11' }, rev: { v: '$330K' } } },
+        { kind: 'subtotal', cells: { rep: { v: 'West subtotal' }, deals: { v: '25' }, rev: { v: '$750K' } } },
+        { kind: 'group', label: 'East' },
+        { cells: { rep: { v: 'M. Chen' }, deals: { v: '18' }, rev: { v: '$540K' } } },
+        { cells: { rep: { v: 'P. Nowak' }, deals: { v: '9' }, rev: { v: '$260K' } } },
+        { kind: 'subtotal', cells: { rep: { v: 'East subtotal' }, deals: { v: '27' }, rev: { v: '$800K' } } },
+        { kind: 'total', cells: { rep: { v: 'Grand total' }, deals: { v: '52' }, rev: { v: '$1.55M' } } },
+      ],
+    },
+    spec: `{ "type": "table",
+  "spec": { "grouping": {
+    "groupBy": ["region"],
+    "aggregations": [
+      { "field": "deals",   "agg": "count" },
+      { "field": "revenue", "agg": "sum" } ],
+    "subtotals": true, "grandTotal": true } } }`,
+  },
+  {
+    dvtType: 'table',
+    title: 'Pivot / cross-tab',
+    blurb: 'Revenue by region × quarter with spanning headers and heat.',
+    kind: 'table',
+    table: {
+      columns: [
+        { key: 'region', label: 'Region' },
+        { key: 'q1', label: 'Q1', align: 'right' },
+        { key: 'q2', label: 'Q2', align: 'right' },
+        { key: 'q3', label: 'Q3', align: 'right' },
+        { key: 'total', label: 'Total', align: 'right' },
+      ],
+      columnGroups: [
+        { label: '', span: 1 },
+        { label: 'FY26 revenue', span: 3 },
+        { label: '', span: 1 },
+      ],
+      rows: [
+        { cells: { region: { v: 'West' }, q1: { v: '$210K', heat: 62 }, q2: { v: '$255K', heat: 74 }, q3: { v: '$285K', heat: 86 }, total: { v: '$750K', bold: true } } },
+        { cells: { region: { v: 'East' }, q1: { v: '$240K', heat: 70 }, q2: { v: '$268K', heat: 79 }, q3: { v: '$292K', heat: 90 }, total: { v: '$800K', bold: true } } },
+        { cells: { region: { v: 'EMEA' }, q1: { v: '$160K', heat: 48 }, q2: { v: '$180K', heat: 54 }, q3: { v: '$205K', heat: 61 }, total: { v: '$545K', bold: true } } },
+      ],
+    },
+    spec: `{ "type": "table",
+  "spec": { "pivot": {
+    "rows": ["region"],
+    "columns": ["quarter"],
+    "values": [ { "field": "revenue", "agg": "sum" } ],
+    "totals": { "row": true } },
+    "columns": [ { "field": "revenue",
+      "colorScale": { "method": "numeric", "palette": "blues" } } ] } }`,
+  },
+  {
+    dvtType: 'table',
     title: 'Cohort heat table',
-    blurb: 'Retention grid with cell-level heat encoding.',
+    blurb: 'Retention grid with continuous colour-scale heat encoding.',
     kind: 'table',
     table: {
       columns: [
@@ -701,14 +834,15 @@ const tables: ChartDef[] = [
         { key: 'm3', label: 'M3', align: 'right' },
       ],
       rows: [
-        { c: { v: 'Jan' }, m0: { v: '100%', heat: 100 }, m1: { v: '82%', heat: 82 }, m2: { v: '71%', heat: 71 }, m3: { v: '64%', heat: 64 } },
-        { c: { v: 'Feb' }, m0: { v: '100%', heat: 100 }, m1: { v: '85%', heat: 85 }, m2: { v: '74%', heat: 74 }, m3: { v: '69%', heat: 69 } },
-        { c: { v: 'Mar' }, m0: { v: '100%', heat: 100 }, m1: { v: '88%', heat: 88 }, m2: { v: '79%', heat: 79 }, m3: { v: '72%', heat: 72 } },
+        { cells: { c: { v: 'Jan' }, m0: { v: '100%', heat: 100 }, m1: { v: '82%', heat: 82 }, m2: { v: '71%', heat: 71 }, m3: { v: '64%', heat: 64 } } },
+        { cells: { c: { v: 'Feb' }, m0: { v: '100%', heat: 100 }, m1: { v: '85%', heat: 85 }, m2: { v: '74%', heat: 74 }, m3: { v: '69%', heat: 69 } } },
+        { cells: { c: { v: 'Mar' }, m0: { v: '100%', heat: 100 }, m1: { v: '88%', heat: 88 }, m2: { v: '79%', heat: 79 }, m3: { v: '72%', heat: 72 } } },
       ],
     },
     spec: `{ "type": "table",
-  "spec": { "heatColumns": ["m1", "m2", "m3"],
-            "heat": { "min": 50, "max": 100 } } }`,
+  "spec": { "columns": [ { "field": "retention",
+    "colorScale": { "method": "quantile",
+                    "palette": "blues", "domain": [50, 100] } } ] } }`,
   },
 ];
 

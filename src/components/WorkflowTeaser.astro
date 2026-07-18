@@ -1,0 +1,107 @@
+---
+/**
+ * Landing-page teaser band for the workflow features detailed on /product.
+ * Three compact cards linking into the relevant /product sections.
+ */
+const cards = [
+  {
+    href: '/product#history',
+    title: 'Version control + visual diffs',
+    body: 'Every save is a version. Roll back to any of them, and see a pixel-level diff of exactly what changed.',
+  },
+  {
+    href: '/product#review',
+    title: 'Human ⇄ AI review',
+    body: 'Comment on a panel; let Claude read the thread, make the fix, and resolve it. Code-style review, for dashboards.',
+  },
+  {
+    href: '/product#skills',
+    title: 'Org knowledge',
+    body: 'Teach dvt your metric definitions and charting conventions once — every AI-built dashboard follows them.',
+  },
+];
+---
+
+<section class="workflow-teaser">
+  <div class="container">
+    <div class="wt-head">
+      <h2>How teams work in dvt</h2>
+      <a href="/product" class="wt-all">See the product →</a>
+    </div>
+    <div class="wt-grid">
+      {cards.map((c) => (
+        <a href={c.href} class="wt-card">
+          <h3>{c.title}</h3>
+          <p>{c.body}</p>
+          <span class="wt-more">Learn more →</span>
+        </a>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .workflow-teaser {
+    padding: var(--space-16) 0;
+    background: var(--color-neutral-50);
+    border-top: 1px solid var(--color-neutral-200);
+  }
+  .wt-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin-bottom: var(--space-8);
+    flex-wrap: wrap;
+  }
+  .wt-head h2 {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+  }
+  .wt-all {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-brand-navy);
+    transition: color var(--transition-fast);
+  }
+  .wt-all:hover { color: var(--color-brand-mark); }
+
+  .wt-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-4);
+  }
+  .wt-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--color-white);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+  }
+  .wt-card:hover {
+    border-color: var(--color-brand-mark);
+    box-shadow: 0 2px 12px rgba(91, 191, 186, 0.12);
+  }
+  .wt-card h3 {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-2);
+  }
+  .wt-card p {
+    font-size: var(--text-sm);
+    color: var(--color-neutral-600);
+    line-height: 1.6;
+    flex: 1;
+  }
+  .wt-more {
+    margin-top: var(--space-4);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-brand-navy);
+  }
+  .wt-card:hover .wt-more { color: var(--color-brand-mark); }
+</style>
