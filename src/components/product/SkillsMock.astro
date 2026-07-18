@@ -1,0 +1,161 @@
+---
+/**
+ * Faithful static mockup of the in-app Skills catalog
+ * (web/src/pages/SkillsPage.tsx): a section tree on the left, a skill detail
+ * card on the right with whenToUse / whoFor metadata, an "MCP" badge, and a
+ * version chip. Skills are org-scoped, owned, versioned authoring docs that AI
+ * agents read at build time. Pure HTML/CSS.
+ */
+const tree = [
+  { label: 'Metrics & definitions', count: 6, active: false },
+  { label: 'How we build charts', count: 4, active: true },
+  { label: 'Warehouse semantics', count: 3, active: false },
+  { label: 'Brand & theming', count: 2, active: false },
+];
+---
+
+<div class="sk" role="img" aria-label="dvt Skills catalog: a section tree beside a skill detail card that AI agents read when building dashboards">
+  <aside class="sk-tree">
+    <div class="sk-tree-head">Skills</div>
+    <ul>
+      {tree.map((t) => (
+        <li class={t.active ? 'active' : ''}>
+          <span class="sk-caret" aria-hidden="true">▸</span>
+          <span class="sk-label">{t.label}</span>
+          <span class="sk-count">{t.count}</span>
+        </li>
+      ))}
+    </ul>
+  </aside>
+
+  <div class="sk-detail">
+    <div class="sk-detail-head">
+      <h4>Time-series charting conventions</h4>
+      <div class="sk-badges">
+        <span class="sk-badge mcp">MCP</span>
+        <span class="sk-badge ver">v3</span>
+      </div>
+    </div>
+    <div class="sk-metae">
+      <div><span class="sk-k">When to use</span><span class="sk-v">Any trend, cohort, or time-bucketed panel.</span></div>
+      <div><span class="sk-k">Who for</span><span class="sk-v">AI agents and analysts building dashboards.</span></div>
+    </div>
+    <div class="sk-doc">
+      <p><strong>House rules.</strong> Default to month buckets in the org timezone. Put the y-axis
+      title above the axis, never rotated. Use the brand series palette; reserve red for churn
+      and cost only.</p>
+      <p class="sk-muted">Agents fetch this over MCP (<code>dvt_skill_list</code>) before authoring — so every
+      generated dashboard follows the same conventions.</p>
+    </div>
+  </div>
+</div>
+
+<style>
+  .sk {
+    display: grid;
+    grid-template-columns: 190px 1fr;
+    background: var(--color-white);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    font-size: var(--text-sm);
+  }
+
+  .sk-tree {
+    border-right: 1px solid var(--color-neutral-200);
+    background: var(--color-neutral-50);
+    padding: var(--space-3) 0;
+  }
+  .sk-tree-head {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-neutral-400);
+    padding: 0 var(--space-4) var(--space-2);
+  }
+  .sk-tree ul { list-style: none; margin: 0; padding: 0; }
+  .sk-tree li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 7px var(--space-4);
+    color: var(--color-neutral-600);
+  }
+  .sk-tree li.active {
+    background: rgba(91, 191, 186, 0.1);
+    color: var(--color-neutral-900);
+    font-weight: 600;
+    box-shadow: inset 2px 0 0 var(--color-brand-mark);
+  }
+  .sk-caret { font-size: 9px; color: var(--color-neutral-400); }
+  .sk-label { flex: 1; font-size: var(--text-sm); }
+  .sk-count {
+    font-size: 10px;
+    color: var(--color-neutral-400);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sk-detail { padding: var(--space-4) var(--space-5); }
+  .sk-detail-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+  .sk-detail-head h4 {
+    font-size: var(--text-base);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+  }
+  .sk-badges { display: flex; gap: 6px; flex-shrink: 0; }
+  .sk-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: var(--radius-sm);
+  }
+  .sk-badge.mcp {
+    color: var(--color-brand-mark);
+    background: rgba(91, 191, 186, 0.12);
+  }
+  .sk-badge.ver {
+    color: var(--color-neutral-500);
+    background: var(--color-neutral-100);
+  }
+
+  .sk-metae {
+    display: grid;
+    gap: 6px;
+    padding: var(--space-3) 0;
+    border-top: 1px solid var(--color-neutral-100);
+    border-bottom: 1px solid var(--color-neutral-100);
+    margin-bottom: var(--space-3);
+  }
+  .sk-metae > div { display: flex; gap: var(--space-3); }
+  .sk-k {
+    flex-shrink: 0;
+    width: 84px;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-neutral-400);
+  }
+  .sk-v { font-size: var(--text-sm); color: var(--color-neutral-700); }
+
+  .sk-doc p { color: var(--color-neutral-700); line-height: 1.6; margin-bottom: var(--space-2); }
+  .sk-doc p:last-child { margin-bottom: 0; }
+  .sk-doc code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-brand-navy);
+    background: var(--color-neutral-100);
+    padding: 1px 5px;
+    border-radius: var(--radius-sm);
+  }
+  .sk-muted { color: var(--color-neutral-500) !important; font-size: var(--text-xs); }
+</style>

@@ -15,6 +15,27 @@ const heatBg = (v: number) => {
   return `rgba(79, 70, 229, ${(0.06 + a * 0.5).toFixed(3)})`;
 };
 const heatFg = (v: number) => (v >= 80 ? '#fff' : 'var(--color-neutral-700)');
+
+// ── In-cell viz geometry (pure data → SVG, no runtime) ──────────────
+const SW = 72, SH = 20; // sparkline viewBox
+const sparkLine = (vals: number[]) => {
+  const min = Math.min(...vals), max = Math.max(...vals), span = max - min || 1;
+  const step = vals.length > 1 ? SW / (vals.length - 1) : 0;
+  return vals
+    .map((v, i) => `${i === 0 ? 'M' : 'L'}${(i * step).toFixed(1)},${(SH - 2 - ((v - min) / span) * (SH - 4)).toFixed(1)}`)
+    .join(' ');
+};
+const sparkArea = (vals: number[]) => `${sparkLine(vals)} L${SW},${SH} L0,${SH} Z`;
+const sparkBars = (vals: number[]) => {
+  const max = Math.max(...vals) || 1;
+  const bw = SW / vals.length;
+  return vals.map((v, i) => ({
+    x: (i * bw + 1).toFixed(1),
+    y: (SH - (v / max) * (SH - 2)).toFixed(1),
+    w: (bw - 2).toFixed(1),
+    h: ((v / max) * (SH - 2)).toFixed(1),
+  }));
+};
 ---
 
 <article class="chart-card">
@@ -31,6 +52,13 @@ const heatFg = (v: number) => (v >= 80 ? '#fff' : 'var(--color-neutral-700)');
       <div class="cc-table-wrap">
         <table class="cc-table">
           <thead>
+            {chart.table.columnGroups && (
+              <tr class="grp-row">
+                {chart.table.columnGroups.map((g) => (
+                  <th class="grp" colspan={g.span}>{g.label}</th>
+                ))}
+              </tr>
+            )}
             <tr>
               {chart.table.columns.map((c) => (
                 <th class={c.align === 'right' ? 'r' : ''}>{c.label}</th>
@@ -39,26 +67,66 @@ const heatFg = (v: number) => (v >= 80 ? '#fff' : 'var(--color-neutral-700)');
           </thead>
           <tbody>
             {chart.table.rows.map((row) => (
-              <tr>
-                {chart.table!.columns.map((c) => {
-                  const cell = row[c.key];
-                  return (
-                    <td
-                      class={[c.align === 'right' ? 'r' : '', cell?.tone ? `tone-${cell.tone}` : ''].join(' ')}
-                      style={cell?.heat !== undefined ? `background:${heatBg(cell.heat)};color:${heatFg(cell.heat)}` : undefined}
-                    >
-                      {cell?.bar !== undefined ? (
-                        <span class="cell-bar">
-                          <span class="cell-bar-fill" style={`width:${cell.bar}%`}></span>
-                          <span class="cell-bar-label">{cell.v}</span>
-                        </span>
-                      ) : (
-                        cell?.v
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
+              row.kind === 'group' ? (
+                <tr class="row-group">
+                  <td colspan={chart.table!.columns.length}>{row.label}</td>
+                </tr>
+              ) : (
+                <tr class={row.kind === 'subtotal' ? 'row-subtotal' : row.kind === 'total' ? 'row-total' : ''}>
+                  {chart.table!.columns.map((c) => {
+                    const cell = row.cells[c.key];
+                    const cls = [
+                      c.align === 'right' ? 'r' : '',
+                      cell?.tone ? `tone-${cell.tone}` : '',
+                      cell?.bold ? 'bold' : '',
+                    ].join(' ');
+                    const style = cell?.heat !== undefined
+                      ? `background:${heatBg(cell.heat)};color:${heatFg(cell.heat)}`
+                      : cell?.fill
+                        ? `background:${cell.fill}${cell.fg ? `;color:${cell.fg}` : ''}`
+                        : cell?.fg ? `color:${cell.fg}` : undefined;
+                    return (
+                      <td class={cls} style={style}>
+                        {cell?.spark ? (
+                          <svg class="spark" viewBox={`0 0 ${SW} ${SH}`} width={SW} height={SH} preserveAspectRatio="none" aria-hidden="true">
+                            {cell.sparkKind === 'bar' ? (
+                              sparkBars(cell.spark).map((b) => (
+                                <rect x={b.x} y={b.y} width={b.w} height={b.h} rx="0.5" fill="#4F46E5" />
+                              ))
+                            ) : (
+                              <>
+                                {cell.sparkKind === 'area' && <path d={sparkArea(cell.spark)} fill="rgba(79,70,229,0.14)" stroke="none" />}
+                                <path d={sparkLine(cell.spark)} fill="none" stroke="#4F46E5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                              </>
+                            )}
+                          </svg>
+                        ) : cell?.bullet ? (
+                          <span class="cell-bullet" title={`${cell.bullet.value} vs ${cell.bullet.target}`}>
+                            <span class="bl-track">
+                              <span class="bl-fill" style={`width:${(cell.bullet.value / (cell.bullet.max ?? 100)) * 100}%;background:${cell.bullet.value >= cell.bullet.target ? '#1F9E96' : '#E0A93B'}`}></span>
+                              <span class="bl-target" style={`left:${(cell.bullet.target / (cell.bullet.max ?? 100)) * 100}%`}></span>
+                            </span>
+                            <span class="bl-val">{cell.bullet.value}</span>
+                          </span>
+                        ) : cell?.winloss ? (
+                          <span class="cell-winloss">
+                            {cell.winloss.map((w) => (
+                              <span class={`wl ${w > 0 ? 'win' : w < 0 ? 'loss' : 'tie'}`}></span>
+                            ))}
+                          </span>
+                        ) : cell?.bar !== undefined ? (
+                          <span class="cell-bar">
+                            <span class="cell-bar-fill" style={`width:${cell.bar}%`}></span>
+                            <span class="cell-bar-label">{cell.v}</span>
+                          </span>
+                        ) : (
+                          cell?.v
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              )
             ))}
           </tbody>
         </table>
@@ -149,6 +217,7 @@ const heatFg = (v: number) => (v >= 80 ? '#fff' : 'var(--color-neutral-700)');
   .cc-table .r {
     text-align: right;
   }
+  .cc-table td.bold { font-weight: 600; color: var(--color-neutral-900); }
   .tone-up {
     color: var(--color-success);
     font-weight: 600;
@@ -160,6 +229,89 @@ const heatFg = (v: number) => (v >= 80 ? '#fff' : 'var(--color-neutral-700)');
   .tone-muted {
     color: var(--color-neutral-400);
   }
+
+  /* Spanning header groups */
+  .cc-table th.grp {
+    text-align: center;
+    color: var(--color-neutral-500);
+    border-bottom: none;
+    padding-bottom: 2px;
+  }
+  .cc-table th.grp:empty { border: none; }
+
+  /* Grouping rows */
+  .row-group td {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-brand-mark);
+    background: var(--color-neutral-50);
+    padding-top: 8px;
+  }
+  .row-subtotal td {
+    font-weight: 600;
+    color: var(--color-neutral-800);
+    border-top: 1px solid var(--color-neutral-200);
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+  .row-total td {
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    background: var(--color-neutral-50);
+    border-top: 2px solid var(--color-neutral-300);
+  }
+
+  /* In-cell sparkline */
+  .spark { display: block; width: 72px; height: 20px; }
+
+  /* In-cell bullet */
+  .cell-bullet {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .bl-track {
+    position: relative;
+    flex: 1;
+    height: 8px;
+    min-width: 56px;
+    background: var(--color-neutral-100);
+    border-radius: 4px;
+  }
+  .bl-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    border-radius: 4px;
+  }
+  .bl-target {
+    position: absolute;
+    top: -2px; bottom: -2px;
+    width: 2px;
+    background: var(--color-neutral-900);
+    border-radius: 1px;
+  }
+  .bl-val {
+    font-size: var(--text-xs);
+    color: var(--color-neutral-500);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* In-cell win/loss */
+  .cell-winloss {
+    display: inline-flex;
+    gap: 2px;
+    align-items: center;
+  }
+  .wl {
+    display: inline-block;
+    width: 4px;
+    height: 12px;
+    border-radius: 1px;
+  }
+  .wl.win { background: var(--color-success); }
+  .wl.loss { background: var(--color-error); align-self: flex-end; height: 8px; }
+  .wl.tie { background: var(--color-neutral-300); height: 4px; }
   .cell-bar {
     position: relative;
     display: flex;

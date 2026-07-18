@@ -14,6 +14,29 @@ export const prerender = true;
 // demo.dvt.dev (app.dvt.dev is reserved for the eventual authenticated product).
 const BUILDER_URL = 'https://demo.dvt.dev/builder';
 
+// Rich-table vocabulary — the `table` element is dvt Core (computed client-side
+// over already-bound rows; never a re-query, never a re-bill).
+const tableFeatures = [
+  { title: 'Conditional formatting', body: 'A real predicate grammar — eq / gt / between / in / topN / bottomN, cross-column references, and any/all combinators — styling a cell or a whole row.' },
+  { title: 'Colour-scale heatmaps', body: 'Continuous per-column encoding: numeric, quantile, or binned, over named ramps (blues, viridis, rdbu…) with an auto or fixed domain.' },
+  { title: 'In-cell visualizations', body: 'Sparklines, data bars, bullet bars, win/loss strips, dots, icons, and images — rendered inside the cell, driven by sibling columns.' },
+  { title: 'Grouping & subtotals', body: 'Nested row groups with per-group subtotals and a grand total, collapsible from the header — no pivot required.' },
+  { title: 'Pivot / cross-tab', body: 'Rows × columns cross-tabs with sum / weighted-average aggregation, generated value columns, and row/column/grand totals.' },
+  { title: 'Spanning headers', body: 'Multi-row grouped column headers so a wide cross-tab reads as "FY26 revenue → Q1 · Q2 · Q3", not a flat wall of columns.' },
+  { title: 'Resizable, wrapping columns', body: 'Drag a column border to resize (40–1200px); wrap long text over multiple lines with a show-more toggle. Sort and filter per column.' },
+  { title: 'Warehouse-comment headers', body: 'Pull column headers and tooltips straight from your warehouse COMMENT metadata — the table documents itself from the source.' },
+];
+
+// Interactions — filters, cross-filter, drill, and declarative context menus.
+const interactions = [
+  { icon: '⛃', title: 'Filters', body: '12 control kinds — select, multiselect, date-range, number-range, search, toggle, number, segmented, radio, button-group, checkbox-list, top-N — bound to named SQL parameters, never string-interpolated.' },
+  { icon: '⬚', title: 'Cross-filter (brush)', body: 'Drag-select a region of a chart to filter — or just highlight — every other panel on the page.' },
+  { icon: '↳', title: 'Drill down', body: 'Right-click a datapoint to navigate to a detail page with the clicked value bound as a parameter.' },
+  { icon: '☰', title: 'Context menus', body: 'Declarative right-click actions — filter, drill, open link, copy, export, or open an overlay — templated from the clicked row. No code.' },
+  { icon: '▧', title: 'Overlays', body: 'Present a target page as a modal or drawer without leaving the dashboard — a superset of drill-down.' },
+  { icon: '◷', title: 'Relative dates', body: 'Timezone-aware presets — last 7d, 30d, MTD, QTD, YTD, all-time — resolved at view time.' },
+];
+
 const features = [
   { icon: '◑', title: 'Themes & tokens', body: 'Every visual property — down to the gap between an axis and its title — is a named, storable token. Org and dashboard themes cascade.' },
   { icon: '⊞', title: 'Metric KPIs', body: 'Stat panels with currency/percent formatting, period comparisons, deltas, and inline sparklines — declared, not configured by hand.' },
@@ -114,8 +137,51 @@ const features = [
       </div>
     </section>
 
-    <!-- Feature strip -->
+    <!-- Rich tables -->
+    <section class="section" data-reveal>
+      <div class="container">
+        <div class="section-head">
+          <span class="kicker">Tables are a first-class visual</span>
+          <h2>A table in dvt is not just rows and columns.</h2>
+          <p>
+            The <code>table</code> element carries a full presentation vocabulary — all of it declared
+            in the spec, all of it dvt Core, all computed client-side over rows you already fetched.
+          </p>
+        </div>
+        <div class="feature-grid">
+          {tableFeatures.map((f) => (
+            <div class="feature feature--compact">
+              <div>
+                <h3>{f.title}</h3>
+                <p>{f.body}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactions -->
     <section class="section section-alt" data-reveal>
+      <div class="container">
+        <h2 class="band-title">Interactive, not just rendered</h2>
+        <p class="band-sub">Filters, cross-filtering, drill-downs, and context menus — declared in the spec, no imperative event code.</p>
+        <div class="feature-grid">
+          {interactions.map((f) => (
+            <div class="feature">
+              <div class="feature-icon">{f.icon}</div>
+              <div>
+                <h3>{f.title}</h3>
+                <p>{f.body}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- Feature strip -->
+    <section class="section" data-reveal>
       <div class="container">
         <h2 class="band-title">More than charts</h2>
         <p class="band-sub">The spec carries everything a dashboard needs — not just the picture.</p>
