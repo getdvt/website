@@ -42,4 +42,4 @@ The practical upshot is simple. You don't have to wait. Wherever you are in your
 
 You bring the access. dvt owns the pixels.
 
-[See the spec →](/spec) or [read how the MCP authoring flow works →](/blog/talk-to-your-warehouse)
+[See the spec →](/spec), [read how the MCP authoring flow works →](/blog/talk-to-your-warehouse), or [try the quickstart →](/quickstart)

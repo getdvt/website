@@ -44,4 +44,4 @@ So dvt is extensible at the authoring layer. Teams build their own Claude skills
 
 That's the trade we set out to make: keep everything the AI got right about generating a dashboard, and fix everything the static HTML file got wrong about being one.
 
-[See the spec →](/spec)
+[See the spec →](/spec) or [try the quickstart →](/quickstart)
