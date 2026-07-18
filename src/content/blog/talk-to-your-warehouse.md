@@ -67,4 +67,4 @@ Connect the MCP server to Claude, describe the dashboard you want, and iterate. 
 
 A static snapshot is the wrong output when you need live data, iteration, and a revision history. A versioned spec connected to a live warehouse is the right one. [Read more about why](/blog/the-static-html-trap) — and then connect the MCP server and try it.
 
-[Read the spec →](/spec)
+[Read the spec →](/spec) or [try the quickstart →](/quickstart)
