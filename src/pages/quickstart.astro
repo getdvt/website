@@ -1,0 +1,550 @@
+---
+// Prompt copy mirrors DOC-75 / the app Getting started page — keep in sync.
+import { Code } from 'astro:components';
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Handraise from '../components/Handraise.astro';
+import Footer from '../components/Footer.astro';
+
+export const prerender = true;
+
+const mcpUrl = 'https://mcp.dvt.dev/mcp';
+
+const cliCommand =
+  'claude mcp add --transport http --scope user dvt https://mcp.dvt.dev/mcp \\\n  --header "Authorization: Bearer YOUR_KEY"';
+
+const pluginCommands = `/plugin marketplace add getdvt/claude-dvt
+/plugin install dvt@claude-dvt
+/dvt:connect`;
+
+const stages = [
+  {
+    n: '02',
+    title: 'Explore what’s in the box',
+    body: 'The agent lists your folders and dashboards, opens the example dashboards and reads the docs written into them, and checks which skills are installed. You get a plain-language read on how the examples are built — and a first opinion on what to build differently for your data.',
+    prompt:
+      "Explore my dvt workspace: list the folders and dashboards, open the example dashboards and read their docs, and check what skills are available. Then tell me how the examples are built and what you'd build differently for us.",
+  },
+  {
+    n: '03',
+    title: 'Bring your warehouse',
+    body: 'The agent asks which warehouse you use, checks whether its CLI is installed and authenticated on your machine (snowsql, bq, psql, …), and — once it has read access — explores your schema starting with the most interesting tables. It comes back with three dashboard ideas grounded in what your data actually contains, not a generic template.',
+    prompt:
+      "Let's get you access to our data. Ask me which warehouse we use, then check whether its CLI is installed and authenticated here (snowsql, bq, psql, ...). Once you have read access, explore the schema — start with the most interesting tables — and pitch me three dashboards worth building.",
+  },
+  {
+    n: '04',
+    title: 'Build the whole thing',
+    body: "This is the validate → preview → apply loop: the agent writes the SQL, designs a multi-page dvt spec, validates it against the schema, previews the render before touching anything live, and only then applies it. It finishes with a short written narrative and comments on anything surprising in the data — and walks you through the result once it's live.",
+    prompt:
+      "Build the best of those ideas end to end: write the SQL, design a visually distinctive multi-page dashboard in dvt, validate and preview the spec before applying, and finish with a short written narrative plus comments on anything surprising in the data. Walk me through it when it's live.",
+  },
+];
+---
+
+<Base
+  title="Quickstart — dvt"
+  description="Connect an AI agent to your dvt workspace and your warehouse in four prompts, and watch it build a live, versioned dashboard."
+>
+  <Nav />
+  <main>
+    <!-- Hook -->
+    <section class="page-hero">
+      <div class="container">
+        <div class="eyebrow">Quickstart</div>
+        <h1>Four prompts. One live dashboard.</h1>
+        <p class="lead">
+          Most "AI dashboards" are screenshots of an answer — generated once,
+          frozen the moment they're asked for, stale by morning. A dvt dashboard
+          is different: a live, versioned spec that an agent writes, validates,
+          and applies against your actual warehouse. This page is the whole
+          onboarding. No sales call, no setup wizard — just the prompts, in order.
+        </p>
+      </div>
+    </section>
+
+    <!-- How it works: two surfaces -->
+    <section class="section section-alt">
+      <div class="container">
+        <h2 class="band-title" data-reveal>How it works — two surfaces</h2>
+        <p class="band-sub" data-reveal>
+          It's worth being precise about where dvt sits, because there are two
+          separate things happening, not one.
+        </p>
+        <div class="surface-grid">
+          <div class="surface-card" data-reveal>
+            <div class="surface-num">01</div>
+            <h3>Your warehouse</h3>
+            <p>
+              The agent explores your data with access you already have —
+              a warehouse CLI, your dbt docs, whatever's on the machine. dvt is
+              deliberately agnostic about this surface: it doesn't model your
+              data or own your semantics.
+            </p>
+          </div>
+          <div class="surface-card surface-card--dvt" data-reveal data-reveal-delay="120">
+            <div class="surface-num">02</div>
+            <h3>dvt</h3>
+            <p>
+              The agent turns what it learned into a live, versioned dashboard
+              spec over MCP — schema-validated, diffable, reviewable, and
+              rendered faithfully every time someone opens it.
+            </p>
+          </div>
+        </div>
+        <p class="surface-tagline" data-reveal>
+          You bring the access. <strong>dvt owns the pixels.</strong>
+        </p>
+      </div>
+    </section>
+
+    <!-- Stage 1: connect -->
+    <section class="section">
+      <div class="container">
+        <div class="stage-head" data-reveal>
+          <div class="stage-num">01</div>
+          <div>
+            <h2>Set up dvt</h2>
+            <p>
+              Connect the dvt MCP server to your agent. Two paths get you
+              there — add the server directly, or install the Claude Code
+              plugin, which wraps the same connection in a guided command.
+            </p>
+          </div>
+        </div>
+
+        <div class="connect-grid">
+          <div class="connect-block">
+            <div class="connect-label">MCP server URL</div>
+            <div class="code-block">
+              <div class="code-block-bar">
+                <span class="dot-row"><i></i><i></i><i></i></span>
+                <button class="copy-btn" type="button" data-copy={mcpUrl} data-copy-label="Copy">Copy</button>
+              </div>
+              <Code code={mcpUrl} lang="bash" theme="github-dark" />
+            </div>
+          </div>
+
+          <div class="connect-block">
+            <div class="connect-label">Add it directly (any MCP-capable client)</div>
+            <div class="code-block">
+              <div class="code-block-bar">
+                <span class="dot-row"><i></i><i></i><i></i></span>
+                <button class="copy-btn" type="button" data-copy={cliCommand} data-copy-label="Copy">Copy</button>
+              </div>
+              <Code code={cliCommand} lang="bash" theme="github-dark" />
+            </div>
+          </div>
+
+          <div class="connect-block">
+            <div class="connect-label">Or install the Claude Code plugin</div>
+            <div class="code-block">
+              <div class="code-block-bar">
+                <span class="dot-row"><i></i><i></i><i></i></span>
+                <button class="copy-btn" type="button" data-copy={pluginCommands} data-copy-label="Copy">Copy</button>
+              </div>
+              <Code code={pluginCommands} lang="bash" theme="github-dark" />
+            </div>
+          </div>
+        </div>
+
+        <p class="connect-note" data-reveal>
+          Your in-app API keys page has the exact snippet for every client.
+        </p>
+
+        <div class="prompt-block" data-reveal>
+          <div class="prompt-block-bar">
+            <span class="prompt-label">Stage 1 prompt</span>
+            <button
+              class="copy-btn"
+              type="button"
+              data-copy="Connect to my dvt workspace: add the MCP server at https://mcp.dvt.dev/mcp using my dvt API key. Then verify it works — read dvt://skill/onboarding, list what you can see in my workspace, and give me a two-sentence orientation."
+              data-copy-label="Copy prompt"
+            >Copy prompt</button>
+          </div>
+          <p class="prompt-text">"Connect to my dvt workspace: add the MCP server at https://mcp.dvt.dev/mcp using my dvt API key. Then verify it works — read dvt://skill/onboarding, list what you can see in my workspace, and give me a two-sentence orientation."</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stages 2-4 -->
+    <section class="section section-alt">
+      <div class="container">
+        <h2 class="band-title" data-reveal>Then hand it the rest</h2>
+        <p class="band-sub" data-reveal>
+          Each prompt builds on the last. Paste them in order, in the same
+          session — the agent carries context forward from one stage to the next.
+        </p>
+
+        <div class="stage-list">
+          {stages.map((s, i) => (
+            <div class="stage-item" data-reveal data-reveal-delay={i * 120}>
+              <div class="stage-head">
+                <div class="stage-num">{s.n}</div>
+                <div>
+                  <h3>{s.title}</h3>
+                  <p>{s.body}</p>
+                </div>
+              </div>
+              <div class="prompt-block">
+                <div class="prompt-block-bar">
+                  <span class="prompt-label">Stage {s.n} prompt</span>
+                  <button class="copy-btn" type="button" data-copy={s.prompt} data-copy-label="Copy prompt">Copy prompt</button>
+                </div>
+                <p class="prompt-text">"{s.prompt}"</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- Close -->
+    <section class="statement statement--dark" data-reveal>
+      <div class="container">
+        <span class="statement-kicker">What you end up with</span>
+        <p class="statement-quote">
+          Not a screenshot. A live, versioned dashboard spec — validated before
+          it was saved, previewed before it was applied, and current every
+          time someone opens it, because dvt runs the SQL against your
+          warehouse at view time, not once at generation time.
+        </p>
+        <p class="statement-foot">
+          Change something next week and the agent edits the one panel that
+          changed, validates it, previews it, and applies it. The rest of the
+          spec is untouched.
+        </p>
+        <div class="statement-links">
+          <a href="/spec" class="statement-cta">See the spec &rarr;</a>
+          <a href="/blog" class="statement-cta">Read the blog &rarr;</a>
+        </div>
+      </div>
+    </section>
+
+    <Handraise />
+  </main>
+  <Footer />
+</Base>
+
+<script>
+  import '../scripts/reveal.ts';
+</script>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((btn) => {
+    const label = btn.dataset.copyLabel ?? 'Copy';
+    btn.addEventListener('click', async () => {
+      const text = btn.dataset.copy ?? '';
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.textContent = 'Copied ✓';
+        btn.classList.add('copied');
+      } catch {
+        btn.textContent = 'Select & copy';
+      }
+      setTimeout(() => {
+        btn.textContent = label;
+        btn.classList.remove('copied');
+      }, 1800);
+    });
+  });
+</script>
+
+<style>
+  .page-hero {
+    padding: var(--space-24) 0 var(--space-16);
+    border-bottom: 1px solid var(--color-neutral-200);
+    background:
+      radial-gradient(80% 120% at 0% 0%, rgba(79, 70, 229, 0.05), transparent 60%),
+      radial-gradient(70% 120% at 100% 0%, rgba(91, 191, 186, 0.06), transparent 55%);
+  }
+
+  .eyebrow {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-brand-mark);
+    margin-bottom: var(--space-4);
+  }
+
+  .page-hero h1 {
+    font-size: clamp(var(--text-4xl), 6vw, 64px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-5);
+    max-width: 800px;
+  }
+
+  .lead {
+    font-size: var(--text-xl);
+    color: var(--color-neutral-600);
+    line-height: 1.6;
+    max-width: 700px;
+  }
+
+  .section { padding: var(--space-16) 0; }
+  .section-alt {
+    padding: var(--space-16) 0;
+    background: var(--color-neutral-50);
+    border-top: 1px solid var(--color-neutral-200);
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+
+  .band-title {
+    font-size: clamp(var(--text-2xl), 3vw, var(--text-3xl));
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-3);
+  }
+  .band-sub {
+    font-size: var(--text-base);
+    color: var(--color-neutral-600);
+    margin-bottom: var(--space-8);
+    max-width: 620px;
+  }
+
+  /* ── Two surfaces ───────────────────────────────────────────────── */
+  .surface-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6);
+  }
+  @media (max-width: 720px) {
+    .surface-grid { grid-template-columns: 1fr; }
+  }
+  .surface-card {
+    padding: var(--space-6);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-neutral-200);
+    background: var(--color-white);
+  }
+  .surface-card--dvt {
+    background: rgba(91, 191, 186, 0.06);
+    border-color: rgba(91, 191, 186, 0.3);
+  }
+  .surface-num {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-neutral-400);
+    letter-spacing: 0.06em;
+    margin-bottom: var(--space-3);
+  }
+  .surface-card--dvt .surface-num { color: var(--color-brand-mark); }
+  .surface-card h3 {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-2);
+  }
+  .surface-card p {
+    font-size: var(--text-sm);
+    color: var(--color-neutral-600);
+    line-height: 1.65;
+  }
+  .surface-tagline {
+    margin-top: var(--space-6);
+    font-size: var(--text-lg);
+    color: var(--color-neutral-700);
+  }
+  .surface-tagline strong { color: var(--color-brand-navy); }
+
+  /* ── Stage headers ──────────────────────────────────────────────── */
+  .stage-head {
+    display: flex;
+    gap: var(--space-5);
+    align-items: flex-start;
+    margin-bottom: var(--space-8);
+  }
+  .stage-num {
+    font-family: var(--font-mono);
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    color: var(--color-neutral-200);
+    flex-shrink: 0;
+    min-width: 56px;
+    line-height: 1;
+  }
+  .stage-head h2, .stage-item h3 {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-2);
+  }
+  .stage-item h3 { font-size: var(--text-lg); }
+  .stage-head p, .stage-item p {
+    font-size: var(--text-base);
+    color: var(--color-neutral-600);
+    line-height: 1.65;
+    max-width: 62ch;
+  }
+
+  /* ── Connect grid (code blocks) ────────────────────────────────── */
+  .connect-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    margin-bottom: var(--space-4);
+  }
+  .connect-label {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-neutral-700);
+    margin-bottom: var(--space-2);
+  }
+  .connect-note {
+    font-size: var(--text-sm);
+    color: var(--color-neutral-500);
+    margin-bottom: var(--space-8);
+  }
+
+  .code-block {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--color-neutral-950);
+    border: 1px solid var(--color-neutral-800);
+  }
+  .code-block-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-neutral-800);
+  }
+  .dot-row { display: inline-flex; gap: 4px; }
+  .dot-row i { width: 8px; height: 8px; border-radius: 50%; background: var(--color-neutral-700); }
+
+  .code-block :global(pre) {
+    margin: 0;
+    padding: var(--space-4);
+    background: transparent !important;
+    font-size: 12.5px;
+    line-height: 1.6;
+    overflow-x: auto;
+  }
+
+  /* ── Copy buttons ───────────────────────────────────────────────── */
+  .copy-btn {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--color-neutral-400);
+    background: var(--color-neutral-900);
+    border: 1px solid var(--color-neutral-700);
+    border-radius: var(--radius-sm);
+    padding: 5px var(--space-3);
+    cursor: pointer;
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+  }
+  .copy-btn:hover {
+    color: var(--color-white);
+    border-color: var(--color-brand-mark);
+  }
+  .copy-btn.copied {
+    color: var(--color-brand-teal-light);
+    border-color: var(--color-brand-teal-light);
+  }
+
+  /* ── Prompt blocks ──────────────────────────────────────────────── */
+  .prompt-block {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-neutral-200);
+    border-left: 3px solid var(--color-brand-mark);
+    background: var(--color-white);
+    overflow: hidden;
+  }
+  .prompt-block-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-5);
+    background: var(--color-neutral-50);
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+  .prompt-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-neutral-500);
+  }
+  .prompt-block .copy-btn {
+    color: var(--color-neutral-600);
+    background: var(--color-white);
+    border-color: var(--color-neutral-300);
+  }
+  .prompt-block .copy-btn:hover {
+    color: var(--color-brand-navy);
+    border-color: var(--color-brand-mark);
+  }
+  .prompt-block .copy-btn.copied {
+    color: var(--color-brand-teal);
+    border-color: var(--color-brand-teal);
+  }
+  .prompt-text {
+    padding: var(--space-5);
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 13.5px;
+    line-height: 1.75;
+    color: var(--color-neutral-800);
+  }
+
+  /* ── Stage list (2-4) ──────────────────────────────────────────── */
+  .stage-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+  }
+  .stage-item .stage-head { margin-bottom: var(--space-5); }
+  .stage-item .stage-num { font-size: var(--text-2xl); min-width: 48px; }
+
+  /* ── Closing statement ─────────────────────────────────────────── */
+  .statement { padding: var(--space-24) 0; }
+  .statement--dark {
+    background:
+      radial-gradient(90% 140% at 100% 0%, rgba(79, 70, 229, 0.25), transparent 55%),
+      var(--color-brand-navy);
+  }
+  .statement--dark .statement-kicker {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-brand-teal-light);
+  }
+  .statement--dark .statement-quote {
+    margin-top: var(--space-5);
+    max-width: 860px;
+    font-size: clamp(var(--text-xl), 3.6vw, 36px);
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+    color: var(--color-white);
+  }
+  .statement-foot {
+    margin-top: var(--space-6);
+    max-width: 640px;
+    font-size: var(--text-base);
+    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.72);
+  }
+  .statement-links {
+    display: flex;
+    gap: var(--space-6);
+    flex-wrap: wrap;
+  }
+  .statement-cta {
+    display: inline-flex;
+    margin-top: var(--space-8);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--color-brand-teal-light);
+  }
+  .statement-cta:hover { color: var(--color-white); }
+</style>
