@@ -1,0 +1,116 @@
+---
+/**
+ * Fake-but-realistic mini dashboard render used as a revision thumbnail in the
+ * VersionHistoryMock before→after pair. Pure inline SVG (no real data, no real
+ * names). `layout` picks the composition; `state` toggles the one region that
+ * changed between the two revisions, so the pair reads as a visual diff.
+ */
+interface Props {
+  rev: string;            // e.g. "REV 8*"
+  layout: 'map' | 'flows';
+  state: 'before' | 'after';
+}
+const { rev, layout, state } = Astro.props;
+
+// US-map-ish blob of state blocks. `hot` blocks carry the choropleth colour in
+// the "before" render and go grey in the "after" render (the recolour diff).
+const mapBlocks = [
+  { x: 14, y: 96, w: 26, h: 20, hot: false },
+  { x: 42, y: 92, w: 22, h: 18, hot: false },
+  { x: 30, y: 116, w: 30, h: 26, hot: true },  // big block (Texas-ish)
+  { x: 62, y: 110, w: 20, h: 18, hot: true },
+  { x: 66, y: 92, w: 18, h: 16, hot: false },
+  { x: 16, y: 118, w: 12, h: 16, hot: false },
+  { x: 84, y: 100, w: 16, h: 22, hot: true },
+];
+const hotFill = (hot: boolean) =>
+  !hot ? '#1b2436' : state === 'before' ? '#2fb8a6' : '#39424f';
+
+// Referral-network scatter. Dots recolour from an alert-red palette (before) to
+// a calm emerald palette (after) — the "softened red to emerald" diff.
+const dots = [
+  [26, 250], [40, 262], [55, 248], [70, 264], [88, 252], [104, 266], [120, 250],
+  [34, 274], [50, 278], [66, 272], [82, 280], [98, 272], [116, 276], [132, 262],
+  [46, 250], [78, 246], [110, 258], [60, 286], [92, 288], [126, 288],
+];
+const beforeDots = ['#EF4444', '#E0A93B', '#3B82F6'];
+const afterDots = ['#10B981', '#2fb8a6', '#3B82F6'];
+const dotFill = (i: number) =>
+  (state === 'before' ? beforeDots : afterDots)[i % 3];
+
+const donutSegs = ['#8B7EC8', '#5B9BD5', '#2fb8a6', '#E0A93B', '#EC8Fb8', '#7CC6A8'];
+---
+
+<svg class="minidash" viewBox="0 0 240 300" role="img" aria-label={`Dashboard revision ${rev} (illustrative)`} preserveAspectRatio="xMidYMid meet">
+  <rect width="240" height="300" rx="6" fill="#0B1220" />
+
+  <!-- header band -->
+  <rect x="10" y="10" width="150" height="6" rx="3" fill="#2fb8a6" opacity="0.85" />
+  <rect x="10" y="22" width="96" height="4" rx="2" fill="#33405a" />
+  <text x="230" y="20" text-anchor="end" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="#2fb8a6">{layout === 'map' ? '$231K' : '$295K'}</text>
+  <rect x="10" y="34" width="220" height="1" fill="#1b2436" />
+
+  {layout === 'map' ? (
+    <>
+      <!-- section labels -->
+      <rect x="10" y="46" width="60" height="4" rx="2" fill="#33405a" />
+      <!-- choropleth blocks -->
+      {mapBlocks.map((b) => (
+        <rect x={b.x} y={b.y} width={b.w} height={b.h} rx="2" fill={hotFill(b.hot)} />
+      ))}
+      <!-- flow fan to the right -->
+      {[0, 1, 2, 3].map((i) => (
+        <>
+          <path d={`M108 ${120 + i * 4} C150 ${120 + i * 4} 170 ${70 + i * 22} 210 ${70 + i * 22}`} stroke="#2b3752" stroke-width="1" fill="none" />
+          <circle cx="214" cy={70 + i * 22} r="2.4" fill="#3b7d74" />
+        </>
+      ))}
+      <!-- stacked area (left) -->
+      <path d="M12 210 L12 190 Q40 182 70 186 T112 184 L112 210 Z" fill="#8B7EC8" opacity="0.55" />
+      <path d="M12 210 L12 198 Q40 192 70 195 T112 194 L112 210 Z" fill="#5B9BD5" opacity="0.6" />
+      <path d="M12 210 L12 204 Q40 201 70 203 T112 202 L112 210 Z" fill="#2fb8a6" opacity="0.7" />
+      <!-- multi-line (right) -->
+      {['#8B7EC8', '#5B9BD5', '#E0A93B'].map((c, i) => (
+        <path d={`M126 ${196 + i * 3} Q150 ${180 - i * 4} 176 ${192 + i * 2} T228 ${186 + i * 3}`} stroke={c} stroke-width="1.3" fill="none" opacity="0.85" />
+      ))}
+      <!-- table -->
+      {[0, 1, 2].map((r) => (
+        [0, 1, 2, 3].map((c) => (
+          <rect x={12 + c * 54} y={224 + r * 12} width="48" height="8" rx="1.5" fill={c === 2 && r === 1 ? '#173d38' : '#141c2b'} />
+        ))
+      ))}
+      <!-- radar -->
+      <polygon points="40,262 62,272 54,292 26,292 18,272" fill="none" stroke="#2b3752" stroke-width="1" />
+      <polygon points="40,270 54,276 50,288 32,288 26,276" fill="#2fb8a6" opacity="0.35" stroke="#2fb8a6" stroke-width="1" />
+    </>
+  ) : (
+    <>
+      <!-- sankey bands (top-left) -->
+      {[0, 1, 2].map((i) => (
+        <path d={`M12 ${52 + i * 16} C56 ${52 + i * 16} 60 ${70 + i * 10} 104 ${70 + i * 10}`} stroke={donutSegs[i]} stroke-width="7" fill="none" opacity="0.55" stroke-linecap="round" />
+      ))}
+      <!-- sunburst / donut (top-right) -->
+      {donutSegs.map((c, i) => {
+        const a0 = (i / donutSegs.length) * Math.PI * 2 - Math.PI / 2;
+        const a1 = ((i + 1) / donutSegs.length) * Math.PI * 2 - Math.PI / 2;
+        const cx = 186, cy = 78, r0 = 12, r1 = 24;
+        const p = (r: number, a: number) => `${(cx + r * Math.cos(a)).toFixed(1)} ${(cy + r * Math.sin(a)).toFixed(1)}`;
+        return <path d={`M${p(r0, a0)} L${p(r1, a0)} A24 24 0 0 1 ${p(r1, a1)} L${p(r0, a1)} A12 12 0 0 0 ${p(r0, a0)} Z`} fill={c} opacity="0.8" />;
+      })}
+      <!-- heatmap table -->
+      {[0, 1, 2].map((r) => (
+        [0, 1, 2, 3, 4].map((c) => (
+          <rect x={12 + c * 44} y={118 + r * 14} width="40" height="10" rx="1.5" fill={`rgba(47,184,166,${0.14 + ((r + c) % 4) * 0.16})`} />
+        ))
+      ))}
+      <!-- section label -->
+      <rect x="12" y="172" width="70" height="4" rx="2" fill="#33405a" />
+      <!-- referral-network scatter -->
+      {dots.map((d, i) => (
+        <circle cx={d[0]} cy={d[1]} r="3.2" fill={dotFill(i)} opacity="0.9" />
+      ))}
+    </>
+  )}
+
+  <!-- rev watermark strip handled by the caller's label; keep render clean -->
+</svg>

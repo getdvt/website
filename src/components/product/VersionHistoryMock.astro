@@ -1,62 +1,89 @@
 ---
 /**
  * Faithful static mockup of the in-app Dashboard History pane
- * (web/src/components/DashboardHistoryPane.tsx) — Versions tab: a revision list
- * with actor + "via {key}" attribution, a change note, a before→after thumb pair,
- * and a restore affordance. Pure HTML/CSS, no product dependency.
+ * (web/src/components/DashboardHistoryPane.tsx) — Activity tab: agent/human
+ * entries with attribution ("· via dvt-claude"), a quoted change note, a
+ * before→after revision-thumbnail pair with a Compare link, and a timestamp.
+ * Names + dashboard renders are fabricated (no real person, no real data).
  */
-const rows = [
+import MiniDash from './MiniDash.astro';
+
+const entries = [
   {
-    v: 14, actor: 'Claude', agent: true, via: 'mcp:analytics-bot',
-    note: 'Recolored revenue series to brand palette, added MoM delta labels',
-    when: '2m ago', current: true,
+    agent: true,
+    name: 'Maya Chen',
+    via: 'dvt-claude',
+    note: 'Reworded the territory map legend endpoints for scannability (Top/Floor prefixes).',
+    revA: 'REV 8*', revB: 'REV 11', layout: 'map' as const,
+    when: '1d ago · 21:36 Jul 16',
   },
   {
-    v: 13, actor: 'Claude', agent: true, via: 'mcp:analytics-bot',
-    note: 'Split "Revenue" panel into new-vs-expansion stacked bars',
-    when: '18m ago',
-  },
-  {
-    v: 12, actor: 'Priya Shah', agent: false, via: null,
-    note: 'Fixed y-axis title spacing on the funnel page',
-    when: '1h ago',
+    agent: false,
+    name: 'Devin Ross',
+    initials: 'DR',
+    via: null,
+    note: 'Softened the referral-network SMB nodes from red to emerald — red was reading as an alert state on the flows page.',
+    revA: 'REV 6*', revB: 'REV 10', layout: 'flows' as const,
+    when: '1d ago · 21:21 Jul 16',
   },
 ];
 ---
 
-<div class="vh" role="img" aria-label="dvt Dashboard History pane showing version list with before and after thumbnails and restore controls">
+<div class="vh" role="img" aria-label="dvt Dashboard History pane, Activity tab: revision entries with before and after dashboard thumbnails and a Compare link">
   <div class="vh-head">
+    <span class="vh-title">History</span>
     <div class="vh-tabs">
-      <span class="vh-tab">Activity</span>
-      <span class="vh-tab active">Versions</span>
+      <span class="vh-tab active">Activity</span>
+      <span class="vh-tab">Versions</span>
     </div>
-    <span class="vh-dot" aria-hidden="true"></span>
+    <span class="vh-close" aria-hidden="true">×</span>
   </div>
 
   <ul class="vh-list">
-    {rows.map((r) => (
-      <li class={`vh-row ${r.current ? 'current' : ''}`}>
-        <div class="vh-meta">
-          <span class="vh-ver">v{r.v}</span>
-          <span class={`vh-actor ${r.agent ? 'agent' : ''}`}>
-            {r.agent && <span class="vh-bot" aria-hidden="true">◆</span>}
-            {r.actor}
+    {entries.map((e) => (
+      <li class="vh-entry">
+        <div class="vh-by">
+          {e.agent ? (
+            <span class="vh-av agent" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none">
+                <rect x="5" y="8" width="14" height="11" rx="3" fill="#fff" />
+                <rect x="9.2" y="11.4" width="2.2" height="2.6" rx="1" fill="#0D9488" />
+                <rect x="12.6" y="11.4" width="2.2" height="2.6" rx="1" fill="#0D9488" />
+                <path d="M12 4v3" stroke="#fff" stroke-width="1.6" stroke-linecap="round" />
+                <circle cx="12" cy="3.4" r="1.4" fill="#fff" />
+              </svg>
+            </span>
+          ) : (
+            <span class="vh-av human" aria-hidden="true">{e.initials}</span>
+          )}
+          <span class="vh-meta">
+            <strong>{e.name}</strong> updated dashboard
+            {e.via && <span class="vh-via"> · via {e.via}</span>}
           </span>
-          {r.via && <code class="vh-via">via {r.via}</code>}
-          <span class="vh-when">{r.when}</span>
         </div>
-        <p class="vh-note">{r.note}</p>
-        <div class="vh-foot">
-          <span class="vh-thumbs" aria-hidden="true">
-            <span class="vh-thumb before"></span>
-            <span class="vh-arrow">→</span>
-            <span class="vh-thumb after"></span>
-            <span class="vh-difflabel">2 panels changed</span>
-          </span>
-          {r.current
-            ? <span class="vh-badge">Current</span>
-            : <span class="vh-restore">Restore ↺</span>}
+
+        <p class="vh-note">"{e.note}"</p>
+
+        <div class="vh-diff">
+          <figure class="vh-thumb">
+            <figcaption>{e.revA}</figcaption>
+            <MiniDash rev={e.revA} layout={e.layout} state="before" />
+          </figure>
+          <span class="vh-arrow" aria-hidden="true">→</span>
+          <figure class="vh-thumb">
+            <figcaption>{e.revB}</figcaption>
+            <MiniDash rev={e.revB} layout={e.layout} state="after" />
+          </figure>
         </div>
+
+        <span class="vh-compare">
+          <svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true">
+            <circle cx="7" cy="7" r="4.2" stroke="currentColor" stroke-width="1.4" />
+            <path d="M10.4 10.4L14 14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+          </svg>
+          Compare
+        </span>
+        <span class="vh-when">{e.when}</span>
       </li>
     ))}
   </ul>
@@ -74,122 +101,95 @@ const rows = [
   .vh-head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: var(--space-3) var(--space-4);
+    gap: var(--space-3);
+    padding: var(--space-4);
     border-bottom: 1px solid var(--color-neutral-200);
-    background: var(--color-neutral-50);
   }
-  .vh-tabs { display: flex; gap: var(--space-4); }
+  .vh-title {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+  }
+  .vh-tabs { display: flex; gap: 6px; }
   .vh-tab {
     font-size: var(--text-xs);
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--color-neutral-400);
-    padding-bottom: 2px;
+    color: var(--color-neutral-500);
+    padding: 3px 10px;
+    border-radius: 999px;
   }
   .vh-tab.active {
-    color: var(--color-neutral-900);
-    border-bottom: 2px solid var(--color-brand-mark);
+    color: var(--color-brand-indigo);
+    background: rgba(79, 70, 229, 0.1);
   }
-  .vh-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--color-neutral-200);
-  }
+  .vh-close { margin-left: auto; color: var(--color-neutral-400); font-size: var(--text-lg); line-height: 1; }
 
   .vh-list { list-style: none; margin: 0; padding: 0; }
-  .vh-row {
+  .vh-entry {
     padding: var(--space-4);
     border-bottom: 1px solid var(--color-neutral-100);
-  }
-  .vh-row:last-child { border-bottom: none; }
-  .vh-row.current { background: rgba(91, 191, 186, 0.04); }
-
-  .vh-meta {
     display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-    margin-bottom: 4px;
+    flex-direction: column;
+    gap: var(--space-3);
   }
-  .vh-ver {
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-    font-weight: 600;
-    color: var(--color-neutral-500);
+  .vh-entry:last-child { border-bottom: none; }
+
+  .vh-by { display: flex; align-items: center; gap: var(--space-3); }
+  .vh-av {
+    flex-shrink: 0;
+    width: 28px; height: 28px;
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
   }
-  .vh-actor {
-    font-weight: 600;
-    color: var(--color-neutral-900);
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .vh-actor.agent { color: var(--color-brand-teal, #0D9488); }
-  .vh-bot { font-size: 9px; color: var(--color-brand-mark); }
-  .vh-via {
-    font-family: var(--font-mono);
+  .vh-av.agent { background: var(--color-brand-teal); }
+  .vh-av.human {
+    border-radius: 50%;
+    background: var(--color-neutral-200);
+    color: var(--color-neutral-700);
     font-size: 10px;
-    color: var(--color-neutral-500);
-    background: var(--color-neutral-100);
-    padding: 1px 6px;
-    border-radius: var(--radius-sm);
+    font-weight: 700;
   }
-  .vh-when {
-    margin-left: auto;
-    font-size: var(--text-xs);
-    color: var(--color-neutral-400);
-  }
+  .vh-meta { color: var(--color-neutral-600); line-height: 1.4; }
+  .vh-meta strong { color: var(--color-neutral-900); font-weight: 700; }
+  .vh-via { color: var(--color-neutral-400); }
+
   .vh-note {
     color: var(--color-neutral-700);
     line-height: 1.5;
-    margin-bottom: var(--space-3);
+    margin: 0;
   }
 
-  .vh-foot {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-  }
-  .vh-thumbs {
-    display: inline-flex;
+  .vh-diff {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
     gap: var(--space-2);
   }
   .vh-thumb {
-    width: 40px; height: 26px;
-    border-radius: var(--radius-sm);
+    margin: 0;
     border: 1px solid var(--color-neutral-200);
-    background-size: 200% 100%;
+    border-radius: var(--radius-md);
+    padding: 6px;
+    background: var(--color-white);
   }
-  .vh-thumb.before {
-    background: repeating-linear-gradient(90deg, #E4E4E7 0 6px, #F4F4F5 6px 12px);
-  }
-  .vh-thumb.after {
-    background: repeating-linear-gradient(90deg, rgba(79,70,229,0.35) 0 6px, rgba(91,191,186,0.30) 6px 12px);
-  }
-  .vh-arrow { color: var(--color-neutral-400); font-size: var(--text-xs); }
-  .vh-difflabel {
-    font-size: 10px;
-    color: var(--color-brand-mark);
+  .vh-thumb figcaption {
+    font-family: var(--font-mono);
+    font-size: 9px;
     font-weight: 600;
-    margin-left: 4px;
-  }
-  .vh-restore {
-    font-size: var(--text-xs);
-    font-weight: 600;
-    color: var(--color-brand-navy);
-    white-space: nowrap;
-  }
-  .vh-badge {
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--color-neutral-400);
-    border: 1px solid var(--color-neutral-200);
-    border-radius: var(--radius-sm);
-    padding: 2px 7px;
+    margin-bottom: 5px;
   }
+  .minidash { display: block; width: 100%; height: auto; border-radius: var(--radius-sm); }
+  .vh-arrow { color: var(--color-neutral-400); font-size: var(--text-sm); }
+
+  .vh-compare {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-brand-indigo);
+  }
+  .vh-when { font-size: var(--text-xs); color: var(--color-neutral-400); }
 </style>
