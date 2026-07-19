@@ -1,0 +1,272 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+
+export const prerender = true;
+
+const lastUpdated = 'July 18, 2026';
+---
+
+<Base
+  title="Privacy Policy — dvt"
+  description="How dvt collects, uses, shares, and retains personal data. Queries run in your warehouse — dvt stores dashboard specs and account metadata, not your raw data."
+>
+  <Nav />
+  <main>
+    <section class="page-hero">
+      <div class="container">
+        <div class="eyebrow">Trust</div>
+        <h1>Privacy Policy</h1>
+        <p class="lead">
+          How dvt collects, uses, shares, and retains personal data — written the way we
+          write everything else: precisely, and without claiming more than we can stand behind.
+        </p>
+        <p class="updated">Last updated: {lastUpdated}</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container prose">
+        <div class="summary">
+          <h2>The short version</h2>
+          <ul>
+            <li>dvt pushes queries down to <strong>your</strong> warehouse and returns only the
+              rows needed to render a chart. Your raw data never lands in our database.</li>
+            <li>We store dashboard specs, account metadata, and encrypted warehouse connection
+              settings — and we tell you exactly what else touches our systems, and for how long.</li>
+            <li>We don't sell personal data, and we don't feed your data to a model provider.</li>
+            <li>Questions, access requests, or a DPA? Email
+              <a href="mailto:security@dvt.dev">security@dvt.dev</a>.</li>
+          </ul>
+        </div>
+
+        <h2>1. Who this policy covers</h2>
+        <p>
+          This policy explains how data viz tool ("dvt", "we", "us") handles personal data across
+          the dvt.dev website, the dvt application and API (app.dvt.dev), and the dvt MCP endpoint
+          (mcp.dvt.dev). It covers visitors to our site, people who request early access, and users
+          of the product. It does not change the terms of any separate agreement you have with us.
+        </p>
+
+        <h2>2. Information we collect</h2>
+        <h3>Information you provide</h3>
+        <ul>
+          <li><strong>Account &amp; identity.</strong> When you sign in, our authentication provider
+            (WorkOS) processes your name, email address, and organization and membership metadata.</li>
+          <li><strong>Early-access requests.</strong> If you use a "handraise" form on dvt.dev, we
+            collect the email address and company name you enter, and use them only to reach out to
+            you about dvt.</li>
+          <li><strong>Content you author.</strong> Dashboard specs — the JSON definition of your
+            charts and layout — and related settings you create in the product.</li>
+          <li><strong>Warehouse connection settings.</strong> The configuration needed to connect to
+            your warehouse. Credentials are envelope-encrypted; our database stores only ciphertext.</li>
+          <li><strong>Trial uploads.</strong> If you upload a CSV during a trial, we store it as
+            encrypted, organization-scoped Parquet so your trial dashboards keep working. This exists
+            only during a trial — not on paid plans.</li>
+          <li><strong>Support &amp; correspondence.</strong> Messages you send us, including any
+            details you choose to include.</li>
+        </ul>
+        <h3>Information collected automatically</h3>
+        <ul>
+          <li><strong>Usage &amp; audit records.</strong> Sensitive actions — including every
+            credential decryption — are recorded to an append-only audit log with the actor, action,
+            and resource.</li>
+          <li><strong>Diagnostic data.</strong> Error and performance events (via Sentry) and
+            application logs (via Axiom), which may include user or organization identifiers and
+            request context.</li>
+          <li><strong>Website analytics.</strong> We use privacy-respecting, cookieless analytics to
+            understand aggregate traffic on dvt.dev. We do not build advertising profiles.</li>
+        </ul>
+
+        <h2>3. What we do not collect</h2>
+        <p>
+          <strong>Your raw warehouse data.</strong> A dashboard is a spec; to render it, dvt compiles
+          SQL and sends it to your warehouse, where the query runs on your compute. Only the result
+          rows needed to draw a chart come back — they pass through our systems in memory for that
+          request and are then discarded, never persisted to our database. A data export (CSV or XLSX)
+          is streamed to you on request and audited, but never stored by dvt. We also never store
+          warehouse credentials in plaintext.
+        </p>
+
+        <h2>4. How we use information</h2>
+        <ul>
+          <li>To provide, operate, secure, and improve the dvt product and website.</li>
+          <li>To authenticate you, enforce role-based access, and maintain audit trails.</li>
+          <li>To communicate with you about your account, support requests, and early access.</li>
+          <li>To detect, investigate, and prevent security incidents and abuse.</li>
+          <li>To comply with legal obligations.</li>
+        </ul>
+        <p>We do not sell personal data, and we do not use your content to train models.</p>
+
+        <h2>5. How we share information</h2>
+        <p>
+          We share personal data only with the third-party subprocessors that help us operate the
+          product — currently WorkOS, Neon, Fly.io, Cloudflare, Resend, Sentry, and Axiom. Each one,
+          what it processes, and where it operates is listed on our
+          <a href="/subprocessors">subprocessors page</a>, kept current as our infrastructure evolves.
+          Because queries run in your warehouse, none of these services receive your raw warehouse
+          data. We may also disclose data when required by law, or to protect the rights, safety, and
+          security of dvt, our users, or the public. If dvt is involved in a merger or acquisition,
+          we will honor the commitments in this policy.
+        </p>
+
+        <h2>6. Data retention</h2>
+        <ul>
+          <li><strong>Personal data.</strong> When a user or organization leaves, a daily job scrubs
+            personal details — email, name, avatar — within 90 days, keeping only de-identified records
+            so historical usage stays intact.</li>
+          <li><strong>Image exports (PNG/PDF).</strong> Stored encrypted and automatically deleted
+            within 30 days.</li>
+          <li><strong>Trial CSV uploads.</strong> Deleted by an automated retention job after your
+            trial ends.</li>
+          <li><strong>Dashboard specs &amp; account metadata.</strong> Retained while your account is
+            active and as needed for the purposes above.</li>
+        </ul>
+
+        <h2>7. Security</h2>
+        <p>
+          All connections use TLS 1.2 or higher. Our database provider encrypts metadata at rest with
+          AES-256, and warehouse credentials get a second layer we control (envelope encryption) — the
+          root key that unwraps them lives only in the query engine, never in the API tier or the
+          database. Every record is scoped to an organization and checked on every read and write.
+          Full detail — access controls, tenant isolation, and our continuous security testing program
+          — is on our <a href="/security">security overview</a>.
+        </p>
+
+        <h2>8. AI authoring and your data</h2>
+        <p>
+          dvt is AI-native: humans and AI agents author the same dashboard spec over the same scoped,
+          audited API and MCP surface. The AI is <em>your</em> agent, not ours — dvt does not send your
+          data to a model provider, and there is no dvt-operated model that ingests your prompts or
+          warehouse data. An agent connects with API keys scoped to the minimum a workload needs and
+          cannot exceed the capabilities of the user who authorized it, and its actions are recorded in
+          the audit log as agent activity.
+        </p>
+
+        <h2>9. Your rights and choices</h2>
+        <p>
+          Depending on where you live, you may have the right to access, correct, delete, or export your
+          personal data, or to object to or restrict certain processing. Within the product, role-based
+          controls let admins manage members and access directly. To exercise any right, or to request a
+          DPA, email <a href="mailto:security@dvt.dev">security@dvt.dev</a> and we'll respond. We won't
+          discriminate against you for exercising these rights.
+        </p>
+
+        <h2>10. International data transfers</h2>
+        <p>
+          dvt and its subprocessors are primarily hosted in the United States (Cloudflare operates a
+          global edge). If you access dvt from outside the U.S., your data may be processed there. We
+          rely on appropriate safeguards for such transfers where required by law.
+        </p>
+
+        <h2>11. Children's privacy</h2>
+        <p>
+          dvt is a business tool and is not directed to children. We do not knowingly collect personal
+          data from anyone under 16. If you believe a child has provided us data, email
+          <a href="mailto:security@dvt.dev">security@dvt.dev</a> and we'll delete it.
+        </p>
+
+        <h2>12. Changes to this policy</h2>
+        <p>
+          We may update this policy as the product and our practices evolve. We'll revise the "last
+          updated" date above, and for material changes we'll provide a more prominent notice.
+        </p>
+
+        <h2>13. Contact</h2>
+        <p>
+          Questions about this policy or how we handle your data? Email
+          <a href="mailto:security@dvt.dev">security@dvt.dev</a>. Our machine-readable security policy
+          is published at <a href="/.well-known/security.txt">/.well-known/security.txt</a>.
+        </p>
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .page-hero {
+    padding: var(--space-16) 0 var(--space-12);
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+  .eyebrow {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-brand-mark);
+    margin-bottom: var(--space-4);
+  }
+  .page-hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(var(--text-3xl), 5vw, 56px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-5);
+  }
+  .lead {
+    font-size: var(--text-lg);
+    color: var(--color-neutral-600);
+    line-height: 1.65;
+    max-width: 680px;
+  }
+  .updated {
+    margin-top: var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--color-neutral-500);
+  }
+
+  .section { padding: var(--space-12) 0 var(--space-16); }
+
+  .prose { max-width: 720px; }
+  .prose h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    margin: var(--space-12) 0 var(--space-4);
+    letter-spacing: -0.01em;
+  }
+  .prose h3 {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--color-neutral-900);
+    margin: var(--space-6) 0 var(--space-3);
+  }
+  .prose p {
+    font-size: var(--text-base);
+    color: var(--color-neutral-700);
+    line-height: 1.75;
+    margin-bottom: var(--space-4);
+  }
+  .prose ul {
+    margin: 0 0 var(--space-4);
+    padding-left: var(--space-5);
+  }
+  .prose li {
+    font-size: var(--text-base);
+    color: var(--color-neutral-700);
+    line-height: 1.7;
+    margin-bottom: var(--space-2);
+  }
+  .prose strong { color: var(--color-neutral-900); font-weight: 600; }
+  .prose a {
+    color: var(--color-brand-mark);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .prose a:hover { color: var(--color-neutral-900); }
+
+  .summary {
+    padding: var(--space-6);
+    background: var(--color-neutral-50);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-4);
+  }
+  .summary h2 { margin-top: 0; font-size: var(--text-lg); }
+  .summary ul { margin-bottom: 0; }
+</style>
