@@ -110,6 +110,25 @@ const { pathname } = Astro.url;
   }
 
   @media (max-width: 768px) {
-    .nav-center { gap: var(--space-4); } /* tighten the row on small screens */
+    /* Two rows: logo + CTA on top, the menu links on their own full-width row
+       below. Squeezing the links between the logo and the button left them a
+       ~130px sliver that scrolled one item at a time; a full-width second row
+       gives them the whole viewport (fits without scrolling on most phones, and
+       the .nav-center scroll container above still handles the narrowest ones). */
+    .nav-inner {
+      flex-wrap: wrap;
+      height: auto;
+      row-gap: var(--space-2);
+      column-gap: var(--space-4);
+      padding-block: var(--space-3);
+    }
+    .nav-logo    { order: 1; }
+    .nav-actions { order: 2; } /* space-between keeps logo left, CTA right on row 1 */
+    .nav-center {
+      order: 3;
+      flex-basis: 100%;         /* wrap onto a full-width second row */
+      gap: var(--space-5);
+      justify-content: flex-start; /* safe with overflow-x scroll on tiny screens */
+    }
   }
 </style>
