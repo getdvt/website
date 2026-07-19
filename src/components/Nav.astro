@@ -25,7 +25,6 @@ const { pathname } = Astro.url;
       <a href="/quickstart" class:list={['nav-link', { active: pathname === '/quickstart' }]}>Quickstart</a>
       <a href="/blog"      class:list={['nav-link', { active: pathname.startsWith('/blog') }]}>Blog</a>
       <a href="https://demo.dvt.dev/builder" class="nav-link">Builder</a>
-      <a href="https://demo.dvt.dev" class="nav-link">Demo app</a>
     </div>
 
     <div class="nav-actions">
