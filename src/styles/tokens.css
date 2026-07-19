@@ -49,7 +49,10 @@
 
   /* ── Background / surface (light mode) ────────────────────────── */
   --bg-primary:   var(--color-white);
-  --bg-secondary: var(--color-neutral-50);
+  /* Warm off-white, matches the ratified app-chrome value --dvt-page #FAF9F5
+     (dvt DVT-1640) so product + marketing share one warm off-white — distinct
+     from the dashboard-only surface-paper #F7F6F2. Was var(--color-neutral-50). */
+  --bg-secondary: #FAF9F5;
   --bg-dark:      #09090B;
 
   /* ── Typography ────────────────────────────────────────────────── */
@@ -67,6 +70,10 @@
   --space-12: 48px;
   --space-16: 64px;
   --space-24: 96px;
+
+  /* Fluid vertical rhythm for full-width content sections (extends the fixed
+     scale above; does not replace it). */
+  --space-section: clamp(5rem, 10vw, 8rem);
 
   /* ── Type scale (Tailwind default) ─────────────────────────────── */
   --text-xs:   12px;

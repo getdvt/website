@@ -11,20 +11,20 @@ export const prerender = true;
 
 const DEMO_URL = 'https://demo.dvt.dev';
 
-// "More ways teams work in dvt" — secondary shipped features.
+// "More ways teams work in dvt": secondary shipped features.
 const more = [
-  { icon: '⤓', title: 'Scheduled exports', body: 'Subscribe a dashboard, page, or single panel to recurring PDF/PNG exports — delivered on a schedule to email, Slack, Teams, or Google Chat.' },
+  { icon: '⤓', title: 'Scheduled exports', body: 'Subscribe a dashboard, page, or single panel to recurring PDF/PNG exports: delivered on a schedule to email, Slack, Teams, or Google Chat.' },
   { icon: '◐', title: 'White-label & dark mode', body: 'Set your product name, accent, and logo; pick a default appearance. Each viewer gets their own light / dark / system toggle over your org theme.' },
   { icon: '☰', title: 'Folders & favorites', body: 'Organize dashboards into shareable folders with inherited access, and star the ones you live in so they surface first on your home screen.' },
-  { icon: '◆', title: 'Agent attribution', body: 'Every edit records whether a human, an agent, or the system made it — and which API key an agent acted through. Nothing an AI does is anonymous.' },
-  { icon: '✓', title: 'Preview before apply', body: 'Every write — human or AI — can be previewed first: validate the spec, compute the result, show the change, then persist. The AI shows its work before it makes it.' },
+  { icon: '◆', title: 'Agent attribution', body: 'Every edit records whether a human, an agent, or the system made it, and which API key an agent acted through. Nothing an AI does is anonymous.' },
+  { icon: '✓', title: 'Preview before apply', body: 'Every write (human or AI) can be previewed first: validate the spec, compute the result, show the change, then persist. The AI shows its work before it makes it.' },
   { icon: '❝', title: 'Built-in doc layer', body: 'Panels carry their own intent, assumptions, and the exact query that built them. The documentation travels inside the spec, not in a stale wiki.' },
 ];
 ---
 
 <Base
   title="dvt Product — version control, review, and org knowledge for AI-built dashboards"
-  description="dvt gives every dashboard native version control with visual diffs, panel-anchored comments that drive a human-plus-AI review loop, and an org knowledge layer AI agents read at build time — plus scheduled exports, white-label branding, and full agent attribution."
+  description="dvt gives every dashboard native version control with visual diffs, panel-anchored comments that drive a human-plus-AI review loop, and an org knowledge layer AI agents read at build time, plus scheduled exports, white-label branding, and full agent attribution."
 >
   <Nav />
   <main>
@@ -34,7 +34,7 @@ const more = [
         <div class="eyebrow">Product</div>
         <h1>Every change is reviewable, revertible, and attributed.</h1>
         <p class="lead">
-          Because a dvt dashboard is a versioned spec — not a pile of clicks — the product ships the
+          Because a dvt dashboard is a versioned spec, not a pile of clicks, the product ships the
           workflow that BI has always been missing: native version control with visual diffs,
           comments that a human and an AI can pass back and forth, and an org knowledge layer every
           AI build reads first.
@@ -53,14 +53,14 @@ const more = [
           <span class="kicker">Version control</span>
           <h2>Every save is a version. Every version has a diff.</h2>
           <p>
-            dvt writes an append-only revision on every change — to a dashboard, a page, even a single
-            element. The History pane shows who changed what, with the change note and a
+            Every change, to a dashboard, a page, even a single element, gets an append-only
+            revision. The History pane shows who changed what, with the change note and a
             before → after thumbnail for each version.
           </p>
           <ul class="feat-list">
-            <li><strong>Visual diffs.</strong> A pixel-level compare highlights exactly which regions moved — the AI's "did my edit do what I meant?" check, and yours.</li>
+            <li><strong>Visual diffs.</strong> A pixel-level compare highlights exactly which regions moved: the AI's "did my edit do what I meant?" check, and yours.</li>
             <li><strong>Identity-preserving restore.</strong> Roll back to any version; child elements keep their identity so later edits stay correct.</li>
-            <li><strong>Full attribution.</strong> Human, agent, or system — and which key an agent used.</li>
+            <li><strong>Full attribution.</strong> Human, agent, or system, plus which key an agent used.</li>
           </ul>
         </div>
         <div class="feat-visual">
@@ -76,14 +76,14 @@ const more = [
           <span class="kicker">Human ⇄ AI review</span>
           <h2>Comment on a dashboard. Let Claude fix it.</h2>
           <p>
-            Leave a threaded comment — pinned to a specific panel or the whole dashboard. An AI agent
+            Leave a threaded comment, pinned to a specific panel or the whole dashboard. An AI agent
             reads the open threads over MCP, makes the requested edits, replies, and resolves. The
             review loop humans expect from code, now for the dashboard itself.
           </p>
           <ul class="feat-list">
-            <li><strong>Anchored threads.</strong> A comment knows which panel it's about — by name, even after the panel is renamed.</li>
+            <li><strong>Anchored threads.</strong> A comment knows which panel it's about: by name, even after the panel is renamed.</li>
             <li><strong>One-click handoff.</strong> "Open Claude" launches your agent straight into the open review queue.</li>
-            <li><strong>Everyone can review.</strong> Comment and resolve sit at the viewer floor — reviewers don't need edit rights.</li>
+            <li><strong>Everyone can review.</strong> Comment and resolve sit at the viewer floor: reviewers don't need edit rights.</li>
           </ul>
         </div>
         <div class="feat-visual">
@@ -97,14 +97,14 @@ const more = [
       <div class="container feat-row">
         <div class="feat-copy">
           <span class="kicker">Org knowledge</span>
-          <h2>Teach dvt how your team builds — once.</h2>
+          <h2>Teach dvt how your team builds, once.</h2>
           <p>
             Skills are org-scoped, versioned authoring docs: your metric definitions, warehouse
             semantics, and "how we build charts here." AI agents read the relevant ones before
-            authoring, so every generated dashboard follows house rules — not generic defaults.
+            authoring, so every generated dashboard follows house rules, not generic defaults.
           </p>
           <ul class="feat-list">
-            <li><strong>Author once, apply everywhere.</strong> Humans write skills in-app or let an agent draft them — both write the same versioned record.</li>
+            <li><strong>Author once, apply everywhere.</strong> Humans write skills in-app or let an agent draft them: both write the same versioned record.</li>
             <li><strong>Read at build time.</strong> Agents discover and load skills over MCP before they author.</li>
             <li><strong>Different from the download.</strong> The public <a href="/spec">spec-authoring skill</a> teaches any harness the format; org skills teach it <em>your</em> conventions.</li>
           </ul>
@@ -119,7 +119,7 @@ const more = [
     <section class="section section-alt" data-reveal>
       <div class="container">
         <h2 class="band-title">More ways teams work in dvt</h2>
-        <p class="band-sub">The workflow around the dashboard — not just the picture.</p>
+        <p class="band-sub">The workflow around the dashboard. Not just the picture.</p>
         <div class="more-grid">
           {more.map((f) => (
             <div class="more-card">
@@ -172,7 +172,7 @@ const more = [
     max-width: 660px;
   }
 
-  .section { padding: var(--space-16) 0; }
+  .section { padding: var(--space-section) 0; }
   .section-alt {
     background: var(--color-neutral-50);
     border-top: 1px solid var(--color-neutral-200);
