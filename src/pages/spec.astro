@@ -10,46 +10,46 @@ import { totalChartCount } from '../data/charts';
 
 export const prerender = true;
 
-// The dvt app hosts the live Spec Builder — the open, backend-free demo at
+// The dvt app hosts the live Spec Builder: the open, backend-free demo at
 // demo.dvt.dev (app.dvt.dev is reserved for the eventual authenticated product).
 const BUILDER_URL = 'https://demo.dvt.dev/builder';
 
-// Rich-table vocabulary — the `table` element is dvt Core (computed client-side
+// Rich-table vocabulary: the `table` element is dvt Core (computed client-side
 // over already-bound rows; never a re-query, never a re-bill).
 const tableFeatures = [
-  { title: 'Conditional formatting', body: 'A real predicate grammar — eq / gt / between / in / topN / bottomN, cross-column references, and any/all combinators — styling a cell or a whole row.' },
+  { title: 'Conditional formatting', body: 'A real predicate grammar (eq / gt / between / in / topN / bottomN, cross-column references, and any/all combinators) styling a cell or a whole row.' },
   { title: 'Colour-scale heatmaps', body: 'Continuous per-column encoding: numeric, quantile, or binned, over named ramps (blues, viridis, rdbu…) with an auto or fixed domain.' },
-  { title: 'In-cell visualizations', body: 'Sparklines, data bars, bullet bars, win/loss strips, dots, icons, and images — rendered inside the cell, driven by sibling columns.' },
-  { title: 'Grouping & subtotals', body: 'Nested row groups with per-group subtotals and a grand total, collapsible from the header — no pivot required.' },
+  { title: 'In-cell visualizations', body: 'Sparklines, data bars, bullet bars, win/loss strips, dots, icons, and images, rendered inside the cell, driven by sibling columns.' },
+  { title: 'Grouping & subtotals', body: 'Nested row groups with per-group subtotals and a grand total, collapsible from the header. No pivot required.' },
   { title: 'Pivot / cross-tab', body: 'Rows × columns cross-tabs with sum / weighted-average aggregation, generated value columns, and row/column/grand totals.' },
   { title: 'Spanning headers', body: 'Multi-row grouped column headers so a wide cross-tab reads as "FY26 revenue → Q1 · Q2 · Q3", not a flat wall of columns.' },
   { title: 'Resizable, wrapping columns', body: 'Drag a column border to resize (40–1200px); wrap long text over multiple lines with a show-more toggle. Sort and filter per column.' },
-  { title: 'Warehouse-comment headers', body: 'Pull column headers and tooltips straight from your warehouse COMMENT metadata — the table documents itself from the source.' },
+  { title: 'Warehouse-comment headers', body: 'Pull column headers and tooltips straight from your warehouse COMMENT metadata: the table documents itself from the source.' },
 ];
 
-// Interactions — filters, cross-filter, drill, and declarative context menus.
+// Interactions: filters, cross-filter, drill, and declarative context menus.
 const interactions = [
-  { icon: '⛃', title: 'Filters', body: '12 control kinds — select, multiselect, date-range, number-range, search, toggle, number, segmented, radio, button-group, checkbox-list, top-N — bound to named SQL parameters, never string-interpolated.' },
-  { icon: '⬚', title: 'Cross-filter (brush)', body: 'Drag-select a region of a chart to filter — or just highlight — every other panel on the page.' },
+  { icon: '⛃', title: 'Filters', body: '12 control kinds (select, multiselect, date-range, number-range, search, toggle, number, segmented, radio, button-group, checkbox-list, top-N), bound to named SQL parameters, never string-interpolated.' },
+  { icon: '⬚', title: 'Cross-filter (brush)', body: 'Drag-select a region of a chart to filter (or just highlight) every other panel on the page.' },
   { icon: '↳', title: 'Drill down', body: 'Right-click a datapoint to navigate to a detail page with the clicked value bound as a parameter.' },
-  { icon: '☰', title: 'Context menus', body: 'Declarative right-click actions — filter, drill, open link, copy, export, or open an overlay — templated from the clicked row. No code.' },
-  { icon: '▧', title: 'Overlays', body: 'Present a target page as a modal or drawer without leaving the dashboard — a superset of drill-down.' },
-  { icon: '◷', title: 'Relative dates', body: 'Timezone-aware presets — last 7d, 30d, MTD, QTD, YTD, all-time — resolved at view time.' },
+  { icon: '☰', title: 'Context menus', body: 'Declarative right-click actions (filter, drill, open link, copy, export, or open an overlay), templated from the clicked row. No code.' },
+  { icon: '▧', title: 'Overlays', body: 'Present a target page as a modal or drawer without leaving the dashboard: a superset of drill-down.' },
+  { icon: '◷', title: 'Relative dates', body: 'Timezone-aware presets (last 7d, 30d, MTD, QTD, YTD, all-time), resolved at view time.' },
 ];
 
 const features = [
-  { icon: '◑', title: 'Themes & tokens', body: 'Every visual property — down to the gap between an axis and its title — is a named, storable token. Org and dashboard themes cascade.' },
-  { icon: '⊞', title: 'Metric KPIs', body: 'Stat panels with currency/percent formatting, period comparisons, deltas, and inline sparklines — declared, not configured by hand.' },
-  { icon: '⚡', title: 'AI authoring via MCP', body: 'Claude POSTs a valid spec through the dvt MCP server and the dashboard appears — no GUI clicks, no screenshots, no pasted JSON.' },
+  { icon: '◑', title: 'Themes & tokens', body: 'Every visual property, down to the gap between an axis and its title, is a named, storable token. Org and dashboard themes cascade.' },
+  { icon: '⊞', title: 'Metric KPIs', body: 'Stat panels with currency/percent formatting, period comparisons, deltas, and inline sparklines. Declared, not configured by hand.' },
+  { icon: '⚡', title: 'AI authoring via MCP', body: 'Claude POSTs a valid spec through the dvt MCP server and the dashboard appears: no GUI clicks, no screenshots, no pasted JSON.' },
   { icon: '✓', title: 'Validate → preview → apply', body: 'Validate any spec before saving, preview changes before applying. Same spec → same pixels, deterministically, every time.' },
-  { icon: '◉', title: 'Geo & maps', body: 'Choropleths and geographic flows over bundled USA / world boundaries — or drive geography straight from a GeoJSON column.' },
-  { icon: '❝', title: 'Built-in doc layer', body: 'Panels carry their own intent, assumptions, and the exact query that built them — the documentation travels inside the spec.' },
+  { icon: '◉', title: 'Geo & maps', body: 'Choropleths and geographic flows over bundled USA / world boundaries, or drive geography straight from a GeoJSON column.' },
+  { icon: '❝', title: 'Built-in doc layer', body: 'Panels carry their own intent, assumptions, and the exact query that built them: the documentation travels inside the spec.' },
 ];
 ---
 
 <Base
-  title="The dvt JSON Dashboard Spec — open format, REST API + MCP"
-  description="Every dvt dashboard is a versioned JSON spec — stored as a database record, updated via REST API or MCP, authored by humans and AI agents alike. 30+ chart and table types. Open format."
+  title="The dvt JSON Dashboard Spec: open format, REST API + MCP"
+  description="Every dvt dashboard is a versioned JSON spec: stored as a database record, updated via REST API or MCP, authored by humans and AI agents alike. 30+ chart and table types. Open format."
 >
   <Nav />
   <main>
@@ -59,7 +59,7 @@ const features = [
         <div class="eyebrow">Spec</div>
         <h1>A dashboard is a JSON document.</h1>
         <p class="lead">
-          Every dvt dashboard — its theme, layout, panels, and visual properties —
+          Every dvt dashboard (its theme, layout, panels, and visual properties)
           lives as a versioned JSON spec in dvt's database. Update it via API or MCP call.
           No deploy pipeline for a chart color change.
         </p>
@@ -68,7 +68,7 @@ const features = [
           <a href="/dvt-spec-authoring-skill.md" class="hero-cta-secondary" download>Download the AI authoring skill</a>
         </div>
         <p class="hero-cta-note">
-          Edit the raw JSON and watch it render — like Slack's Block Kit Builder, for dashboards.
+          Edit the raw JSON and watch it render, like Slack's Block Kit Builder, for dashboards.
           Bring your own AI: the skill teaches any harness to write dvt specs.
         </p>
       </div>
@@ -80,7 +80,7 @@ const features = [
         <div class="section-head">
           <span class="kicker">Edit the spec, watch it render</span>
           <h2>Left is the source of truth. Right is what ships.</h2>
-          <p>The whole dashboard is the JSON on the left — flip between examples and see the same engine dvt ships render it live.</p>
+          <p>The whole dashboard is the JSON on the left: flip between examples and see the same engine dvt ships render it live.</p>
         </div>
         <SpecPlayground />
       </div>
@@ -94,17 +94,17 @@ const features = [
           <div class="dad-item">
             <div class="dad-icon">◎</div>
             <h3>Live, not deployed</h3>
-            <p>Dashboard specs are database records — update one via REST API or MCP and it's live instantly. dvt tracks every revision server-side. Export to git if you want GitOps; it's never required.</p>
+            <p>Dashboard specs are database records: update one via REST API or MCP and it's live instantly. dvt tracks every revision server-side. Export to git if you want GitOps; it's never required.</p>
           </div>
           <div class="dad-item">
             <div class="dad-icon">⚡</div>
             <h3>AI-authored</h3>
-            <p>Claude can POST a valid spec to the dvt MCP server and the dashboard appears — no GUI clicks, no screenshots, no copy-pasting JSON by hand.</p>
+            <p>Claude can POST a valid spec to the dvt MCP server and the dashboard appears: no GUI clicks, no screenshots, no copy-pasting JSON by hand.</p>
           </div>
           <div class="dad-item">
             <div class="dad-icon">⊞</div>
             <h3>Fully customizable</h3>
-            <p>Every visual property — down to the gap between an axis and its title — is a named, storable parameter in the spec. Nothing is locked by the tool.</p>
+            <p>Every visual property, down to the gap between an axis and its title, is a named, storable parameter in the spec. Nothing is locked by the tool.</p>
           </div>
           <div class="dad-item">
             <div class="dad-icon">✓</div>
@@ -122,7 +122,7 @@ const features = [
           <span class="kicker">One format, {totalChartCount}+ visual types</span>
           <h2>Every chart is a few lines of spec.</h2>
           <p>
-            From a bar chart to an animated chart race, from sankey flows to cohort heat tables —
+            From a bar chart to an animated chart race, from sankey flows to cohort heat tables:
             the same declarative JSON describes them all. No imperative drawing code in the authoring surface.
           </p>
         </div>
@@ -144,7 +144,7 @@ const features = [
           <span class="kicker">Tables are a first-class visual</span>
           <h2>A table in dvt is not just rows and columns.</h2>
           <p>
-            The <code>table</code> element carries a full presentation vocabulary — all of it declared
+            The <code>table</code> element carries a full presentation vocabulary: all of it declared
             in the spec, all of it dvt Core, all computed client-side over rows you already fetched.
           </p>
         </div>
@@ -165,7 +165,7 @@ const features = [
     <section class="section section-alt" data-reveal>
       <div class="container">
         <h2 class="band-title">Interactive, not just rendered</h2>
-        <p class="band-sub">Filters, cross-filtering, drill-downs, and context menus — declared in the spec, no imperative event code.</p>
+        <p class="band-sub">Filters, cross-filtering, drill-downs, and context menus. Declared in the spec, no imperative event code.</p>
         <div class="feature-grid">
           {interactions.map((f) => (
             <div class="feature">
@@ -184,7 +184,7 @@ const features = [
     <section class="section" data-reveal>
       <div class="container">
         <h2 class="band-title">More than charts</h2>
-        <p class="band-sub">The spec carries everything a dashboard needs — not just the picture.</p>
+        <p class="band-sub">The spec carries everything a dashboard needs. Not just the picture.</p>
         <div class="feature-grid">
           {features.map((f) => (
             <div class="feature">
@@ -205,13 +205,13 @@ const features = [
         <h2>Open spec, published schema</h2>
         <p>
           The dvt spec format is Apache-2.0 licensed, and a published JSON Schema is
-          on the way — enabling validation, editor autocompletion, and AI self-correction
+          on the way, enabling validation, editor autocompletion, and AI self-correction
           without needing to query a running server. The spec travels with your data,
           not with dvt's infrastructure.
         </p>
         <p>
           The schema is in active design. The examples above reflect the current working
-          draft — field names and structure may shift before v1.
+          draft: field names and structure may shift before v1.
         </p>
         <a href="/#early-access" class="btn-access-inline">Follow the build →</a>
       </div>
@@ -259,9 +259,9 @@ const features = [
     max-width: 600px;
   }
 
-  .section { padding: var(--space-16) 0; }
+  .section { padding: var(--space-section) 0; }
   .section-alt {
-    padding: var(--space-16) 0;
+    padding: var(--space-section) 0;
     background: var(--color-neutral-50);
     border-top: 1px solid var(--color-neutral-200);
     border-bottom: 1px solid var(--color-neutral-200);

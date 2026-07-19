@@ -35,7 +35,7 @@ const artifacts = [
 
 <Base
   title="Trust center — dvt"
-  description="dvt's trust center: how we handle your data, the controls behind it, and the artifacts a security review needs — in one place."
+  description="dvt's trust center: how we handle your data, the controls behind it, and the artifacts a security review needs, in one place."
 >
   <Nav />
   <main>
@@ -45,7 +45,7 @@ const artifacts = [
         <h1>Trust center</h1>
         <p class="lead">
           Everything a security review needs, in one place. dvt pushes queries down to your
-          warehouse and returns only the rows needed to render a chart — so your raw data never has
+          warehouse and returns only the rows needed to render a chart, so your raw data never has
           to live in our infrastructure. Here's how we back that up.
         </p>
       </div>
@@ -58,7 +58,7 @@ const artifacts = [
         <div class="control-grid">
           <div class="control">
             <h3>We don't host your data</h3>
-            <p>Queries run in your warehouse, on your compute. Only result rows return, in memory, and they're discarded after rendering — never persisted to our database.</p>
+            <p>Queries run in your warehouse, on your compute. Only result rows return, in memory, and they're discarded after rendering: never persisted to our database.</p>
           </div>
           <div class="control">
             <h3>Credentials stay encrypted</h3>
@@ -82,7 +82,7 @@ const artifacts = [
         <h2>Questionnaire-ready artifacts</h2>
         <p class="section-lead">
           The documents and policies a vendor-security review asks for. If you need something that
-          isn't here — a DPA, a completed questionnaire, or advance notice of subprocessor changes —
+          isn't here (a DPA, a completed questionnaire, or advance notice of subprocessor changes),
           email <a href="mailto:security@dvt.dev">security@dvt.dev</a>.
         </p>
         <div class="resource-grid">
@@ -103,11 +103,11 @@ const artifacts = [
         <h2>Compliance roadmap</h2>
         <p class="section-lead">
           We hold continuous, evidence-backed readiness and pursue formal certification when a deal
-          calls for it — readiness now, audit on demand.
+          calls for it: readiness now, audit on demand.
         </p>
         <ul class="prose-list">
-          <li><strong>SOC 2 — readiness now, audit on trigger.</strong> dvt is not yet SOC 2 audited. Our controls map to the SOC 2 Common Criteria, and our CI produces a continuous, timestamped evidence trail. We'll commission a formal Type II audit when an enterprise engagement calls for it.</li>
-          <li><strong>Continuous security testing.</strong> Static analysis, dependency and secret scanning, and a layered dynamic-testing pyramid run on every change — see the <a href="/security">security overview</a> for the full program.</li>
+          <li><strong>SOC 2: readiness now, audit on trigger.</strong> dvt is not yet SOC 2 audited. Our controls map to the SOC 2 Common Criteria, and our CI produces a continuous, timestamped evidence trail. We'll commission a formal Type II audit when an enterprise engagement calls for it.</li>
+          <li><strong>Continuous security testing.</strong> Static analysis, dependency and secret scanning, and a layered dynamic-testing pyramid run on every change; see the <a href="/security">security overview</a> for the full program.</li>
           <li><strong>Penetration testing.</strong> We don't have a third-party pentest under contract yet; automated testing doesn't replace one, and we'll commission it when an enterprise engagement calls for it.</li>
         </ul>
         <p class="contact-line">
@@ -148,9 +148,9 @@ const artifacts = [
     max-width: 660px;
   }
 
-  .section { padding: var(--space-16) 0; }
+  .section { padding: var(--space-section) 0; }
   .section-alt {
-    padding: var(--space-16) 0;
+    padding: var(--space-section) 0;
     background: var(--color-neutral-50);
     border-top: 1px solid var(--color-neutral-200);
     border-bottom: 1px solid var(--color-neutral-200);
