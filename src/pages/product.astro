@@ -43,6 +43,10 @@ const more = [
           <a href={BUILDER_URL} class="hero-cta-primary">Open the live builder →</a>
           <a href="/#early-access" class="hero-cta-secondary">Get early access</a>
         </div>
+        <p class="hero-cta-note">
+          The builder runs the spec format in your browser — no signup. Early
+          access puts dvt on your own data; we reach out personally to set it up.
+        </p>
       </div>
     </section>
 
@@ -318,6 +322,13 @@ const more = [
     transition: border-color var(--transition-fast), color var(--transition-fast);
   }
   .hero-cta-secondary:hover { border-color: var(--color-neutral-400); color: var(--color-neutral-950); }
+  .hero-cta-note {
+    margin-top: var(--space-4);
+    color: var(--color-neutral-600);
+    font-size: var(--text-sm);
+    line-height: 1.7;
+    max-width: 48ch;
+  }
 
   @media (max-width: 820px) {
     .feat-row { grid-template-columns: 1fr; gap: var(--space-8); }
