@@ -2,7 +2,7 @@
  * Chart catalog for the /spec gallery.
  *
  * Each entry carries a real (JSON-serializable) ECharts option so the gallery
- * renders the actual ECharts 6 engine dvt ships with — not a mockup. dvt type
+ * renders the actual ECharts 6 engine dvt ships with, not a mockup. dvt type
  * names and selection guidance mirror dvt_chart_reference (ADR-0022).
  *
  * Keep every `option` pure data: no functions (formatters must be strings),
@@ -76,11 +76,11 @@ export interface Family {
 }
 
 /* ── shared palette + base fragments ─────────────────────────────── */
-// "Cool Analytical" chart-series palette — mirrors the product default
+// "Cool Analytical" chart-series palette: mirrors the product default
 // (dvt web echarts-theme FALLBACK_PALETTE / exec-light preset, DVT-742).
 // Declared as --chart-series-N tokens in styles/tokens.css; kept as literals
 // here because ECharts options are serialized to JSON (no CSS var resolution).
-// NOTE: these are chart-series slots, NOT brand primitives — e.g. `teal`
+// NOTE: these are chart-series slots, NOT brand primitives: e.g. `teal`
 // (#1F9E96, series-2) is distinct from --color-brand-teal (#0D9488).
 const C = {
   indigo: '#4F46E5',
@@ -138,7 +138,7 @@ const comparison: ChartDef[] = [
   {
     dvtType: 'chart:bar',
     title: 'Bar',
-    blurb: 'The BI workhorse — compare a measure across categories.',
+    blurb: 'The BI workhorse: compare a measure across categories.',
     option: {
       color: PALETTE, textStyle, grid, tooltip,
       xAxis: catX([], 'Month'),
@@ -166,7 +166,7 @@ const comparison: ChartDef[] = [
   {
     dvtType: 'chart:bar:stacked',
     title: 'Stacked bar',
-    blurb: 'Total and parts at once — best with 2–4 series.',
+    blurb: 'Total and parts at once. Best with 2–4 series.',
     option: {
       color: PALETTE, textStyle, grid: gridLegend, tooltip,
       legend: { bottom: 0, itemWidth: 10, itemHeight: 10, textStyle: axisLabel },
@@ -241,7 +241,7 @@ const trend: ChartDef[] = [
   {
     dvtType: 'chart:line:smooth',
     title: 'Smooth line',
-    blurb: 'Spline interpolation — only for truly continuous data.',
+    blurb: 'Spline interpolation: only for truly continuous data.',
     option: {
       color: PALETTE, textStyle, grid: gridLegend, tooltip,
       legend: { bottom: 0, itemWidth: 14, itemHeight: 8, textStyle: axisLabel },
@@ -258,7 +258,7 @@ const trend: ChartDef[] = [
   {
     dvtType: 'chart:line:step',
     title: 'Step line',
-    blurb: 'Discrete state changes — values hold between events.',
+    blurb: 'Discrete state changes: values hold between events.',
     option: {
       color: PALETTE, textStyle, grid, tooltip,
       xAxis: { type: 'category', data: months, boundaryGap: false, axisLabel, axisLine: baseAxisLine, axisTick: { show: false } },
@@ -271,7 +271,7 @@ const trend: ChartDef[] = [
   {
     dvtType: 'chart:area',
     title: 'Area',
-    blurb: 'Volume and trend together — baseline must be zero.',
+    blurb: 'Volume and trend together: baseline must be zero.',
     option: {
       color: PALETTE, textStyle, grid, tooltip,
       xAxis: { type: 'category', data: weeks, boundaryGap: false, axisLabel, axisLine: baseAxisLine, axisTick: { show: false } },
@@ -288,7 +288,7 @@ const trend: ChartDef[] = [
   {
     dvtType: 'chart:theme-river',
     title: 'Theme river',
-    blurb: 'Streamgraph — how stream volumes rise and fall over time.',
+    blurb: 'Streamgraph: how stream volumes rise and fall over time.',
     option: {
       color: [C.indigo, C.sky, C.amber], textStyle, tooltip: { ...tooltipItem },
       singleAxis: { type: 'time', axisLabel, axisLine: baseAxisLine, top: 12, bottom: 24, left: 12, right: 16 },
@@ -449,7 +449,7 @@ const correlation: ChartDef[] = [
   {
     dvtType: 'chart:heatmap',
     title: 'Heatmap',
-    blurb: 'Two categories × a value as color — activity grids, matrices.',
+    blurb: 'Two categories × a value as color: activity grids, matrices.',
     option: {
       textStyle, tooltip: tooltipItem, grid: { ...grid, top: 8, bottom: 26, left: 8 },
       xAxis: { type: 'category', data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], axisLabel, axisLine: baseAxisLine, axisTick: { show: false }, splitArea: { show: true } },
@@ -472,7 +472,7 @@ const flow: ChartDef[] = [
   {
     dvtType: 'chart:sankey',
     title: 'Sankey',
-    blurb: '"Where does it go?" — flows with width ∝ quantity.',
+    blurb: '"Where does it go?" Flows with width ∝ quantity.',
     option: {
       textStyle, tooltip: tooltipItem,
       series: [{
@@ -519,7 +519,7 @@ const flow: ChartDef[] = [
   {
     dvtType: 'chart:graph',
     title: 'Network graph',
-    blurb: 'Entities connected by relationships — topology, knowledge graphs.',
+    blurb: 'Entities connected by relationships: topology, knowledge graphs.',
     option: {
       textStyle, tooltip: tooltipItem,
       series: [{
@@ -571,7 +571,7 @@ const statistical: ChartDef[] = [
   {
     dvtType: 'chart:boxplot',
     title: 'Box plot',
-    blurb: 'Distribution summary — quartiles, spread, outliers per group.',
+    blurb: 'Distribution summary: quartiles, spread, outliers per group.',
     option: {
       textStyle, grid, tooltip: tooltipItem,
       xAxis: { type: 'category', data: ['NA', 'EMEA', 'APAC', 'LATAM'], axisLabel, axisLine: baseAxisLine, axisTick: { show: false } },
@@ -587,7 +587,7 @@ const statistical: ChartDef[] = [
   {
     dvtType: 'chart:candlestick',
     title: 'Candlestick',
-    blurb: 'Financial OHLC — price action, volatility, ranges.',
+    blurb: 'Financial OHLC: price action, volatility, ranges.',
     option: {
       textStyle, grid, tooltip: tooltipItem,
       xAxis: { type: 'category', data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Mon', 'Tue'], axisLabel, axisLine: baseAxisLine, axisTick: { show: false } },
@@ -624,7 +624,7 @@ const statistical: ChartDef[] = [
   {
     dvtType: 'chart:radar',
     title: 'Radar',
-    blurb: 'Compare entities across 5–10 dimensions — profiles, scorecards.',
+    blurb: 'Compare entities across 5–10 dimensions: profiles, scorecards.',
     option: {
       color: PALETTE, textStyle,
       legend: { bottom: 0, itemWidth: 10, itemHeight: 10, textStyle: axisLabel },
@@ -652,7 +652,7 @@ const animated: ChartDef[] = [
   {
     dvtType: 'chart:bar:racing',
     title: 'Bar chart race',
-    blurb: 'Animated ranking over time — temporal storytelling that moves.',
+    blurb: 'Animated ranking over time: temporal storytelling that moves.',
     featured: true,
     animate: 'race-bar',
     option: {
@@ -696,14 +696,14 @@ const animated: ChartDef[] = [
 ];
 
 /* ── TABLES ──────────────────────────────────────────────────────── */
-// Tables are dvt Core (rendered client-side over already-bound rows — never a
+// Tables are dvt Core (rendered client-side over already-bound rows, never a
 // re-query, never a re-bill). The gallery shows the real vocabulary: conditional
 // formatting, colour scales, in-cell viz, grouping + subtotals, and pivots.
 const tables: ChartDef[] = [
   {
     dvtType: 'table',
     title: 'Metrics table',
-    blurb: 'Conditional formatting, deltas, and inline share bars — all declared.',
+    blurb: 'Conditional formatting, deltas, and inline share bars, all declared.',
     kind: 'table',
     table: {
       columns: [
@@ -853,7 +853,7 @@ export const families: Family[] = [
   { id: 'correlation', label: 'Correlation', blurb: 'Relationships and density.', charts: correlation },
   { id: 'flow', label: 'Hierarchy & flow', blurb: 'Structure, networks, and movement.', charts: flow },
   { id: 'statistical', label: 'Statistical', blurb: 'Distribution and financial shape.', charts: statistical },
-  { id: 'animated', label: 'Animated', blurb: 'Specs that move — temporal storytelling.', charts: animated },
+  { id: 'animated', label: 'Animated', blurb: 'Specs that move: temporal storytelling.', charts: animated },
   { id: 'tables', label: 'Tables', blurb: 'Rich tabular layouts, formatted and conditional.', charts: tables },
 ];
 
