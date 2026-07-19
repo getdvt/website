@@ -24,13 +24,18 @@
       <a href="/#early-access" class="btn-primary">
         Request early access
       </a>
+      <a href="https://demo.dvt.dev/builder" class="btn-secondary">
+        Open the live builder →
+      </a>
       <a href="/vision" class="btn-secondary">
         Read the vision →
       </a>
-      <a href="/quickstart" class="btn-secondary">
-        Read the quickstart →
-      </a>
     </div>
+
+    <p class="cta-note">
+      The builder runs the spec format in your browser — no signup. Early
+      access puts dvt on your own data; we reach out personally to set it up.
+    </p>
   </div>
 </section>
 
@@ -87,6 +92,15 @@
     justify-content: center;
     flex-wrap: wrap;
     gap: var(--space-3);
+  }
+
+  .cta-note {
+    margin-top: var(--space-5);
+    max-width: 520px;
+    margin-inline: auto;
+    font-size: var(--text-sm);
+    color: var(--color-neutral-500);
+    line-height: 1.6;
   }
 
   .btn-primary {
