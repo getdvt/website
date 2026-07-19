@@ -31,6 +31,7 @@ html {
 
 body {
   min-height: 100dvh;
+  overflow-x: clip; /* guard: contain stray child overflow without breaking the sticky nav */
 }
 
 a {
