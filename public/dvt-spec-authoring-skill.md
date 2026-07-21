@@ -152,6 +152,12 @@ returned column is the category/label axis; subsequent columns are bound by
 `series[].dataField` (chart) or `valueField` (metric/stacked). Charts that take an
 explicit field mapping (scatter/heatmap) name their columns via `xField`/`yField`/etc.
 
+`sourceId` is the NAME of a configured data source (matched by name, not a UUID).
+In snowflake native mode (`DVT_MODE=snowflake`) the app boot-provisions exactly one
+secretless, caller's-rights source named `Host Snowflake`; set `data.sourceId:
+"Host Snowflake"` for a panel's query to run against the caller's own Snowflake
+account — otherwise the panel never fires a query.
+
 **Canonical cartesian form — author the measure as `series[].dataField`.** For the plain
 value families (`chart:bar`/`chart:line`/`chart:area`), the single authored form used by
 every dvt example, seed demo, and golden spec is an explicit `series[].dataField` (the
@@ -168,7 +174,9 @@ wins over a set `yField` and renders blank — omit the field entirely rather th
 database/schema — Snowflake service connections don't — so an unqualified
 `FROM orders` fails; fully-qualified names are also deterministic regardless of
 session/connection context and role defaults on every warehouse. Never rely on an
-implicit current database/schema.
+implicit current database/schema. This applies to `Host Snowflake` too: its
+caller's-rights session pins no default database/schema, so queries against it
+must be fully qualified.
 
 **Write SQL in the canonical dvt style.** Leading commas, lowercase keywords, a
 `where 1=1` guard — clean diffs, and a missing comma is a one-line error:
