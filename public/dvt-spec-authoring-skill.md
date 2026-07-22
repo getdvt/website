@@ -158,6 +158,18 @@ secretless, caller's-rights source named `Host Snowflake`; set `data.sourceId:
 "Host Snowflake"` for a panel's query to run against the caller's own Snowflake
 account — otherwise the panel never fires a query.
 
+**`Host Snowflake` cannot query shared databases.** Its caller's-rights sessions
+can only reach objects the app owner has pre-delegated with CALLER grants, and
+Snowflake forbids CALLER grants on shared (imported) objects — so
+`SNOWFLAKE.ACCOUNT_USAGE`, `SNOWFLAKE_SAMPLE_DATA`, and any Marketplace/data-share
+import will ALWAYS fail (never author panels directly against them). Wrap the
+shared data in an owned table, view, or model first (e.g. `CREATE VIEW
+my_db.my_schema.v AS SELECT ... FROM SNOWFLAKE.ACCOUNT_USAGE....`) and point the
+panel's query at that owned object. Owned databases additionally need a one-time
+per-database grant from the app owner (`GRANT INHERITED CALLER USAGE ON DATABASE
+<db> TO ROLE <owner_role>;`); a failing panel's error message includes the exact
+statement.
+
 **Canonical cartesian form — author the measure as `series[].dataField`.** For the plain
 value families (`chart:bar`/`chart:line`/`chart:area`), the single authored form used by
 every dvt example, seed demo, and golden spec is an explicit `series[].dataField` (the
