@@ -57,7 +57,7 @@ const artifacts = [
         <h2>Data handling at a glance</h2>
         <div class="control-grid">
           <div class="control">
-            <h3>We don't host your data</h3>
+            <h3>dvt never hosts your data rows or values</h3>
             <p>Queries run in your warehouse, on your compute. Only result rows return, in memory, and they're discarded after rendering: never persisted to our database.</p>
           </div>
           <div class="control">
@@ -71,6 +71,10 @@ const artifacts = [
           <div class="control">
             <h3>Data is retained briefly</h3>
             <p>Personal data from departed accounts is scrubbed within 90 days, and image exports are deleted within 30. We keep only what we need.</p>
+          </div>
+          <div class="control">
+            <h3>Catalog structure is opt-in</h3>
+            <p>An org admin can opt a connection into structural catalog sync — off by default, per connection. It stores names/types/comments only, never data rows or values, and turning it back off deletes the synced structure immediately. See the <a href="/security">security overview</a> for the full boundary.</p>
           </div>
         </div>
       </div>

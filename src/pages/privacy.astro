@@ -32,7 +32,9 @@ const lastUpdated = 'July 18, 2026';
           <h2>The short version</h2>
           <ul>
             <li>dvt pushes queries down to <strong>your</strong> warehouse and returns only the
-              rows needed to render a chart. Your raw data never lands in our database.</li>
+              rows needed to render a chart. Your data rows and values never land in our
+              database — the one opt-in exception is warehouse catalog structure (names/types/
+              comments only, never data rows or values; see below).</li>
             <li>We store dashboard specs, account metadata, and encrypted warehouse connection
               settings — and we tell you exactly what else touches our systems, and for how long.</li>
             <li>We don't sell personal data, and we don't feed your data to a model provider.</li>
@@ -64,6 +66,12 @@ const lastUpdated = 'July 18, 2026';
           <li><strong>Trial uploads.</strong> If you upload a CSV during a trial, we store it as
             encrypted, organization-scoped Parquet so your trial dashboards keep working. This exists
             only during a trial — not on paid plans.</li>
+          <li><strong>Warehouse catalog structure (opt-in).</strong> If an org admin turns on
+            catalog sync for a connection — off by default, per connection — we store
+            <strong>names/types/comments only, never data rows or values</strong>: the object and
+            column names, kinds, data types, nullability, ordinals, and comments read from your
+            warehouse's own catalog. Turning sync back off for that connection deletes its synced
+            structure immediately.</li>
           <li><strong>Support &amp; correspondence.</strong> Messages you send us, including any
             details you choose to include.</li>
         </ul>
@@ -81,10 +89,12 @@ const lastUpdated = 'July 18, 2026';
 
         <h2>3. What we do not collect</h2>
         <p>
-          <strong>Your raw warehouse data.</strong> A dashboard is a spec; to render it, dvt compiles
-          SQL and sends it to your warehouse, where the query runs on your compute. Only the result
-          rows needed to draw a chart come back — they pass through our systems in memory for that
-          request and are then discarded, never persisted to our database. A data export (CSV or XLSX)
+          <strong>Your warehouse's data rows or values.</strong> A dashboard is a spec; to render
+          it, dvt compiles SQL and sends it to your warehouse, where the query runs on your compute.
+          Only the result rows needed to draw a chart come back — they pass through our systems in
+          memory for that request and are then discarded, never persisted to our database. This
+          holds even for a connection with catalog sync enabled: as described above, catalog sync
+          stores names/types/comments only, never data rows or values. A data export (CSV or XLSX)
           is streamed to you on request and audited, but never stored by dvt. We also never store
           warehouse credentials in plaintext.
         </p>
