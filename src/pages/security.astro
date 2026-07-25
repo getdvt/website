@@ -8,7 +8,7 @@ export const prerender = true;
 
 <Base
   title="Security — dvt"
-  description="How dvt handles your data: queries run in your own warehouse, only the rows needed to render a chart come back, and we store dashboard specs — not your raw data."
+  description="How dvt handles your data: queries run in your own warehouse, only the rows needed to render a chart come back, and we store dashboard specs — never your data rows or values."
 >
   <Nav />
   <main>
@@ -20,7 +20,7 @@ export const prerender = true;
         <p class="lead">
           dvt is built so the sensitive parts of your data never have to live in our
           infrastructure. We push queries down to your warehouse, return only the rows
-          needed to render a chart, and store dashboard specs — not your raw data.
+          needed to render a chart, and store dashboard specs — never your data rows or values.
         </p>
       </div>
     </section>
@@ -48,7 +48,7 @@ export const prerender = true;
               <span class="node-role">compiles spec · renders chart</span>
             </div>
           </div>
-          <p class="flow-label">Your raw data never lands in dvt's metadata database.</p>
+          <p class="flow-label">Your warehouse's data rows and values never land in dvt's metadata database.</p>
         </div>
       </div>
     </section>
@@ -65,7 +65,7 @@ export const prerender = true;
               <li>Account metadata — users, organizations, roles, audit logs</li>
               <li>Warehouse connection settings, with credentials <strong>encrypted</strong></li>
               <li><strong>Trial CSV uploads</strong> — stored as Parquet in encrypted, organization-scoped object storage so your trial dashboards keep working</li>
-              <li><strong>Warehouse catalog structure</strong> — object and column names, kinds, data types, nullability, ordinals, and comments, only for a connection an org admin has explicitly opted in (off by default)</li>
+              <li><strong>Warehouse catalog structure</strong> — object and column names, kinds, data types, nullability, and comments read from your warehouse, plus a column ordering dvt assigns itself, only for a connection an org admin has explicitly opted into catalog sync (off by default)</li>
             </ul>
           </div>
           <div class="store-card bad">
@@ -79,8 +79,8 @@ export const prerender = true;
         </div>
         <p class="precise-note">
           <strong>To be precise:</strong> query results pass through dvt's systems in memory to
-          render your charts and are not persisted to our database. Three things land durably in our
-          infrastructure, and each is bounded and disclosed here rather than glossed over. First,
+          render your charts and are not persisted to our database. Three things can land durably in
+          our infrastructure, and each is bounded and disclosed here rather than glossed over. First,
           if you upload a <strong>CSV during a trial</strong>, dvt stores it as Parquet in encrypted
           object storage (Cloudflare R2) so your trial dashboards keep working — every object is
           scoped to your organization by key, sits in a private bucket with no public access, and is
@@ -92,20 +92,27 @@ export const prerender = true;
           PDF) is stored encrypted, scoped to your organization, and automatically deleted within 30
           days. A <strong>data export</strong> (CSV or XLSX) is streamed to you on request and
           audited, but <strong>never stored</strong> by dvt. Third, for a connection where an org
-          admin has opted into <strong>warehouse catalog structure</strong> sync — off by default,
-          per connection — dvt stores <strong>names/types/comments only, never data rows or
-          values</strong>: the object and column names, kinds, data types, nullability, ordinals, and
-          comments read from your warehouse's own catalog. It never includes data rows, sample
-          values, statistics, DDL text (DEFAULT, constraint, or view definitions), or query results.
-          The synced structure is scoped to your organization, and turning sync back off deletes it
-          immediately, not on a delayed cleanup cycle. We'd rather tell you exactly where your
-          data goes than make a claim we can't stand behind.
+          admin has opted into <strong>catalog sync</strong> — off by default, per connection — dvt
+          stores <strong>names/types/comments only, never data rows or values</strong>: the object
+          and column names, kinds, data types, nullability, and comments read from your warehouse's
+          own catalog, plus a column ordering dvt assigns itself (not read from the warehouse — the
+          engine's response has no warehouse-native ordinal). Comments are stored as written: a
+          warehouse column comment is free text your team wrote, so it's stored verbatim, not
+          extracted or summarized. Catalog sync never includes data rows, sample values, statistics,
+          DDL text (DEFAULT, constraint, or view definitions), or query results. The synced structure
+          is scoped to your organization — visible to any org member with catalog access, which can
+          be broader than what a finer-grained per-user warehouse grant would show them live — and
+          turning sync back off deletes it immediately, not on a delayed cleanup cycle. We'd rather
+          tell you exactly where your data goes than make a claim we can't stand behind.
         </p>
         <p class="precise-note">
           <strong>Retention:</strong> we don't keep personal data indefinitely. When a user or
           organization leaves, a daily job scrubs their personal details — email, name, avatar —
           within 90 days, keeping only de-identified records so historical usage stays intact.
-          Image exports are deleted within 30 days. Trial CSV uploads are deleted by an automated retention job after your trial ends.
+          Image exports are deleted within 30 days. Trial CSV uploads are deleted by an automated
+          retention job after your trial ends. Warehouse catalog structure is deleted immediately
+          when catalog sync is turned off for a connection, or when the connection itself is deleted
+          — not held on any separate retention schedule.
         </p>
       </div>
     </section>
@@ -246,7 +253,7 @@ export const prerender = true;
         </p>
         <ul class="prose-list">
           <li>dvt is <strong>not yet SOC 2 audited.</strong> We hold continuous, evidence-backed readiness: our controls map to the SOC 2 Common Criteria, and the timestamped artifacts our CI produces form the evidence trail an audit is built from. We'll pursue a formal Type II audit when an enterprise engagement calls for it.</li>
-          <li><strong>Architecture is our strongest control.</strong> Because your raw data stays in your warehouse, the scope of what we hold is small by design — the most direct answer to the hardest question on any security questionnaire.</li>
+          <li><strong>Architecture is our strongest control.</strong> Because your data rows and values stay in your warehouse, the scope of what we hold is small by design — the most direct answer to the hardest question on any security questionnaire.</li>
           <li>We keep a current <a href="/subprocessors">subprocessor list</a> and a <a href="/trust">trust center</a> with the artifacts a security review needs.</li>
         </ul>
         <p class="contact-line">

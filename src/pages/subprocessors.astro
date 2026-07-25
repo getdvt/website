@@ -16,7 +16,7 @@ const subprocessors = [
   {
     name: 'Neon',
     purpose: 'Metadata database (dashboard specs, accounts, roles, audit logs, encrypted credentials)',
-    data: 'Account metadata and dashboard specs; warehouse credentials as ciphertext. Optionally, opted-in warehouse catalog structure (names/types/comments only). No data rows or values.',
+    data: 'Account metadata and dashboard specs; warehouse credentials as ciphertext; opt-in warehouse catalog structure (names/types/comments only, never data rows or values).',
     region: 'United States',
   },
   {
@@ -65,7 +65,7 @@ const subprocessors = [
         <p class="lead">
           The third-party services dvt relies on to operate the product, what each one
           processes, and where. Because queries run in your warehouse, none of these services
-          receive your raw warehouse data.
+          receive your warehouse's data rows or values.
         </p>
       </div>
     </section>

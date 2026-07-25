@@ -31,7 +31,7 @@ This is what separates a spec-driven approach from NL-to-chart tools. The agent 
 
 ## SQL pushdown: dvt never hosts your data
 
-When the dashboard renders, dvt pushes the SQL to your warehouse — Snowflake, BigQuery, Postgres, or whichever source the dashboard connects to. Only the result rows come back. dvt never stores your data, never copies it to a dvt-managed database, and never re-bills your warehouse compute. The computation runs where the data lives.
+When the dashboard renders, dvt pushes the SQL to your warehouse — Snowflake, BigQuery, Postgres, or whichever source the dashboard connects to. Only the result rows come back. dvt never stores your data rows or values, never copies them to a dvt-managed database except for opt-in warehouse catalog structure (names, types, and comments only — see the [security overview](/security) for the full boundary), and never re-bills your warehouse compute. The computation runs where the data lives.
 
 This architecture has a practical implication for AI authorship: the agent writes SQL that runs in your warehouse, against your tables, under your permissions. It doesn't have any access path to your data that you don't. If a query is expensive, it's expensive in your warehouse, which you can observe and govern with your existing tools. There is no hidden second query engine.
 
