@@ -1,0 +1,216 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+
+export const prerender = true;
+
+const lastUpdated = 'July 27, 2026';
+---
+
+<Base
+  title="Acceptable Use Policy — dvt"
+  description="The rules for acceptable use of the dvt Service, incorporated by reference into the Terms of Service and any Cloud Service Agreement."
+>
+  <Nav />
+  <main>
+    <section class="page-hero">
+      <div class="container">
+        <div class="eyebrow">Legal</div>
+        <h1>Acceptable Use Policy</h1>
+        <p class="lead">
+          Incorporated by reference into the Terms of Service and any Cloud Service Agreement.
+          "Service" means the dvt platform, API, and MCP interface.
+        </p>
+        <p class="updated">Version 1.0 &middot; Effective {lastUpdated} &middot; <strong>Data Viz Tool, Inc.</strong></p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container prose">
+        <h2>1. Prohibited uses</h2>
+        <p>You may not use the Service to:</p>
+        <ol>
+          <li><strong>Break the law</strong> &mdash; violate any applicable law or regulation, or
+            infringe any third party's intellectual property, privacy, or other rights.</li>
+          <li><strong>Attack the Service</strong> &mdash; attempt to gain unauthorized access to
+            any system, account, or data; probe or test the vulnerability of the Service except
+            under our published responsible disclosure policy; circumvent authentication, rate
+            limits, quotas, or licensing controls.</li>
+          <li><strong>Reach other tenants</strong> &mdash; attempt to access another
+            organization's specifications, connections, credentials, or data.</li>
+          <li><strong>Degrade the Service</strong> &mdash; interfere with or disrupt the Service
+            or its infrastructure, including denial-of-service, deliberate resource exhaustion, or
+            evading documented rate limits.</li>
+          <li><strong>Distribute malicious code</strong> &mdash; upload or transmit malware, or
+            content designed to damage or gain unauthorized access to any system.</li>
+          <li><strong>Misuse credentials</strong> &mdash; share API keys outside your
+            organization, or use credentials you are not authorized to use.</li>
+          <li><strong>Upload prohibited data</strong> &mdash; see Section 2.</li>
+          <li><strong>Resell or provide a competing service</strong> &mdash; resell, sublicense,
+            or provide the Service to third parties except as expressly permitted by your Order
+            Form, or use the Service to build or operate a competing product.</li>
+          <li><strong>Reverse engineer</strong> &mdash; decompile or reverse engineer the Service,
+            except where that restriction is unenforceable under applicable law.</li>
+        </ol>
+
+        <h2>2. Data restrictions</h2>
+        <p>The Service is <strong>not designed or authorized</strong> for:</p>
+        <ul>
+          <li><strong>Protected Health Information (PHI)</strong> under HIPAA. dvt does not
+            execute Business Associate Agreements.</li>
+          <li><strong>Payment card data</strong> subject to PCI-DSS.</li>
+          <li><strong>Classified or export-controlled information</strong> under ITAR or EAR.</li>
+          <li><strong>Personal data of children</strong> under 13, or under 16 where GDPR Article
+            8 applies.</li>
+        </ul>
+        <p>
+          <strong>A specific warning about dashboard media.</strong> Images and branding assets
+          uploaded to dashboards are stored in a bucket that is readable by anyone holding the
+          object's unguessable URL. <strong>Do not upload confidential material as dashboard
+          media.</strong> This is a documented property of the Service, not a defect &mdash; see
+          our <a href="/security">Security Overview</a>.
+        </p>
+        <p>
+          Your warehouse data is a different matter: it stays in your warehouse and is governed by
+          our <a href="/security">Security Overview</a> and the DPA.
+        </p>
+
+        <h2>3. AI agents and automated authoring</h2>
+        <p>
+          dvt is designed to be driven by AI agents through its API and MCP interface. That is a
+          supported, intended use. You remain responsible for:
+        </p>
+        <ul>
+          <li><strong>Every action an agent takes under your credentials.</strong> Agent actions
+            are attributed in the audit log, but attribution is not authorization &mdash; an API
+            key acts with the authority you gave it.</li>
+          <li><strong>Scoping keys to the minimum a workload needs.</strong> Scopes can only
+            narrow; use that.</li>
+          <li><strong>What agents send to third-party model providers.</strong> If you connect an
+            external AI tool to dvt, the data that tool sees leaves dvt's control and is governed
+            by that tool's terms, not ours.</li>
+        </ul>
+        <p>
+          Do not use the Service to generate content that is unlawful, or to make automated
+          decisions with legal or similarly significant effects on individuals without appropriate
+          human review.
+        </p>
+
+        <h2>4. Fair use of shared infrastructure</h2>
+        <p>
+          The Service does not meter queries, viewers, or authorship, and we intend to keep it
+          that way. That model depends on customers not deliberately exploiting it.
+        </p>
+        <p>
+          We may contact you to discuss usage that materially degrades service for other
+          customers. <strong>We will always contact you before taking any action</strong>, and we
+          will not suspend a paying customer for usage volume without first attempting to resolve
+          it.
+        </p>
+
+        <h2>5. Enforcement</h2>
+        <p>
+          If we believe your use violates this Policy, we will contact you and, where practical,
+          give you a reasonable opportunity to remedy it.
+        </p>
+        <p>
+          We may <strong>suspend</strong> access without prior notice only where the violation
+          poses an immediate threat to the security, integrity, or availability of the Service or
+          to another customer's data. Any such suspension will be the narrowest scope and shortest
+          duration necessary, and we will notify you promptly with the reason and what is required
+          to restore access.
+        </p>
+        <p>
+          Repeated or uncured material violations may be grounds for termination under the
+          Agreement.
+        </p>
+
+        <h2>6. Reporting</h2>
+        <p>
+          Report suspected violations or security issues to
+          <a href="mailto:security@dvt.dev">security@dvt.dev</a>.
+        </p>
+
+        <h2>7. Changes</h2>
+        <p>
+          We may update this Policy. Material changes take effect <strong>30 days</strong> after
+          we notify you, except where a shorter period is required by law or to address a security
+          threat. Continued use after the effective date constitutes acceptance.
+        </p>
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .page-hero {
+    padding: var(--space-16) 0 var(--space-12);
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+  .eyebrow {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-brand-mark);
+    margin-bottom: var(--space-4);
+  }
+  .page-hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(var(--text-3xl), 5vw, 56px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-5);
+  }
+  .lead {
+    font-size: var(--text-lg);
+    color: var(--color-neutral-600);
+    line-height: 1.65;
+    max-width: 680px;
+  }
+  .updated {
+    margin-top: var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--color-neutral-500);
+  }
+
+  .section { padding: var(--space-12) 0 var(--space-16); }
+
+  .prose { max-width: 720px; }
+  .prose h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    margin: var(--space-12) 0 var(--space-4);
+    letter-spacing: -0.01em;
+  }
+  .prose p {
+    font-size: var(--text-base);
+    color: var(--color-neutral-700);
+    line-height: 1.75;
+    margin-bottom: var(--space-4);
+  }
+  .prose ul,
+  .prose ol {
+    margin: 0 0 var(--space-4);
+    padding-left: var(--space-5);
+  }
+  .prose li {
+    font-size: var(--text-base);
+    color: var(--color-neutral-700);
+    line-height: 1.7;
+    margin-bottom: var(--space-2);
+  }
+  .prose strong { color: var(--color-neutral-900); font-weight: 600; }
+  .prose a {
+    color: var(--color-brand-mark);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .prose a:hover { color: var(--color-neutral-900); }
+</style>
