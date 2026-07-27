@@ -1,0 +1,295 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+
+export const prerender = true;
+
+const lastUpdated = 'July 26, 2026';
+---
+
+<Base
+  title="Terms of Service — dvt"
+  description="The terms governing self-serve, trial, and free use of dvt. Customers with a signed Cloud Service Agreement are governed by that agreement instead."
+>
+  <Nav />
+  <main>
+    <section class="page-hero">
+      <div class="container">
+        <div class="eyebrow">Legal</div>
+        <h1>Terms of Service</h1>
+        <p class="lead">
+          These Terms govern self-serve, trial, and free use of dvt. Customers with a signed
+          Cloud Service Agreement are governed by that agreement, not these Terms.
+        </p>
+        <p class="updated">Version 1.0 &middot; Effective {lastUpdated} &middot; Data Viz Tool, Inc.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container prose">
+        <h2>1. Agreement</h2>
+        <p>
+          These Terms are between you ("you") and <strong>Data Viz Tool, Inc.</strong>, a Utah
+          corporation ("dvt", "we"). By creating an account or using the Service you agree to
+          them. If you are agreeing on behalf of an organization, you represent that you have
+          authority to bind it.
+        </p>
+        <p>
+          <strong>Service</strong> means the dvt platform — the web application, REST API, and
+          MCP interface.
+        </p>
+        <p>
+          <strong>If you have a signed Cloud Service Agreement with us, that agreement governs
+          and these Terms do not apply to your use under it.</strong>
+        </p>
+
+        <h2>2. Your account</h2>
+        <p>
+          You must provide accurate registration information and keep your credentials secure.
+          You are responsible for all activity under your account and API keys, <strong>including
+          actions taken by AI agents you authorize.</strong> Tell us promptly at
+          <a href="mailto:security@dvt.dev">security@dvt.dev</a> if you suspect unauthorized
+          access.
+        </p>
+        <p>You must be at least 16 years old.</p>
+
+        <h2>3. Acceptable use</h2>
+        <p>
+          Your use is subject to the Acceptable Use Policy, incorporated here. In particular, the
+          Service is <strong>not authorized</strong> for protected health information, payment
+          card data, or classified or export-controlled information.
+        </p>
+
+        <h2>4. Your data</h2>
+        <p>
+          <strong>You own your data.</strong> You retain all rights to your data, your dashboard
+          specifications, and the content you create. You grant us only the license needed to
+          operate the Service for you.
+        </p>
+        <p>
+          <strong>How the Service handles your data.</strong> dvt connects to data sources you
+          control and executes queries <strong>on your infrastructure</strong>. Only result rows
+          needed to render a visualization return to us, held in memory for that request and then
+          discarded. <strong>We do not maintain a copy of your warehouse data.</strong>
+        </p>
+        <p>
+          What we do store durably: your dashboard specifications, account metadata, audit
+          records, envelope-encrypted connection credentials (ciphertext only), rendered exports,
+          any files you upload, and — only if an administrator enables it — warehouse catalog
+          metadata consisting of names, types, and comments, never data values.
+        </p>
+        <p>
+          <strong>A specific caution:</strong> images and branding assets you upload are stored in
+          a bucket readable by anyone holding the object's unguessable URL. <strong>Do not upload
+          confidential material as dashboard media.</strong>
+        </p>
+        <p>
+          Our <a href="/privacy">Privacy Policy</a> describes our handling of personal data.
+        </p>
+
+        <h2>5. Trials and free access</h2>
+        <p>
+          We may offer trials and free access. These may be modified, limited, or discontinued at
+          any time.
+        </p>
+        <p>
+          <strong>Trial data is deleted when the trial ends.</strong> Export anything you want to
+          keep before then — dashboard specifications export as JSON through the API.
+        </p>
+        <p>
+          <strong>Trials are provided "AS IS" with no warranty and no availability commitment of
+          any kind.</strong>
+        </p>
+
+        <h2>6. Fees</h2>
+        <p>
+          Paid plans are billed as described at purchase. Fees are non-refundable except where
+          these Terms or applicable law require otherwise. You are responsible for applicable
+          taxes. We may change pricing on <strong>30 days' notice</strong>, effective at your next
+          renewal.
+        </p>
+
+        <h2>7. Our intellectual property</h2>
+        <p>
+          We own the Service, the software, and the dvt name and marks. These Terms grant you no
+          rights in them beyond the right to use the Service.
+        </p>
+        <p>
+          Portions of dvt — the dashboard specification format, client SDKs, and CLI — are
+          separately available under the Apache License 2.0, and nothing here restricts your
+          rights under that license.
+        </p>
+        <p>
+          <strong>Feedback.</strong> If you send us suggestions, you grant us a perpetual,
+          royalty-free license to use them without obligation or attribution.
+        </p>
+
+        <h2>8. AI agents</h2>
+        <p>
+          The Service is designed to be operated by AI agents through its API and MCP interface.
+          This is an intended use.
+        </p>
+        <p>
+          <strong>You are responsible for what agents do under your credentials.</strong> Agent
+          actions are recorded and attributed in the audit log, but attribution is not
+          authorization — an API key acts with whatever authority you gave it. Scope keys
+          narrowly.
+        </p>
+        <p>
+          <strong>If you connect a third-party AI tool to dvt, the data that tool receives leaves
+          our control</strong> and is governed by that tool's terms, not ours.
+        </p>
+
+        <h2>9. Suspension and termination</h2>
+        <p>You may stop using the Service and delete your account at any time.</p>
+        <p>
+          We may suspend or terminate your access if you materially breach these Terms or the
+          Acceptable Use Policy, or if required by law. <strong>Except where a violation poses an
+          immediate threat to the security or availability of the Service or to another customer's
+          data, we will contact you first and give you a reasonable opportunity to
+          remedy.</strong>
+        </p>
+        <p>
+          On termination, you may export your data for <strong>30 days</strong>. After that we
+          delete it in accordance with our retention practices.
+        </p>
+
+        <h2>10. Disclaimers</h2>
+        <p>
+          <strong>THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY
+          KIND, EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
+          AND NON-INFRINGEMENT.</strong>
+        </p>
+        <p>
+          We do not warrant that the Service will be uninterrupted, error-free, or secure, or that
+          results obtained through it will be accurate.
+        </p>
+        <p>
+          <strong>No availability commitment applies to use under these Terms.</strong> Service
+          level commitments are available only under a signed Cloud Service Agreement.
+        </p>
+        <p>
+          <strong>dvt is a visualization tool. It renders what your queries return. You are
+          responsible for the correctness of your queries, your data, and any decisions you make
+          from them.</strong>
+        </p>
+
+        <h2>11. Limitation of liability</h2>
+        <p>
+          <strong>TO THE MAXIMUM EXTENT PERMITTED BY LAW, NEITHER PARTY IS LIABLE FOR INDIRECT,
+          INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR FOR LOST PROFITS, REVENUE, OR
+          DATA.</strong>
+        </p>
+        <p>
+          <strong>OUR TOTAL LIABILITY ARISING FROM OR RELATING TO THESE TERMS WILL NOT EXCEED THE
+          GREATER OF (A) THE FEES YOU PAID US IN THE TWELVE MONTHS PRECEDING THE EVENT, OR (B) US
+          $100.</strong>
+        </p>
+        <p>
+          These limits do not apply to liability that cannot be limited by law, or to either
+          party's gross negligence or willful misconduct.
+        </p>
+
+        <h2>12. Indemnity</h2>
+        <p>
+          You will defend and indemnify us against third-party claims arising from your data,
+          your use of the Service in breach of these Terms or the Acceptable Use Policy, or your
+          violation of law or third-party rights.
+        </p>
+
+        <h2>13. Changes</h2>
+        <p>
+          We may update these Terms. <strong>Material changes take effect 30 days after we post
+          them or notify you</strong>, whichever is later. Continued use after the effective date
+          constitutes acceptance. If you do not agree, stop using the Service and delete your
+          account before the effective date.
+        </p>
+
+        <h2>14. General</h2>
+        <p>
+          <strong>Governing law:</strong> Utah, excluding conflict-of-laws rules.
+          <strong>Venue:</strong> state and federal courts in Salt Lake County, Utah.
+        </p>
+        <p>
+          <strong>Assignment:</strong> you may not assign these Terms without our consent; we may
+          assign to a successor in a merger or sale of substantially all assets.
+        </p>
+        <p>
+          <strong>Entire agreement:</strong> these Terms, the Acceptable Use Policy, and the
+          Privacy Policy are the entire agreement for use not covered by a signed Cloud Service
+          Agreement.
+        </p>
+        <p>
+          <strong>Severability:</strong> if a provision is unenforceable, the rest remains in
+          effect.
+        </p>
+        <p>
+          <strong>Contact:</strong> <a href="mailto:legal@dvt.dev">legal@dvt.dev</a> &middot; Data
+          Viz Tool, Inc., 7533 S Center View Ct, Ste N, West Jordan, UT 84084.
+        </p>
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .page-hero {
+    padding: var(--space-16) 0 var(--space-12);
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+  .eyebrow {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-brand-mark);
+    margin-bottom: var(--space-4);
+  }
+  .page-hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(var(--text-3xl), 5vw, 56px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-5);
+  }
+  .lead {
+    font-size: var(--text-lg);
+    color: var(--color-neutral-600);
+    line-height: 1.65;
+    max-width: 680px;
+  }
+  .updated {
+    margin-top: var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--color-neutral-500);
+  }
+
+  .section { padding: var(--space-12) 0 var(--space-16); }
+
+  .prose { max-width: 720px; }
+  .prose h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    margin: var(--space-12) 0 var(--space-4);
+    letter-spacing: -0.01em;
+  }
+  .prose p {
+    font-size: var(--text-base);
+    color: var(--color-neutral-700);
+    line-height: 1.75;
+    margin-bottom: var(--space-4);
+  }
+  .prose strong { color: var(--color-neutral-900); font-weight: 600; }
+  .prose a {
+    color: var(--color-brand-mark);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .prose a:hover { color: var(--color-neutral-900); }
+</style>
