@@ -5,7 +5,7 @@ import Footer from '../components/Footer.astro';
 
 export const prerender = true;
 
-const lastUpdated = 'July 25, 2026';
+const lastUpdated = 'July 28, 2026';
 ---
 
 <Base
@@ -128,9 +128,12 @@ const lastUpdated = 'July 25, 2026';
 
         <h2>6. Data retention</h2>
         <ul>
-          <li><strong>Personal data.</strong> When a user or organization leaves, a daily job scrubs
-            personal details — email, name, avatar — within 90 days, keeping only de-identified records
-            so historical usage stays intact.</li>
+          <li><strong>Personal data.</strong> When a user or organization leaves, a daily job
+            de-identifies their account details — email, name, avatar — within 90 days, keeping
+            historical usage records intact. Some records created before departure are retained until
+            the parent record is deleted — for example, an email address added as a scheduled-export
+            recipient, or a note typed into a change history. <a href="#contact">Contact us</a> to
+            have those removed.</li>
           <li><strong>Image exports (PNG/PDF).</strong> Stored encrypted and automatically deleted
             within 30 days.</li>
           <li><strong>Trial CSV uploads.</strong> Deleted by an automated retention job after your
@@ -197,7 +200,7 @@ const lastUpdated = 'July 25, 2026';
           or column names.
         </p>
 
-        <h2>13. Contact</h2>
+        <h2 id="contact">13. Contact</h2>
         <p>
           Questions about this policy or how we handle your data? Email
           <a href="mailto:security@dvt.dev">security@dvt.dev</a>. Our machine-readable security policy

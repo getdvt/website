@@ -107,8 +107,11 @@ export const prerender = true;
         </p>
         <p class="precise-note">
           <strong>Retention:</strong> we don't keep personal data indefinitely. When a user or
-          organization leaves, a daily job scrubs their personal details — email, name, avatar —
-          within 90 days, keeping only de-identified records so historical usage stays intact.
+          organization leaves, a daily job de-identifies their account details — email, name, avatar —
+          within 90 days, keeping historical usage records intact. Some records created before
+          departure are retained until the parent record is deleted — an email address added as a
+          scheduled-export recipient, or a note typed into a change history — and we remove those on
+          request.
           Image exports are deleted within 30 days. Trial CSV uploads are deleted by an automated
           retention job after your trial ends. Warehouse catalog structure is deleted immediately
           when catalog sync is turned off for a connection, or when the connection itself is deleted
