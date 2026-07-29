@@ -137,8 +137,9 @@ const lastUpdated = 'July 28, 2026';
             rather name them than imply nothing is left. An email address you added as a
             scheduled-export recipient lives until you delete that recipient or its schedule. Free
             text you or an agent typed into a change history — which can mention a person by name —
-            is kept for as long as that history is kept, because the change history is append-only.
-            <a href="#contact">Contact us</a> and we will remove either on request.</li>
+            is kept for as long as that history is kept. Removing it is a deliberate, audited
+            database change rather than a routine job — <a href="#contact">contact us</a> and we
+            will do it.</li>
           <li><strong>Image exports (PNG/PDF).</strong> Stored encrypted and automatically deleted
             within 30 days.</li>
           <li><strong>Trial CSV uploads.</strong> Deleted by an automated retention job after your
@@ -204,8 +205,11 @@ const lastUpdated = 'July 28, 2026';
           what our systems do: the 90-day scrub covers account details (email, name, avatar) and does
           not reach a scheduled-export recipient address or free text typed into a change history.
           §6 now names both, states that the clock starts on account deletion rather than on removal
-          from an organization, and gives you a route to have those records removed. This narrows a
-          published commitment, so we are calling it out here rather than only changing the date.
+          from an organization, and gives you a route to have those records removed. It also corrects
+          "within 90 days" to "after 90 days": the job runs daily and acts on records that have passed
+          the 90-day mark, so the scrub happens just after that point rather than before it. These
+          changes narrow a published commitment, so we are calling them out here rather than only
+          changing the date.
         </p>
         <p>
           <strong>July 25, 2026:</strong> added warehouse catalog structure as an opt-in collected

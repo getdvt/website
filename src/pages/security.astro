@@ -112,8 +112,9 @@ export const prerender = true;
           someone from an organization doesn't by itself start that clock; their account deletion
           does. Two things outlive the scrub, and we'd rather name them: an email address added as a
           scheduled-export recipient (kept until you delete that recipient or its schedule), and free
-          text typed into a change history, which can mention a person and is kept as long as that
-          append-only history is. We remove either on request.
+          text typed into a change history, which can mention a person and is kept for as long as that
+          history is kept. Removing that one is a deliberate, audited database change rather than a
+          routine job — contact us and we will do it.
           Image exports are deleted within 30 days. Trial CSV uploads are deleted by an automated
           retention job after your trial ends. Warehouse catalog structure is deleted immediately
           when catalog sync is turned off for a connection, or when the connection itself is deleted
