@@ -5,7 +5,7 @@ import Footer from '../components/Footer.astro';
 
 export const prerender = true;
 
-const lastUpdated = 'July 25, 2026';
+const lastUpdated = 'July 28, 2026';
 ---
 
 <Base
@@ -128,9 +128,18 @@ const lastUpdated = 'July 25, 2026';
 
         <h2>6. Data retention</h2>
         <ul>
-          <li><strong>Personal data.</strong> When a user or organization leaves, a daily job scrubs
-            personal details — email, name, avatar — within 90 days, keeping only de-identified records
-            so historical usage stays intact.</li>
+          <li><strong>Personal data.</strong> When a user's account is deleted, or an organization is
+            closed, a daily job de-identifies their account details — email, name, avatar — after 90
+            days, keeping usage history in de-identified form. Note that removing someone from an
+            organization does not by itself start that clock: their account still exists, so it is
+            their account deletion that begins the 90 days.</li>
+          <li><strong>What outlives that scrub.</strong> Two kinds of record are kept longer, and we'd
+            rather name them than imply nothing is left. An email address you added as a
+            scheduled-export recipient lives until you delete that recipient or its schedule. Free
+            text you or an agent typed into a change history — which can mention a person by name —
+            is kept for as long as that history is kept. Removing it is a deliberate, audited
+            database change rather than a routine job — <a href="#contact">contact us</a> and we
+            will do it.</li>
           <li><strong>Image exports (PNG/PDF).</strong> Stored encrypted and automatically deleted
             within 30 days.</li>
           <li><strong>Trial CSV uploads.</strong> Deleted by an automated retention job after your
@@ -191,13 +200,25 @@ const lastUpdated = 'July 25, 2026';
           updated" date above, and for material changes we'll provide a more prominent notice.
         </p>
         <p>
+          <strong>July 28, 2026:</strong> corrected the scope of the retention commitment in §6. The
+          previous wording said departure left "only de-identified records," which was broader than
+          what our systems do: the 90-day scrub covers account details (email, name, avatar) and does
+          not reach a scheduled-export recipient address or free text typed into a change history.
+          §6 now names both, states that the clock starts on account deletion rather than on removal
+          from an organization, and gives you a route to have those records removed. It also corrects
+          "within 90 days" to "after 90 days": the job runs daily and acts on records that have passed
+          the 90-day mark, so the scrub happens just after that point rather than before it. These
+          changes narrow a published commitment, so we are calling them out here rather than only
+          changing the date.
+        </p>
+        <p>
           <strong>July 25, 2026:</strong> added warehouse catalog structure as an opt-in collected
           data category (§2), and sharpened the "raw data" language throughout this policy to be
           explicit about data rows and values, so it can't be read as also covering warehouse object
           or column names.
         </p>
 
-        <h2>13. Contact</h2>
+        <h2 id="contact">13. Contact</h2>
         <p>
           Questions about this policy or how we handle your data? Email
           <a href="mailto:security@dvt.dev">security@dvt.dev</a>. Our machine-readable security policy
