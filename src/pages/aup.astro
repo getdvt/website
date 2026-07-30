@@ -5,7 +5,9 @@ import Footer from '../components/Footer.astro';
 
 export const prerender = true;
 
-const lastUpdated = 'July 27, 2026';
+// Keep in sync with the canonical source in dvt/docs/08-legal/enterprise/acceptable-use-policy.md
+// (GTM-61) — edits must land in both repos.
+const lastUpdated = 'July 30, 2026';
 ---
 
 <Base
@@ -48,8 +50,9 @@ const lastUpdated = 'July 27, 2026';
             organization, or use credentials you are not authorized to use.</li>
           <li><strong>Upload prohibited data</strong> &mdash; see Section 2.</li>
           <li><strong>Resell or provide a competing service</strong> &mdash; resell, sublicense,
-            or provide the Service to third parties except as expressly permitted by your Order
-            Form, or use the Service to build or operate a competing product.</li>
+            or provide the Service to third parties except as expressly permitted under a Cloud
+            Service Agreement and Order Form, if you have one, or use the Service to build or
+            operate a competing product.</li>
           <li><strong>Reverse engineer</strong> &mdash; decompile or reverse engineer the Service,
             except where that restriction is unenforceable under applicable law.</li>
         </ol>
@@ -68,12 +71,12 @@ const lastUpdated = 'July 27, 2026';
           <strong>A specific warning about dashboard media.</strong> Images and branding assets
           uploaded to dashboards are stored in a bucket that is readable by anyone holding the
           object's unguessable URL. <strong>Do not upload confidential material as dashboard
-          media.</strong> This is a documented property of the Service, not a defect &mdash; see
-          our <a href="/security">Security Overview</a>.
+          media.</strong>
         </p>
         <p>
-          Your warehouse data is a different matter: it stays in your warehouse and is governed by
-          our <a href="/security">Security Overview</a> and the DPA.
+          Your warehouse data is a different matter: it stays in your warehouse, under your own
+          access controls. Customers with a signed Cloud Service Agreement also have a Data
+          Processing Addendum (DPA) available on request from their account contact.
         </p>
 
         <h2>3. AI agents and automated authoring</h2>
