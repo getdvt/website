@@ -57,7 +57,7 @@ That semantic layer belongs upstream — in your dbt models, your metric definit
 
 ## Getting started with the MCP integration
 
-The dvt MCP server is documented at [developer.dvt.dev/mcp/](https://developer.dvt.dev/mcp/). If you self-host the Community edition, the MCP server runs alongside the API. On a hosted instance, the MCP endpoint is available at your workspace URL.
+The dvt MCP server is documented at [developer.dvt.dev/mcp/](https://developer.dvt.dev/mcp/). On a hosted instance, the MCP endpoint is available at your workspace URL.
 
 The tools you'll use most often are `dvt_dashboard_apply_spec` (create or update a dashboard from a spec), `dvt_spec_validate` (validate a spec against the schema), and `dvt_dashboard_get` (retrieve an existing spec for the agent to read and modify). The full tool surface is derived from the OpenAPI contract — the developer docs have a complete reference.
 

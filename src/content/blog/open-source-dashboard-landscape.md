@@ -1,13 +1,13 @@
 ---
-title: "The open-source dashboard landscape for analytics engineers"
-description: "A fair buyer's guide to code-first, open-source BI tools — Lightdash, Evidence, Metabase, and dvt — with honest 'best when' recommendations for each."
+title: "The code-first dashboard landscape for analytics engineers"
+description: "A buyer's guide to code-first BI: Lightdash, Evidence, Metabase (open-source), plus dvt, a spec-first hosted alternative."
 pubDate: 2026-06-21
 author: "Collin Austad"
 ---
 
-If you're an analytics engineer evaluating open-source BI in 2026, the options are better than they've ever been — and different enough from each other that the "best tool" question has no general answer. Each tool makes a coherent set of tradeoffs. The tradeoffs that matter depend on your team's stack, workflow, and definition of "done."
+If you're an analytics engineer evaluating code-first BI in 2026, the options are better than they've ever been — and different enough from each other that the "best tool" question has no general answer. Each tool makes a coherent set of tradeoffs. The tradeoffs that matter depend on your team's stack, workflow, and definition of "done."
 
-This post maps the tools an analytics engineer is most likely to reach for: Lightdash, Evidence, Metabase, and dvt. The goal is a genuine buyer's guide. If a tool isn't the right fit for your situation, you should know that before you spend a week onboarding it.
+This post maps the tools an analytics engineer is most likely to reach for: the open-source options — Lightdash, Evidence, and Metabase — compared against dvt, a spec-first hosted alternative. The goal is a genuine buyer's guide. If a tool isn't the right fit for your situation, you should know that before you spend a week onboarding it.
 
 ## The question behind the question
 
@@ -62,17 +62,17 @@ The tradeoff is the code-review story. A Metabase dashboard is platform state: i
 
 dvt starts from a premise the other tools don't share: a dashboard is a versioned JSON spec, and the spec is the product's native object model. Not GUI state that gets exported to JSON. Not a code layer bolted onto a GUI tool. The spec is what the renderer reads, what the API writes, and what AI agents author over MCP.
 
-Every dvt dashboard is a JSON document validated against a published schema. It contains the queries (SQL pushed down to your warehouse at view time), the visual encoding for each panel, the layout, and interactive elements like filters. Every visual property is a named, editable parameter. You can diff two versions of a dashboard the same way you diff two versions of a dbt model. You can validate a spec in CI before it ships.
+Every dvt dashboard is a JSON document validated against the dvt spec schema. It contains the queries (SQL pushed down to your warehouse at view time), the visual encoding for each panel, the layout, and interactive elements like filters. Every visual property is a named, editable parameter. You can diff two versions of a dashboard the same way you diff two versions of a dbt model. You can validate a spec in CI before it ships.
 
 The sharpest differentiator is portability. The dvt spec is renderer-neutral at its core profile level — it describes what the visualization is, not how a specific rendering engine draws it. A spec that conforms to the Core profile is portable across compliant renderers. An ECharts escape hatch exists for teams that need to reach properties beyond what the Core profile exposes, at the cost of that renderer-neutrality. Two layers, two guarantees, clearly separated.
 
-dvt does not require dbt. It connects to any warehouse directly — Snowflake, BigQuery, Postgres, and others. dbt integration is additive: if you run dbt, dvt can read your project metadata and use it. If you don't, dvt works without it. This is a deliberate architectural decision that separates dvt from Lightdash's dbt-dependency model.
+dvt does not require dbt. It connects to your warehouse directly — Snowflake, BigQuery, Postgres, and others. dbt integration is additive: if you run dbt, dvt can read your project metadata and use it. If you don't, dvt works without it. This is a deliberate architectural decision that separates dvt from Lightdash's dbt-dependency model.
 
 The AI authorship story is architecturally different from any other tool on this list. Because the spec is a structured document with a schema, an AI agent writes it the same way a human does — by constructing a valid JSON document and posting it through the API or over MCP. There is no "AI generates UI clicks" indirection. The agent is an author of the artifact. [The MCP integration is documented here](/blog/talk-to-your-warehouse) if you want to see the workflow concretely.
 
 **What you give up:** dvt's live editor exists and works, but if your primary use case is ad-hoc exploration by non-technical users, Metabase or Lightdash are more natural fits. dvt is optimized for dashboards you build, version, and maintain — not for "I have a quick question and I'll click around to find the answer." The spec-driven model adds structure that is overhead for one-off exploration.
 
-**Best when:** you want a versioned, portable spec that humans and AI agents co-author — dashboards that live in git alongside your data models, change through code review, and connect to any warehouse without a dbt dependency. Also when you want the escape hatch of full ECharts customization without giving up the structured spec artifact.
+**Best when:** you want a versioned spec that humans and AI agents co-author — dashboards that live in git alongside your data models, change through code review, and connect to your warehouse without a dbt dependency. Also when you want the escape hatch of full ECharts customization without giving up the structured spec artifact.
 
 ---
 
@@ -86,7 +86,7 @@ The dimensions that matter most:
 
 **Do you want BI as narrative documents?** Evidence's Markdown-plus-SQL model is designed for this. Reports as code, published through a build.
 
-**Do you want dashboards treated as code artifacts?** dvt. The spec is the object model; diffs are readable; CI validation is built in; AI agents are first-class authors. Works without dbt, connects to any warehouse, and runs either self-hosted (the free Community edition) or as a managed, hosted instance.
+**Do you want dashboards treated as code artifacts?** dvt. The spec is the object model; diffs are readable; CI validation is built in; AI agents are first-class authors. Works without dbt, connects to your warehouse, and runs as a managed, hosted instance.
 
 These categories don't fully overlap — a team that needs all four of these things may end up with more than one tool. That's fine. The modern data stack is already a collection of purpose-built tools; the BI layer doesn't have to be different.
 

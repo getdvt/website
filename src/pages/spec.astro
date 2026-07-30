@@ -48,8 +48,8 @@ const features = [
 ---
 
 <Base
-  title="The dvt JSON Dashboard Spec: open format, REST API + MCP"
-  description="Every dvt dashboard is a versioned JSON spec: stored as a database record, updated via REST API or MCP, authored by humans and AI agents alike. 30+ chart and table types. Open format."
+  title="The dvt JSON Dashboard Spec: REST API + MCP"
+  description="Every dvt dashboard is a versioned JSON spec: stored as a database record, updated via REST API or MCP, authored by humans and AI agents alike. 30+ chart and table types."
 >
   <Nav />
   <main>
@@ -202,12 +202,13 @@ const features = [
     <!-- Schema note -->
     <section class="section" data-reveal>
       <div class="container schema-note">
-        <h2>Open spec, published schema</h2>
+        <h2>Schema in design</h2>
         <p>
-          The dvt spec format is Apache-2.0 licensed, and a published JSON Schema is
-          on the way, enabling validation, editor autocompletion, and AI self-correction
-          without needing to query a running server. The spec travels with your data,
-          not with dvt's infrastructure.
+          A published JSON Schema is on the way, enabling validation, editor
+          autocompletion, and AI self-correction without needing to query a running
+          server. A spec that stays within the Core profile is portable across
+          compliant renderers; the ECharts escape hatch trades that neutrality for
+          deeper customization.
         </p>
         <p>
           The schema is in active design. The examples above reflect the current working

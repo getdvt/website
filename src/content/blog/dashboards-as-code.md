@@ -45,13 +45,13 @@ That uniformity is what makes AI authorship trustworthy. The agent isn't operati
 
 dvt specs are JSON files. They can live in your repository, in a directory alongside your `dbt_project.yml` and your `models/` folder. When they do, every dashboard change participates in your existing git workflow: branches, PRs, CI checks, squash merges. Your BI layer earns the same rigor as your transform layer.
 
-This isn't an exotic workflow. It's the same thing dbt did for SQL models a decade ago: take something that lived in a proprietary tool's database, give it a portable format and a home in version control, and let the community build tooling around the format. The format creates portability; portability creates gravity; gravity creates the ecosystem.
+This isn't an exotic workflow. It's the same thing dbt did for SQL models a decade ago: take something that lived in a proprietary tool's database, give it a text-based format and a home in version control, and let the community build tooling around the format.
 
-The format is documented and open — not locked to the dvt renderer. You can validate, lint, export, and import a spec without being tied to any platform.
+The format is documented — the spec is plain JSON, not a renderer-private blob. Keep them in your repo and they diff like any other code artifact.
 
 ## A note on CI validation
 
-The spec is JSON Schema-validated before any write. That means you can add schema validation to your CI pipeline: a step that checks each spec against the published schema before it reaches production, the same way `dbt compile` catches broken models. Broken dashboards don't make it to stakeholders because the spec was invalid — they fail at the merge check.
+The spec is JSON Schema-validated before any write. That means you can add schema validation to your CI pipeline: a step that posts each spec to dvt's validate endpoint before it reaches production, the same way `dbt compile` catches broken models. Broken dashboards don't make it to stakeholders because the spec was invalid — they fail at the merge check.
 
 The same CI step can run a dry-run render: spin up a headless render, confirm the dashboard produces the expected output given the spec, and flag regressions before they ship. Dashboard correctness becomes testable, because the dashboard is code.
 

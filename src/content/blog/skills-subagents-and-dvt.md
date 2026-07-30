@@ -70,7 +70,7 @@ Now the workflow becomes: the main agent drafts a spec, the reviewer subagent au
 
 You can go further in the same pattern: a warehouse-analyst subagent that explores data through `dvt_data_query` and reports what's worth charting, a layout auditor, a narrative critic. We use this pattern on our own dashboards — a layout- and narrative-review pass runs before we publish them.
 
-None of this required a dvt plugin API, an extension marketplace SDK, or a vendor-approved integration. It works because dvt's surface is tools plus a published JSON Schema, and modern agents know how to compose tools and self-correct against a schema.
+None of this required a dvt plugin API, an extension marketplace SDK, or a vendor-approved integration. It works because dvt's surface is tools plus a documented JSON Schema, and modern agents know how to compose tools and self-correct against a schema.
 
 ## The distribution problem — and where dvt's org skills come in
 
@@ -90,7 +90,7 @@ Skills and subagents encode judgment; they don't create it. A metrics skill is o
 
 None of this is a feature we bolted on for the AI moment. It falls out of decisions that were load-bearing from the start:
 
-- **Dashboards are data.** A dashboard is a versioned JSON spec with a published schema, so an agent can generate one, validate it, and be corrected by the schema — the same artifact a human authors.
+- **Dashboards are data.** A dashboard is a versioned JSON spec with a documented schema, so an agent can generate one, validate it, and be corrected by the schema — the same artifact a human authors.
 - **The tools are workflow-shaped.** dvt's MCP tools map to the jobs an agent actually does — search, query, validate, preview, apply, diff, render — with the REST API's OpenAPI contract underneath as the source of truth.
 - **Preview before persist.** Validation and dry-run application are first-class, so an agent (or its reviewer subagent) can iterate without touching production state.
 - **Your warehouse stays the boundary.** `dvt_data_query` pushes SQL down to your warehouse under your connection's role; only result rows come back. An agent operating through dvt has exactly the access you granted, nowhere more.
