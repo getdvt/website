@@ -89,8 +89,10 @@ export const prerender = true;
           This capability exists only during a trial — on a <strong>paid plan</strong>, durable upload
           storage isn't available, and your data stays in your own warehouse. Second, an
           <strong>image export</strong> (PNG or
-          PDF) is stored encrypted, scoped to your organization, and automatically deleted within 30
-          days. A <strong>data export</strong> (CSV or XLSX) is streamed to you on request and
+          PDF) is stored encrypted and scoped to your organization, and is retained indefinitely —
+          there is no deletion schedule, and closing your organization does not delete it. Email
+          <a href="mailto:security@dvt.dev">security@dvt.dev</a> and we'll remove it. A
+          <strong>data export</strong> (CSV or XLSX) is streamed to you on request and
           audited, but <strong>never stored</strong> by dvt. Third, for a connection where an org
           admin has opted into <strong>catalog sync</strong> — off by default, per connection — dvt
           stores <strong>names/types/comments only, never data rows or values</strong>: the object
@@ -115,7 +117,10 @@ export const prerender = true;
           text typed into a change history, which can mention a person and is kept for as long as that
           history is kept. Removing that one is a deliberate, audited database change rather than a
           routine job — contact us and we will do it.
-          Image exports are deleted within 30 days. Trial CSV uploads are deleted by an automated
+          Image exports are retained indefinitely — there is no deletion schedule, and closing your
+          organization does not delete them; email
+          <a href="mailto:security@dvt.dev">security@dvt.dev</a> and we'll remove
+          them. Trial CSV uploads are deleted by an automated
           retention job after your trial ends. Warehouse catalog structure is deleted immediately
           when catalog sync is turned off for a connection, or when the connection itself is deleted
           — not held on any separate retention schedule.

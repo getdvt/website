@@ -5,7 +5,7 @@ import Footer from '../components/Footer.astro';
 
 export const prerender = true;
 
-const lastUpdated = 'July 28, 2026';
+const lastUpdated = 'July 30, 2026';
 ---
 
 <Base
@@ -140,8 +140,11 @@ const lastUpdated = 'July 28, 2026';
             is kept for as long as that history is kept. Removing it is a deliberate, audited
             database change rather than a routine job — <a href="#contact">contact us</a> and we
             will do it.</li>
-          <li><strong>Image exports (PNG/PDF).</strong> Stored encrypted and automatically deleted
-            within 30 days.</li>
+          <li><strong>Image exports (PNG/PDF).</strong> Stored encrypted and scoped to your
+            organization. Retained indefinitely — we do not delete them on a schedule, and closing
+            your organization does not delete them. Email
+            <a href="mailto:security@dvt.dev">security@dvt.dev</a> to have your organization's
+            exports deleted.</li>
           <li><strong>Trial CSV uploads.</strong> Deleted by an automated retention job after your
             trial ends.</li>
           <li><strong>Warehouse catalog structure.</strong> Deleted immediately when catalog sync is
@@ -198,6 +201,15 @@ const lastUpdated = 'July 28, 2026';
         <p>
           We may update this policy as the product and our practices evolve. We'll revise the "last
           updated" date above, and for material changes we'll provide a more prominent notice.
+        </p>
+        <p>
+          <strong>July 30, 2026:</strong> corrected the image-export retention statement (§6). An
+          earlier version of this policy said image exports (PNG/PDF) were automatically deleted
+          within 30 days. No such deletion schedule was ever in place — those exports are retained
+          indefinitely, and closing your organization does not delete them. You can email
+          <a href="mailto:security@dvt.dev">security@dvt.dev</a> to have them deleted. Nothing was
+          lost; the effect was that exports were kept longer than this policy stated. Personal-data
+          and trial-upload retention are unchanged.
         </p>
         <p>
           <strong>July 28, 2026:</strong> corrected the scope of the retention commitment in §6. The
