@@ -89,8 +89,8 @@ export const prerender = true;
           This capability exists only during a trial — on a <strong>paid plan</strong>, durable upload
           storage isn't available, and your data stays in your own warehouse. Second, an
           <strong>image export</strong> (PNG or
-          PDF) is stored encrypted and scoped to your organization, and is retained for the life of
-          your organization rather than on a deletion schedule — email
+          PDF) is stored encrypted and scoped to your organization, and is retained indefinitely —
+          there is no deletion schedule, and closing your organization does not delete it. Email
           <a href="mailto:security@dvt.dev">security@dvt.dev</a> and we'll remove it. A
           <strong>data export</strong> (CSV or XLSX) is streamed to you on request and
           audited, but <strong>never stored</strong> by dvt. Third, for a connection where an org
@@ -111,8 +111,9 @@ export const prerender = true;
           <strong>Retention:</strong> we don't keep personal data indefinitely. When a user or
           organization leaves, a daily job scrubs their personal details — email, name, avatar —
           within 90 days, keeping only de-identified records so historical usage stays intact.
-          Image exports are retained for the life of your organization rather than on a deletion
-          schedule; email <a href="mailto:security@dvt.dev">security@dvt.dev</a> and we'll remove
+          Image exports are retained indefinitely — there is no deletion schedule, and closing your
+          organization does not delete them; email
+          <a href="mailto:security@dvt.dev">security@dvt.dev</a> and we'll remove
           them. Trial CSV uploads are deleted by an automated
           retention job after your trial ends. Warehouse catalog structure is deleted immediately
           when catalog sync is turned off for a connection, or when the connection itself is deleted
