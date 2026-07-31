@@ -108,6 +108,7 @@ build.
 | `chart:scatter` | ECharts scatter | `xField`, `yField`, `sizeField` (bubble), `labelField`; binds rows → `[x,y,size]` points |
 | `chart:effect-scatter` | ECharts effectScatter (passthrough) | scatter with ripple emphasis — `series[].rippleEffect`, inline or `dataField`-bound points |
 | `chart:heatmap` | ECharts heatmap | `xField`, `yField`, `valueField`, `valueFormat`; auto category axes + `visualMap` ramp (`heatmap.low`/`heatmap.high` tokens) |
+| `chart:calendar` | ECharts heatmap | `xField` (defaults to the first non-value column) + `valueField` (defaults to the last column) — both case-tolerant (DVT-530); the color ramp comes from `colorScale` or the `heatmap.low`/`heatmap.high` theme tokens by default, but authoring `visualMap` directly is a passthrough that overrides the ramp — **`xField`/`valueField` accept a `Date`, an ISO datetime string, or an already-`YYYY-MM-DD` string; a row whose date fails to normalize is dropped, never rendered as a NaN cell. Dates outside 1970-01-01..2100-12-31 are treated as unparseable and dropped (a sentinel guard against warehouse values like `9999-12-31`); once the max date is known, rows more than ~5 years (1827 days) before it are further trimmed before `calendar.range` and the color scale are derived, so a decade of data renders as its most recent 5 years. `valueField` values that are `null`/`undefined`/`''`/boolean are dropped rather than coerced to 0 — a missing day is an uncolored cell, not a 0-valued one. `calendar.range` is derived from the data's min/max date unless you declare `calendar` yourself — a declared `calendar` is spread last and wins, which is an ECharts passthrough and classifies the panel as dvt Full; the ~5-year data trim still applies even when you declare `calendar`, so a wider declared `range` renders empty cells and does not restore the trimmed rows, and a very wide declared range (e.g. spanning centuries) is an unbounded render cost. Pre-aggregate to one row per day — the binder does not aggregate duplicate dates. If every row fails to normalize, the whole panel falls back to the cartesian default rather than rendering an empty calendar.** |
 | `chart:gauge` | ECharts gauge | first numeric column (or `valueField`) binds the value; `valueFormat` formats the detail readout; `min`/`max`, `progress`, `axisLine` |
 | `chart:radar` | ECharts radar (passthrough) | `radar.indicator[]`, inline `series[].data: [{ name, value: [...] }]` |
 | `chart:funnel` | ECharts funnel | (name, value) columns auto-bind (`labelField`/`valueField` to override); `series[].sort`, `gap`, `label` |
@@ -144,6 +145,43 @@ build.
 | `container` | Tabbed container — one page region holding several panel sets behind tabs (layout primitive, not a chart) | `spec.layout: "tabs"` (required), `tabs[]` (required) each `{ id, label, panels:[childId…], layout }`, `defaultTab?`. **Children stay real elements in `panels[]`** referenced by id (never inlined); each tab carries its own mini 24-col `layout`, and the container itself occupies one cell in the page grid. Children are NOT in the page grid. Single level only (no tabs-in-tabs). NOT the same as page-level tabs (`pages[]`+`tabBar`). The semantic validator rejects missing refs / a child placed twice / a child also in the page grid / nesting / a bad `defaultTab` / a tab id that collides with a panel id |
 
 Any panel can also carry a `drill` object (retained for back-compat, now inert on its own — DVT-555) and/or a `contextMenu` object (right-click action menu). Drill navigation is now triggered via a `contextMenu` action of `type:"drill"`; for overlay presentation use `openOverlay` — see **Filters & drill-downs**.
+
+### ⚠️ Chart spec — critical: do NOT use Vega-lite encoding syntax
+
+dvt charts use **ECharts-style specs**, not Vega-lite. The schema allows additional
+properties (for ECharts passthrough flexibility), so an incorrect spec **passes
+validation but renders blank charts with no error**. This is the #1 authoring mistake.
+
+```
+❌ WRONG (blank chart, no error):
+"spec": {"encoding": {"x": {"field": "REGION", "type": "nominal"}, "y": {"field": "REVENUE", "type": "quantitative"}}}
+
+✅ CORRECT (renders):
+"spec": {"xAxis": {"type": "category"}, "yAxis": {"type": "value"}, "series": [{"type": "bar", "dataField": "REVENUE"}]}
+```
+
+**Every chart panel needs a resolvable ECharts-style binding** — either a `series[]`
+array with a bound field, or the Core field mappings shown below (`xField`/`yField`,
+`labelField`). A Vega-lite `encoding` block is neither, so the chart renders blank.
+Minimum specs by chart type:
+
+| Type | Minimum `spec` |
+| --- | --- |
+| `chart:bar` / `chart:line` / `chart:area` | `{"xAxis":{"type":"category"}, "yAxis":{"type":"value"}, "series":[{"type":"bar","dataField":"<value_col>"}]}` |
+| `chart:pie` / `chart:donut` | `{"series":[{"type":"pie","dataField":"<value_col>"}], "labelField":"<label_col>"}` |
+| `chart:scatter` | `{"xAxis":{"type":"value"}, "yAxis":{"type":"value"}, "xField":"<x_col>", "yField":"<y_col>"}` |
+| `chart:bar:horizontal` | `{"xAxis":{"type":"value"}, "yAxis":{"type":"category"}, "series":[{"type":"bar","dataField":"<value_col>"}]}` |
+
+Field placement matters: `xField`/`yField` (scatter) and `labelField` (pie/donut) are
+**top-level `spec` keys**, not inside `series[]` — placed under `series[]` they are
+silently ignored and the binder falls back to positional columns. (Scatter needs no
+explicit `series[]` at all; the renderer synthesizes one from the query rows.)
+
+All of these values are **query column names**. Match the exact column casing —
+Snowflake returns columns uppercase, so use `"REVENUE"`, not `"revenue"` (a
+case-insensitive fallback exists but only when no two columns collide on case; exact
+match is unambiguous and always safest). For cartesian charts the category axis defaults
+to the first query column not already consumed by a series `dataField`.
 
 ### Data binding
 
@@ -1691,7 +1729,8 @@ is interactive-only (a no-op in a static PNG render). Six action types:
 
 The `region-detail` page's panels declare `%(region)s` + a `data.params` `region` default,
 exactly like the filter targets above. `targetPage` (required) — a `pages[].id`. `param`
-(required) — the params key set on the target page's panels. `valueFrom`: `category`
+(required unless using `bindings[]` for a compound key, see below) — the params key set
+on the target page's panels. `valueFrom`: `category`
 (default) | `value` | `seriesName` | a field name from the clicked row (use a field name
 for tables). `valueType` — as above.
 
@@ -1719,20 +1758,38 @@ for tables). `valueType` — as above.
   `{<field>}` / `valueFrom:<field>` resolve the clicked mark's source row on row-per-mark
   charts (bar, line, area, scatter, pie) — for a pivoting stacked/multi-series chart, bind
   from `category`/`value`/`seriesName` instead.
-- **`filter`** — cross-filters the **current** page (no navigation): `param` (required),
-  `valueFrom?` (default `category`), `valueType?`, `targets?` (`"all"` | panel-id list).
-  Same value→query binding + targeting as a `filter` control.
-- **`drill`** — navigates to a page: `targetPage` + `param` (required), `valueFrom?`,
-  `valueType?`. This is the canonical drill trigger (DVT-555: the bare `drill` property is
-  now inert). One menu can hold several drill destinations.
+- **`filter`** — cross-filters the **current** page (no navigation): `param` (required
+  unless using `bindings`), `valueFrom?` (default `category`), `valueType?`, `targets?`
+  (`"all"` | panel-id list). Same value→query binding + targeting as a `filter` control.
+- **`drill`** — navigates to a page: `targetPage` + `param` (required unless using
+  `bindings`), `valueFrom?`, `valueType?`. This is the canonical drill trigger (DVT-555:
+  the bare `drill` property is now inert). One menu can hold several drill destinations.
 - **`openOverlay`** (ADR-0036) — opens `targetPage` as a **modal or drawer overlay** *over*
   the current page (detail-on-demand), instead of navigating away. A superset of `drill`:
-  `targetPage` (required), optional `param`/`valueFrom`/`valueType` (the clicked value is
-  bound into the overlay page's panels, scoped to the overlay — it never touches the base
-  page; closing the overlay discards it). Presentation: `present?` (`modal` default |
-  `drawer`), `size?` (`sm`|`md`|`lg`|`full`), `side?` (`left`|`right`, drawer only). Omit
-  `param` for a context-free detail/help overlay. The target is **usually a hidden page**
-  (see below). In a renderer without overlay support it degrades to a `drill` navigation.
+  `targetPage` (required), optional `param`/`valueFrom`/`valueType` (or `bindings`, the
+  clicked value is bound into the overlay page's panels, scoped to the overlay — it never
+  touches the base page; closing the overlay discards it). Presentation: `present?`
+  (`modal` default | `drawer`), `size?` (`sm`|`md`|`lg`|`full`), `side?` (`left`|`right`,
+  drawer only). Omit `param`/`bindings` for a context-free detail/help overlay. The target
+  is **usually a hidden page** (see below). In a renderer without overlay support it
+  degrades to a `drill` navigation.
+- **`bindings[]`** (DVT-2104) — bind a **compound key** from one click instead of the
+  scalar `param`, on `filter`/`drill`/`openOverlay`: `bindings: [{ param, valueFrom?,
+  valueType? }, …]`, one entry per param, same value→query contract as the scalar form.
+  Mutually exclusive with `param` on the same action — `filter`/`drill` require exactly
+  one of the two; `openOverlay` may also omit both (bind nothing). **All-or-nothing:**
+  if any binding's value is missing, `NULL`, or empty, the whole action does nothing —
+  prefer `valueFrom` columns that are `NOT NULL`.
+
+  ```json
+  { "type": "drill", "label": "Open {category} {quarter} detail",
+    "targetPage": "region-quarter-detail",
+    "bindings": [
+      { "param": "region", "valueFrom": "category" },
+      { "param": "quarter", "valueFrom": "quarter" }
+    ] }
+  ```
+
 - **`link`** — opens an external URL. Scheme must be `https` | `mailto` | `tel`
   (`javascript:`/`data:`/`http:` are rejected). Token values are URL-encoded, and a
   `{token}` may appear only in the path/query/fragment — never in the scheme or host (so
