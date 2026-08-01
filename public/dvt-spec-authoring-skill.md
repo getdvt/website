@@ -2461,7 +2461,10 @@ list panels left-to-right in grid order and note size cues derived from that pag
 `columns` (the effective column count — NOT always 24; a page can declare a custom
 `layout.columns` or breakpoint-specific `columns`), e.g. `w` equal to `columns` → "full-width",
 `w`/`columns` ≈ 2/3 → "2/3-width", alongside the title. Canvas/htmlSlots pages carry `mode`
-and no `rows`/`columns` — just name the page, no table. For example:
+and no `rows`/`columns` — just name the page, no table. If a page entry carries
+`"truncated": true`, its `rows` are capped (DVT-2370) — title that page's table "first N of
+{rowCount} rows" (using the entry's own `rowCount`), never present the capped rows as if they
+were the whole page. For example:
 
 | Row | Panels |
 |-----|--------|
@@ -2637,7 +2640,7 @@ Design and preview are unchanged: finish the staged design pass (§4a), assemble
 2. **Panel by panel.** `dvt_element_create` each panel (~1–2KB each), narrating as you go ("page 1/3: panel 4/6 — revenue trend"). **Always pass an explicit, stable `slug`** derived from the panel's title/id in the design (e.g. `revenue-trend`) — never leave it empty. An empty slug is regenerated fresh on every call, so a lost-response retry after a create that actually landed will duplicate the panel; an explicit slug makes the create idempotent (see step 4). Pass the optional per-breakpoint `layout` param when your design carries responsive (md/sm) geometry; flat x/y/w/h is fine otherwise. Create later pages with `dvt_page_create` as you reach them; fix ordering at the end with `dvt_pages_reorder`.
 3. **Render checkpoint per page — never per panel.** `dvt_dashboard_render_inline` after each page completes. The render budget is 10/hour per org; a per-panel cadence will exhaust it mid-build.
 4. **If one element fails,** surface the server's Problem `detail`/`suggestion` verbatim and retry that one element — the retry re-sends 1–2KB, not the whole spec. This retry is safe **because** step 2's explicit slug makes it idempotent: if the original create actually landed and only the response was lost, the retry gets a 409 slug-taken — treat that as success (the panel is already there) and move on, don't error out or duplicate it. A briefly incomplete dashboard is expected here; the user is watching it assemble.
-5. **Final integrity pass.** Run `dvt_spec_validate` on the full spec you assembled and applied (already in context — no need to re-fetch it) plus `dvt_dashboard_check_overlap`, and surface any remaining provenance warns to the user. Then `dvt_dashboard_get(format="concise")` the persisted dashboard for its `layoutSummary` — the final, ground-truth layout (built page-by-page, so it may differ from what you narrated mid-build) — this is what becomes the closing table (§5).
+5. **Final integrity pass.** Run `dvt_spec_validate` on the full spec you assembled and applied (already in context — no need to re-fetch it) and surface any remaining `collision`, `data-binding`, and provenance warnings to the user. (`dvt_dashboard_check_overlap` is the pre-build duplicate-content search from the Authoring method's step-1 data audit — not an integrity check; don't re-run it here.) Then `dvt_dashboard_get(format="concise")` the persisted dashboard for its `layoutSummary` — the final, ground-truth layout (built page-by-page, so it may differ from what you narrated mid-build) — this is what becomes the closing table (§5).
 
 **Headless/scheduled runs (no user watching): keep the single full-spec apply** — transactional, all-or-nothing; never leave a half-built dashboard unattended.
 
