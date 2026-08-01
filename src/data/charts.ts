@@ -139,13 +139,16 @@ const waterfallCats = ['Start', 'New biz', 'Expansion', 'Churn', 'Contraction', 
 // total/checkpoint bars (Start, End) sit on base 0. NULL-value totals per the
 // dvt spec convention are pre-resolved here into explicit cumulative values.
 const waterfallBase = [0, 100, 140, 136, 126, 0];
+// `name` carries the signed delta (totals shown unsigned) so the tooltip can
+// report the true value — the plotted `value` is the unsigned bar height
+// (magnitude above/below its floating base), not the signed delta itself.
 const waterfallValue = [
-  { value: 100, itemStyle: { color: C.navy } },
-  { value: 40, itemStyle: { color: C.green } },
-  { value: 18, itemStyle: { color: C.green } },
-  { value: 22, itemStyle: { color: C.rose } },
-  { value: 10, itemStyle: { color: C.rose } },
-  { value: 126, itemStyle: { color: C.navy } },
+  { value: 100, name: 'Start: 100', itemStyle: { color: C.navy } },
+  { value: 40, name: 'New biz: +40', itemStyle: { color: C.green } },
+  { value: 18, name: 'Expansion: +18', itemStyle: { color: C.green } },
+  { value: 22, name: 'Churn: −22', itemStyle: { color: C.rose } },
+  { value: 10, name: 'Contraction: −10', itemStyle: { color: C.rose } },
+  { value: 126, name: 'End: 126', itemStyle: { color: C.navy } },
 ];
 const comparison: ChartDef[] = [
   {
@@ -238,17 +241,17 @@ const comparison: ChartDef[] = [
     title: 'Waterfall',
     blurb: 'Bridge chart: a start value, signed deltas, and total checkpoints. Bar color follows sign.',
     option: {
-      textStyle, grid, tooltip: tooltipItem,
+      textStyle, grid,
+      tooltip: { ...tooltipItem, formatter: '{b}' },
       xAxis: { type: 'category', data: waterfallCats, axisLabel, axisLine: baseAxisLine, axisTick: { show: false } },
       yAxis: valY(),
       series: [
-        { type: 'bar', stack: 'wf', silent: true, itemStyle: { color: 'transparent' }, data: waterfallBase },
-        { type: 'bar', stack: 'wf', barMaxWidth: 34, data: waterfallValue },
+        { type: 'bar', stack: 'wf', stackStrategy: 'all', silent: true, itemStyle: { color: 'transparent' }, data: waterfallBase },
+        { type: 'bar', stack: 'wf', stackStrategy: 'all', barMaxWidth: 34, data: waterfallValue },
       ],
     },
     spec: `{ "type": "chart:waterfall",
-  "spec": { "series": [{ "type": "bar", "stack": "wf" }, { "type": "bar", "stack": "wf" }],
-            "totals": ["Start", "End"] } }`,
+  "spec": { "categoryField": "stage", "valueField": "delta" } }`,
   },
 ];
 
