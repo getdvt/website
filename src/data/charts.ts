@@ -134,6 +134,19 @@ const valY = (opts: Record<string, unknown> = {}) => ({
 });
 
 /* ── COMPARISON ──────────────────────────────────────────────────── */
+const waterfallCats = ['Start', 'New biz', 'Expansion', 'Churn', 'Contraction', 'End'];
+// Invisible "base" stack lifts the visible value bar to its floating position;
+// total/checkpoint bars (Start, End) sit on base 0. NULL-value totals per the
+// dvt spec convention are pre-resolved here into explicit cumulative values.
+const waterfallBase = [0, 100, 140, 136, 126, 0];
+const waterfallValue = [
+  { value: 100, itemStyle: { color: C.navy } },
+  { value: 40, itemStyle: { color: C.green } },
+  { value: 18, itemStyle: { color: C.green } },
+  { value: 22, itemStyle: { color: C.rose } },
+  { value: 10, itemStyle: { color: C.rose } },
+  { value: 126, itemStyle: { color: C.navy } },
+];
 const comparison: ChartDef[] = [
   {
     dvtType: 'chart:bar',
@@ -220,6 +233,23 @@ const comparison: ChartDef[] = [
   "spec": { "series": [{ "type": "pictorialBar",
               "symbol": "circle", "symbolRepeat": true }] } }`,
   },
+  {
+    dvtType: 'chart:waterfall',
+    title: 'Waterfall',
+    blurb: 'Bridge chart: a start value, signed deltas, and total checkpoints. Bar color follows sign.',
+    option: {
+      textStyle, grid, tooltip: tooltipItem,
+      xAxis: { type: 'category', data: waterfallCats, axisLabel, axisLine: baseAxisLine, axisTick: { show: false } },
+      yAxis: valY(),
+      series: [
+        { type: 'bar', stack: 'wf', silent: true, itemStyle: { color: 'transparent' }, data: waterfallBase },
+        { type: 'bar', stack: 'wf', barMaxWidth: 34, data: waterfallValue },
+      ],
+    },
+    spec: `{ "type": "chart:waterfall",
+  "spec": { "series": [{ "type": "bar", "stack": "wf" }, { "type": "bar", "stack": "wf" }],
+            "totals": ["Start", "End"] } }`,
+  },
 ];
 
 /* ── TREND ───────────────────────────────────────────────────────── */
@@ -301,6 +331,29 @@ const trend: ChartDef[] = [
     },
     spec: `{ "type": "chart:theme-river",
   "spec": { "series": [{ "type": "themeRiver" }] } }`,
+  },
+  {
+    dvtType: 'chart:calendar',
+    title: 'Calendar heatmap',
+    blurb: 'Daily-granularity intensity over months or years: one date column, one measure.',
+    option: {
+      textStyle, tooltip: tooltipItem,
+      visualMap: { min: 0, max: 10, calculable: true, orient: 'horizontal', left: 'center', bottom: 0, itemHeight: 60, textStyle: axisLabel, inRange: { color: ['#EEF2FF', C.indigoLight, C.indigo] } },
+      calendar: {
+        top: 20, left: 30, right: 10, cellSize: ['auto', 14], range: '2026-01',
+        itemStyle: { borderWidth: 2, borderColor: '#fff' },
+        dayLabel: { fontFamily: FONT, fontSize: 10, color: '#A1A1AA' },
+        monthLabel: { fontFamily: FONT, fontSize: 10, color: '#A1A1AA' },
+        yearLabel: { show: false },
+      },
+      series: [{
+        type: 'heatmap', coordinateSystem: 'calendar',
+        data: Array.from({ length: 31 }, (_, i) => [`2026-01-${String(i + 1).padStart(2, '0')}`, Math.round(2 + 8 * Math.abs(Math.sin(i * 0.7)))]),
+      }],
+    },
+    spec: `{ "type": "chart:calendar",
+  "data": { "query": "SELECT day, SUM(events) AS events\\n            FROM activity GROUP BY day" },
+  "spec": { "series": [{ "type": "heatmap", "coordinateSystem": "calendar" }] } }`,
   },
 ];
 
