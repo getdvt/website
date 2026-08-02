@@ -42,10 +42,18 @@ comment of `src/index.ts`:
    column, so this credential grants the **entire** pm-tool admin surface —
    the whole CRM, expenses/financials, **and token minting**. Because minting
    is included, an attacker holding this token can mint another one, so
-   revoking the leaked token does **not** fully contain a breach. The other
-   three Workers' secrets each cost exactly one endpoint; this one costs the
-   whole admin surface. This is an **accepted risk** for an internal-only
-   tool whose secret lives in Cloudflare's secret store — not a virtue.
+   revoking the leaked token does **not** fully contain a breach. Privilege
+   escalation is bounded even though persistence is not: a self-minted
+   `@agents.dvt.dev` token comes back `role="member"` by default
+   (`dvt-pm-tool/backend/app/routers/tokens.py:76`), so it still needs a
+   separate promotion step to reach admin. Containment for a live breach
+   runs through **deactivating the agent user**, not revoking the token:
+   `_ensure_active` (`dvt-pm-tool/backend/app/auth.py:66-74`) rejects every
+   token acting as a deactivated user, including one an attacker self-mints
+   for that same user. The other three Workers' secrets each cost exactly
+   one endpoint; this one costs the whole admin surface. This is an
+   **accepted risk** for an internal-only tool whose secret lives in
+   Cloudflare's secret store — not a virtue.
 2. **120s timeout**, not the 30s baseline (`exports-runner` precedent):
    dvt-pm cold-starts from zero and fans out to dvt-api per demo invite.
 3. **Targets `pm.dvt.dev` directly**, not a `.fly.dev` origin: `pm.dvt.dev`
@@ -55,11 +63,33 @@ comment of `src/index.ts`:
 ## Setup
 
 The `PM_API_TOKEN` secret must be **minted by a human**, per
-`dvt-pm-tool/CLAUDE.md`, for a `role="admin"` pm-tool user whose email is
-under `@agents.dvt.dev` in prod — never a founder's personal user, so
-revocation never disrupts a human and `last_used_at` attributes cleanly. That
-same human runs `wrangler secret put PM_API_TOKEN` below, so the plaintext
-token value never transits an agent.
+`dvt-pm-tool/CLAUDE.md`, for a pm-tool user whose email is under
+`@agents.dvt.dev` in prod — never a founder's personal user, so revocation
+never disrupts a human and `last_used_at` attributes cleanly. That same
+human runs `wrangler secret put PM_API_TOKEN` below, so the plaintext token
+value never transits an agent.
+
+Do these steps **in order** — mint → promote → verify — before running
+`wrangler secret put`:
+
+1. **Mint** the token for the new `@agents.dvt.dev` user, per
+   `dvt-pm-tool/CLAUDE.md`.
+2. **Promote to admin.** A fresh agent identity is created `role="member"`,
+   not admin (`dvt-pm-tool/backend/app/routers/tokens.py:76`), and
+   `require_admin` rejects a member token on every tick. Run against prod:
+   ```bash
+   cd backend && uv run python -m app.manage grant-admin <agent>@agents.dvt.dev
+   ```
+   (`dvt-pm-tool/backend/app/manage.py:22`.)
+3. **Verify** the token actually works before deploying:
+   ```bash
+   curl -X POST -H "Authorization: Bearer <token>" \
+     'https://pm.dvt.dev/api/v1/accounts/sync?triggered_by=cron'
+   ```
+   Expect **200**. A **403** here means step 2 was skipped — this is the
+   single most likely way this Worker silently never works, since a red
+   cron tick in the Cloudflare dashboard is the only other signal (see "No
+   alerting" below).
 
 ## Deploy
 
@@ -90,8 +120,10 @@ which daily satisfies with ~1h of margin. Change the cadence in
 
 ### Secret rotation
 
-Simpler than `trial-sweep`'s two-place warning: `PM_API_TOKEN` lives in only
-two places, pm-tool's DB and this Worker. To rotate:
+Simpler than `trial-sweep`'s two-place warning: pm-tool stores only a
+SHA-256 hash of `PM_API_TOKEN`, never the plaintext
+(`dvt-pm-tool/backend/app/auth.py:39-56`), so the plaintext exists in
+exactly **one** place — this Worker's Cloudflare secret store. To rotate:
 
 1. Mint a new `ApiToken` (human step, per Setup above).
 2. `npx wrangler secret put PM_API_TOKEN` with the new value.

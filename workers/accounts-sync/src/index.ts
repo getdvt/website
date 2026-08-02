@@ -24,18 +24,22 @@
  *    so this credential grants the ENTIRE admin surface — the whole CRM,
  *    expenses/financials, AND token minting. Because minting is included, an
  *    attacker holding this token can mint another one, so revoking the
- *    leaked token does NOT fully contain a breach. The other three Workers'
- *    secrets each cost exactly one endpoint; this one costs the whole admin
- *    surface. This was accepted deliberately for an internal-only tool whose
- *    secret lives in Cloudflare's secret store — an accepted risk, not a
- *    virtue. The token MUST be minted for a dedicated non-human identity
- *    under `@agents.dvt.dev`, never a founder's personal user, so revocation
- *    never disrupts a human and `last_used_at` attributes cleanly.
+ *    leaked token does NOT fully contain a breach. Privilege escalation is
+ *    bounded even though persistence is not: a self-minted
+ *    `@agents.dvt.dev` token comes back `role="member"` by default
+ *    (`backend/app/routers/tokens.py:76`), so it still needs a separate
+ *    promotion step to reach admin. The other three Workers' secrets each
+ *    cost exactly one endpoint; this one costs the whole admin surface. This
+ *    was accepted deliberately for an internal-only tool whose secret lives
+ *    in Cloudflare's secret store — an accepted risk, not a virtue. The
+ *    token MUST be minted for a dedicated non-human identity under
+ *    `@agents.dvt.dev`, never a founder's personal user, so revocation never
+ *    disrupts a human and `last_used_at` attributes cleanly.
  *
  *    Why `ApiToken` over a bespoke shared secret: pm-tool has ZERO inbound
  *    machine-auth prior art — no `compare_digest` anywhere in the repo, no
- *    `X-Cron-Secret`, no inbound `INTERNAL_API_KEY` (its three `*_key`
- *    settings are all outbound). We instead use a dedicated admin `ApiToken`
+ *    `X-Cron-Secret`, no inbound `INTERNAL_API_KEY` (its `*_key` settings are
+ *    all outbound). We instead use a dedicated admin `ApiToken`
  *    (`backend/app/auth.py` `mint_api_token`), which is DB-backed,
  *    revocable, and audited (`last_used_at` stamped per call), flows through
  *    `_ensure_active` so deactivation kills it, and satisfies `require_admin`

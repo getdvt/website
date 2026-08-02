@@ -17,6 +17,13 @@ name = "dvt-accounts-sync"
 main = "src/index.ts"
 compatibility_date = "2024-12-01"
 
+# Drop the public *.workers.dev URL. It would be inert anyway (no `fetch`
+# handler), but there is no reason to publish a route at all. infra's
+# cloudflare/workers.tf records this as wanted for every cron Worker and defers
+# it for the three pre-existing ones only because retrofitting costs a redeploy
+# each — a reason that does not apply to a Worker that has never been deployed.
+workers_dev = false
+
 # Daily at 04:00 UTC — deliberately NOT 03:00, which dvt-trial-sweep already
 # holds. Both crons call Fly apps that cold-start from zero
 # (min_machines_running = 0); staggering avoids two independent cold starts
