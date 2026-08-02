@@ -1,0 +1,34 @@
+# Cloudflare Worker — pm-tool CRM accounts sync cron (DVT-2096)
+#
+# A scheduled-only Worker: on each cron tick it POSTs to the dvt-pm
+# accounts-sync endpoint, which pulls dvt org data into the pm-tool CRM
+# `accounts` table. This Worker holds NO sync logic — it is purely the
+# trigger. All scoping, admin gating, and the `AccountSyncRun` audit row live
+# in the API (dvt-pm-tool, slice 1 of DVT-2096, already merged and deployed).
+# Replaces a founder-clicked button that has not run since 2026-06-30.
+#
+# Deploy:   cd workers/accounts-sync && npx wrangler deploy
+# Secrets:  npx wrangler secret put PM_API_TOKEN
+#   (value is a pm-tool admin ApiToken minted for a dedicated non-human
+#   identity under @agents.dvt.dev — see README's Setup section for why)
+# Tail:     npx wrangler tail dvt-accounts-sync
+
+name = "dvt-accounts-sync"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# Daily at 04:00 UTC — deliberately NOT 03:00, which dvt-trial-sweep already
+# holds. Both crons call Fly apps that cold-start from zero
+# (min_machines_running = 0); staggering avoids two independent cold starts
+# racing in the same minute. The ticket's acceptance criterion is
+# `accounts.last_synced_at` never older than ~25h, which a daily cron
+# satisfies with ~1h of margin.
+[triggers]
+crons = ["0 4 * * *"]
+
+[vars]
+# pm-tool's public, DNS-only hostname (proxied = false — see src/index.ts
+# header comment, deviation 3). The `?triggered_by=cron` query param is
+# load-bearing: it is what makes scheduled runs distinguishable from
+# founder button-clicks in the account_sync_runs history. Non-secret.
+SYNC_URL = "https://pm.dvt.dev/api/v1/accounts/sync?triggered_by=cron"
