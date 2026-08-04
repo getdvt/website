@@ -56,6 +56,7 @@ jobs:
           if ! diff -u /tmp/canonical.md public/dvt-spec-authoring-skill.md; then
             echo "::error::public/dvt-spec-authoring-skill.md has drifted from the canonical copy in getdvt/dvt."
             echo "Fix: run ./scripts/sync-spec-skill.sh (with the dvt repo checked out as a sibling), commit, and push."
+            echo "If this stays red right after a sync, dvt has not redeployed yet — the script vendors dvt's origin/main, which can be ahead of demo.dvt.dev. It clears on the next dvt deploy."
             exit 1
           fi
           echo "OK — vendored skill matches the canonical copy on demo.dvt.dev."
