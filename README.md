@@ -84,9 +84,15 @@ and is served here so [/spec](https://dvt.dev/spec) can offer it as a download.
 **Do not hand-edit the website copy.** Edit it in the dvt repo, then re-sync:
 
 ```bash
-./scripts/sync-spec-skill.sh        # copies from ../dvt/web/public/
+./scripts/sync-spec-skill.sh        # reads ../dvt @ origin/main (fetches first)
 ```
+
+The script reads the canonical file from the dvt repo's `origin/main` via `git show`
+after a fetch — never from your local dvt working tree, which is routinely parked on a
+stale detached HEAD. Set `DVT_REF=origin/some-branch` to vendor a non-default ref.
 
 CI (`.github/workflows/spec-skill-drift.yml`) fails if the two copies drift apart.
 It compares against `demo.dvt.dev` (the public dvt deploy), so right after a dvt-side
-change the check can lag until dvt redeploys.
+change the check can lag until dvt redeploys. If the job is still red immediately after
+a sync, that is the expected lag: the vendored copy is *ahead* of the deploy, and it
+clears once dvt redeploys.
