@@ -204,10 +204,10 @@ Snowflake forbids CALLER grants on shared (imported) objects — so
 import will ALWAYS fail (never author panels directly against them). Wrap the
 shared data in an owned table, view, or model first (e.g. `CREATE VIEW
 my_db.my_schema.v AS SELECT ... FROM SNOWFLAKE.ACCOUNT_USAGE....`) and point the
-panel's query at that owned object. Owned databases additionally need a one-time
-per-database grant from the app owner (`GRANT INHERITED CALLER USAGE ON DATABASE
-<db> TO ROLE <owner_role>;`); a failing panel's error message includes the exact
-statement.
+panel's query at that owned object. Owned databases additionally need CALLER grants to
+the APPLICATION at every level — database, schema, and each view (`GRANT CALLER
+USAGE ON DATABASE <db> TO APPLICATION <app>;` etc). They do NOT cascade
+(DVT-2456); a failing panel's error names the exact level still missing.
 
 **Canonical cartesian form — author the measure as `series[].dataField`.** For the plain
 value families (`chart:bar`/`chart:line`/`chart:area`), the single authored form used by
@@ -2026,8 +2026,16 @@ like a grid one.
   may appear in more than one block.
 - **`section.background`** takes any CSS background (solid / gradient / a token ref like
   `{page.background}`) — **sanitized** (no remote `url()`); use `media` blocks for images.
-- **`fullBleed: true`** is a render hint to drop app chrome (edge-to-edge / kiosk /
-  presentation). Open a canvas dashboard, then click **Present** for the chrome-less
+- **`fullBleed: true`** is a render hint (ADR-0027) with per-surface semantics (DVT-2374,
+  slice 1C): on the immersive `/present` viewer, fullBleed is honored in full — app chrome
+  (nav/tab-bar/drawer) is hidden, padding drops to 0, and content is unconstrained. The
+  standard `/dashboard` viewer and the headless render/export surface honor fullBleed too,
+  but ONLY as padding=0 + maxWidth=none — app chrome is NOT hidden there; only `/present`
+  hides chrome (hiding nav in the main viewer would break navigation). Canvas mode implies
+  full-bleed on `/present` and in the builder preview pane (which mirrors it, DVT-2374
+  review r2 F3); the standard viewer and the headless render surface still require an
+  explicit `fullBleed: true` — a canvas page without it keeps its padded/capped rendering on
+  those two surfaces. Open a canvas dashboard, then click **Present** for the immersive
   viewer at `/present/:id`.
 
 **Scroll behaviors** (`section.scroll`):
@@ -2114,6 +2122,44 @@ interactive affordance (links, buttons, filters) inside a panel, never in the fr
 id — the same referential-integrity discipline as grid `items[].i` and canvas
 `blocks[].ref`.
 
+## Page rhythm — gap, padding, maxWidth, align
+
+Four `layout` fields (Lane-1) control the page's spacing and width, on top of the grid
+itself: **`gap`** (`{ x, y }` px, inter-tile gutter), **`padding`** (px, an integer for all
+sides or `{ top, right, bottom, left }`), **`maxWidth`** (px, or `"none"` for
+unconstrained), and **`align`** (`"left"`|`"center"`|`"right"`, or `{ preset?, x?, offset? }`
+for a raw position plus a pixel nudge). Three of the four have an ambient theme-token
+sibling as the next-lowest precedence tier — `gap`→`grid.xGap`/`grid.yGap`,
+`padding`→`page.padding`, `maxWidth`→`page.content.width` — so a dashboard-wide default can
+live in the theme while individual pages override it. `align` is spec-only: there is no
+ambient alignment token, and an invented `page.align` token key would validate (tokens are
+an open map) but have no effect on rendering. Per doctrine (preset → nudge → raw), every
+shorthand still has a numeric sibling: `align`'s enum presets are backed by the
+`{ preset, offset }` object form, and there is no `sm`/`md`/`lg` tier anywhere — dial actual
+px numbers.
+
+```jsonc
+// Dense — tight KPI wall
+"layout": {
+  "gap": { "x": 8, "y": 8 },
+  "padding": 16
+  // …plus the required columns / rowHeight / items
+}
+
+// Airy — generous editorial spacing
+"layout": {
+  "gap": { "x": 24, "y": 20 },
+  "padding": { "top": 40, "right": 44, "bottom": 56, "left": 44 },
+  "maxWidth": 1280
+  // …plus the required columns / rowHeight / items
+}
+```
+
+`gap` and `padding` apply at ALL widths (no separate mobile knob — an explicit `gap`/`padding`, or
+the ambient token, overrides the responsive default at every breakpoint). Page-scope
+only — ignored in a container element's per-tab sub-grid, which keeps its own separate
+defaults.
+
 ## Theme & tokens (the customization engine)
 
 Tokens are a 3-tier tree (`primitive` → `semantic` → `component`). Any value may be
@@ -2126,8 +2172,9 @@ the **font-family** slots below are a *closed allow-set*, not free text (see
 - `chart.*` component style (renderer-neutral themeable defaults — ADR-0014 Amendment 1): `chart.font.family`; axis `chart.axis.label.size`/`.weight`, `chart.axis.name.size`/`.weight`, `chart.axis.tick.show`; tooltip card `chart.tooltip.background`/`.border.color`/`.border.width`/`.text.color`/`.text.size`/`.radius`/`.shadow`/`.padding`; legend `chart.legend.icon`/`.item.size`/`.gap`/`.text.size`; bars `chart.bar.maxWidth`/`.categoryGap`/`.radius`; lines `chart.line.width`/`.showSymbol`; plot insets `chart.grid.left`/`.right`/`.top`/`.bottom`. Set any in `theme.tokens.component` or a panel `overrides` block to restyle chrome without raw ECharts passthrough.
 - `heatmap.low`, `heatmap.high` — heatmap value ramp endpoints
 - `page.background` — the canvas behind panels (or set `page.background` per page via `pages[].background`)
-- `panel.background`, `panel.border.color`, `panel.radius`, `panel.shadow` — per-card chrome
+- `panel.background`, `panel.border.color`, `panel.border.width`, `panel.radius`, `panel.shadow` — per-card chrome
 - `panel.title.size`, `panel.title.weight`
+- `panel.subtitle.size`, `panel.subtitle.weight`, `panel.subtitle.color` — per-card subtitle typography (falls back to `text.secondary`)
 - `text.primary`, `text.secondary`, `text.muted`
 - `typography.fontFamily` (and any `*.family` token) — a **closed allow-set, not free text**. Use exactly one of these stacks (or a `"{typography.fontFamily}"` ref): `Inter Variable, Inter, sans-serif` · `Inter, sans-serif` · `JetBrains Mono, monospace` · `JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace` · `ui-sans-serif, system-ui, sans-serif` · `ui-serif, Georgia, serif` · `ui-monospace, monospace`. An off-list stack (e.g. `"Helvetica, Arial, sans-serif"`) is **rejected with a 422 by `dvt_spec_validate`** — a font stack has no safe-literal grammar, so the schema gates it as an enum, not free text (DVT-294, ADR-0032 §A3).
 
