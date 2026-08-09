@@ -70,6 +70,30 @@ const subprocessors = [
       </div>
     </section>
 
+    <section class="section carve-out">
+      <div class="container">
+        <h2>Snowflake Native App edition — no subprocessors in the data path</h2>
+        <p class="section-lead">
+          The list below applies to the editions dvt operates for you — our hosted service and the
+          hosted trial. It does <strong>not</strong> apply to the Snowflake Native App edition,
+          which runs on Snowpark Container Services (SPCS).
+        </p>
+        <p class="section-body">
+          That app runs entirely inside your own Snowflake account: queries execute in your
+          warehouse under caller's rights, app state lives on SPCS block volumes in that account,
+          and the app's services make no outbound network calls. No vendor on this list, and no
+          other third party, processes your data on dvt's behalf in that edition.
+        </p>
+        <p class="section-body">
+          dvt receives no telemetry from that edition either. The app package declares no event
+          definitions, so nothing is replicated out of your account: container logs land in your
+          own Snowflake event table, with PII scrubbed as they are written. Sharing those events
+          with dvt is a separate, account-level switch that you control, and it is off unless you
+          turn it on.
+        </p>
+      </div>
+    </section>
+
     <section class="section">
       <div class="container">
         <div class="table-wrap">
@@ -136,6 +160,30 @@ const subprocessors = [
   }
 
   .section { padding: var(--space-12) 0 var(--space-16); }
+  .section + .section { padding-top: 0; }
+
+  .carve-out h2 {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    margin-bottom: var(--space-5);
+    max-width: 720px;
+  }
+  .carve-out .section-lead {
+    font-size: var(--text-base);
+    color: var(--color-neutral-700);
+    line-height: 1.7;
+    max-width: 720px;
+    margin-bottom: var(--space-4);
+  }
+  .carve-out .section-body {
+    font-size: var(--text-base);
+    color: var(--color-neutral-600);
+    line-height: 1.7;
+    max-width: 720px;
+  }
 
   .table-wrap {
     overflow-x: auto;
