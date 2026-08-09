@@ -88,16 +88,29 @@ stored replays the existing dashboard with a 200 — safe to retry after a netwo
 
 ## Panel types
 
-Four MCP reference tools ground the authoring flow in what's actually served, never
-prose recall: `dvt_chart_reference` for every `chart:*` type (option summary +
+Five MCP reference tools ground the authoring flow in what's actually served, never
+prose recall: `dvt_dashboard_reference` for the top-level dashboard spec shape itself,
+`dvt_chart_reference` for every `chart:*` type (option summary +
 property-path drill-down, sourced from ECharts' own docs), `dvt_block_reference` for
-the non-chart, dvt-native block types (`kpi`, `hero`, `html`, `table`, `filter-bar`,
-`container`, `section` — same catalog → type-summary → property-path drill-down
-shape), `dvt_page_reference` for the available page layout modes, and
+the non-chart, dvt-native block types (its catalog is the authoritative, current
+list of which of those it serves a dedicated property reference for today, since
+coverage is expected to grow (DVT-2734); same catalog → type-summary →
+property-path drill-down shape), `dvt_page_reference` for the available page layout modes, and
 `dvt_interaction_reference` for the shipped interactivity surface (filters, brush,
 context-menu actions, drill, params). Call the matching one before authoring an
-unfamiliar type — see **Design flow** below for how the four compose into a staged
+unfamiliar type — see **Design flow** below for how the five compose into a staged
 build.
+
+**Work them in this staged order — each stage's answer constrains the next:**
+`dvt_dashboard_reference()` for the top-level dashboard shape → `dvt_page_reference()`
+for the page mode → `dvt_chart_reference()` / `dvt_block_reference()` for panel types
+→ `dvt_interaction_reference()` for interactivity — any of those five with a
+`property_path` for the exact properties a chosen type accepts. Each returns a catalog
+with no arguments; call it again with its discriminator (`section`, `chart_type`,
+`block_type`, `page_type`, or `interaction_type`) to drill in. **If an option isn't in a
+served catalog, it doesn't exist — never offer it to the user and never author it.**
+The full staged walk-through, with the rubric for each stage, is **Design flow**
+(§4a of the Authoring method).
 
 | `type` | Renders | Key `spec` fields |
 | --- | --- | --- |
@@ -255,6 +268,23 @@ SQL. Full reference: `docs/02-spec/sql-style-guide.md`. This is dvt's opinionate
 default for SQL that's easy to read and audit; customers can override authoring with
 their own skills, but the dvt app always normalizes the SQL shown in the panel query
 inspector to this canonical style.
+
+**`data.query` must always be executable SQL — including on baked panels.** The panel query
+inspector shows it verbatim and a live fetch executes it verbatim, even when the panel renders
+from baked `rows` or inline `series[].data`. Never write a natural-language description there
+(advisory `query-sql` lint, DVT-1242). If the data you baked in came from reshaping the query
+result — a pivot, a manual rollup, a hand-tweaked ordering — write the **real SQL that produced
+it** and document the post-query reshaping as a trailing `--` comment:
+
+```sql
+select o.region
+    , sum(o.revenue) as revenue
+from analytics.public.orders as o
+where 1=1
+    and o.closed_at >= %(start_date)s
+group by o.region
+-- pivoted to one series per region client-side; ordering set manually to match the brief
+```
 
 **Backend-free specs:** add `data.rows` (an array of row objects) and the panel
 renders from those directly — **no engine, no warehouse, no live query.** This makes
@@ -2186,8 +2216,14 @@ spec (`colorRules`, `annotations`, etc.) rather than repeating literal hex value
 
 **Per-panel overrides:** any panel may set `"overrides": { "panel.background": "#0F1E2E", "text.primary": "#E8EEF5", "chart.axis.label.color": "#8DA2B8", "chart.grid.line.color": "rgba(255,255,255,0.06)", "chart.series.1": "#5BBFBA" }`
 to restyle just that card. This is how you make one panel dark, recolor a single
-chart, or retint axes/gridlines — without touching the rest. A dark page is just a
-gradient `pages[].background` plus a shared dark `overrides` block on each card.
+chart, or retint axes/gridlines — without touching the rest.
+
+**A whole dark page, though, is `pages[].theme` — not a per-card workaround.** Since
+DVT-2376 a page carries its own `theme: { preset?, overrides? }`, so an entire page
+switches mood in one place: `"theme": {"preset": "exec-dark"}`, or an explicit
+`"theme": {"overrides": {"panel.background": "#1E293B", "text.primary": "#E8EEF5"}}`
+(worked example below). Reach for a shared dark `overrides` block on each card only
+when you genuinely want *some* cards dark, not the page.
 
 ### Dashboard-scoped overrides — `theme.overrides` (DVT-1006/1008, ADR-0014 Amendment 4)
 
@@ -2204,8 +2240,17 @@ gradient `pages[].background` plus a shared dark `overrides` block on each card.
 
 - **Full precedence (lowest → highest):** `builtin defaults → org branding baseline →
   theme.preset → tokens.primitive → tokens.semantic → tokens.component → theme.overrides →
-  panel overrides`. `theme.overrides` sits **above every token tier, including `component`**,
-  and loses only to a panel's own `overrides` for the same key.
+  pages[].theme.preset → pages[].theme.overrides → panel overrides`. `theme.overrides` sits
+  **above every token tier, including `component`**, and loses only to the active page's
+  `theme` tiers and to a panel's own `overrides` for the same key.
+- **The page tier (DVT-2376)** is scoped to ONE page of a multi-page dashboard, so a single
+  dashboard can hold a light overview page and a dark deep-dive page. Note the ordering: a
+  page's **preset** sits ABOVE the dashboard's *explicit* `theme.overrides`, not below it —
+  otherwise a dark page under a light dashboard override set would be inexpressible. A page's
+  own `background` FIELD is not part of this cascade at all: it is the more specific explicit
+  form and wins over a `page.background` token from any tier. And a CSS gradient is never a
+  legal token *value* at any tier (colors are `{ref}`/hex/`rgb()`/`hsl()`/named only) — author
+  a page gradient with that `background` field.
 - **Core wins over authored detail, field-wise (ADR-0014 Amendment 4):** an explicitly *present*
   `theme.overrides` key (or panel `overrides` key) wins over hand-authored raw-ECharts detail for
   the same visual property — key **presence** is the signal, not which tier it lives in. Today's
@@ -2214,8 +2259,10 @@ gradient `pages[].background` plus a shared dark `overrides` block on each card.
   - `text.primary` → the chart's `textStyle.color`
   - `typography.fontSize.base` → the chart's `textStyle.fontSize`
   Everything else still wins through ordinary token resolution — no forced series/textStyle
-  clobber. Ambient token tiers (`primitive`/`semantic`/`component`) **never** force a value over
-  authored detail; only an explicitly present `theme.overrides` (or panel `overrides`) key does.
+  clobber. Ambient token tiers (`primitive`/`semantic`/`component`, and **every** preset —
+  `theme.preset` and `pages[].theme.preset` alike) **never** force a value over authored detail;
+  only an explicitly present `theme.overrides`, `pages[].theme.overrides`, or panel `overrides`
+  key does.
 - **Use sparingly, and never scaffold by default.** `theme.overrides` exists for explicit,
   dashboard-wide intent — "force every chart's primary series to this exact teal," "force this
   exact text color everywhere" — not a routine authoring habit on every new dashboard. Reach for
@@ -2246,6 +2293,51 @@ hand-authoring every token:
   background tokens at the dashboard tier or you block co-branding (ADR-0037). Pick `exec-dark` for
   presentation/kiosk, `exec-light` for embedded/print/daytime, `exec-brand` when co-branding a tenant.
 - The spec stays **dvt Core** — presets are just a token tier.
+
+### Two moods in one dashboard — a worked `pages[].theme` example
+
+A light executive dashboard with one dark deep-dive page:
+
+```json
+{
+  "theme": {
+    "preset": "exec-light",
+    "tokens": { "primitive": {}, "semantic": {} },
+    "overrides": { "chart.series.1": "#5BBFBA" }
+  },
+  "pages": [
+    {
+      "id": "overview", "title": "Overview",
+      "layout": { /* … */ }, "panels": [ /* … */ ]
+    },
+    {
+      "id": "deep-dive", "title": "Deep Dive",
+      "layout": { /* … */ }, "panels": [ /* … */ ],
+      "theme": {
+        "preset": "exec-dark",
+        "overrides": { "chart.series.2": "#F2A65A" }
+      }
+    }
+  ]
+}
+```
+
+- **Overview** carries no `theme` at all — it just inherits the dashboard cascade
+  (`exec-light`, then the dashboard's own `chart.series.1` override), and costs nothing to
+  leave that way.
+- **Deep Dive**'s `preset` outranks the dashboard's *explicit* `theme.overrides` — see
+  "Dashboard-scoped overrides" above for the full precedence chain. Its own
+  `overrides.chart.series.2` is a **nudge on top of** `exec-dark`, not a restatement of it:
+  `exec-dark` already sets the axis/grid/text/tooltip chrome, so only the one accent worth
+  changing is retinted.
+- A page's own `background` FIELD (not used here) is a separate, more specific mechanism
+  outside this cascade entirely — see "Dashboard-scoped overrides" above for the carve-out,
+  not a theme token.
+- The dashboard's `chart.series.1` **stays an explicitly-forced key on Deep Dive** — key
+  presence is the forcing signal (see "Dashboard-scoped overrides" above), and Deep Dive
+  never un-forces it — but the page preset **re-values** it: Deep Dive's charts force
+  `exec-dark`'s series-1 color, not the dashboard's teal. Reclaim the key in the page's own
+  `overrides` to choose the forced value yourself.
 
 ### Color encoding (DVT-411 / E7)
 
@@ -2511,7 +2603,15 @@ list panels left-to-right in grid order and note size cues derived from that pag
 and no `rows`/`columns` — just name the page, no table. If a page entry carries
 `"truncated": true`, its `rows` are capped (DVT-2370) — title that page's table "first N of
 {rowCount} rows" (using the entry's own `rowCount`), never present the capped rows as if they
-were the whole page. For example:
+were the whole page.
+
+**The table is the AUTHORED arrangement, not necessarily the rendered one.** Rows are banded from
+the y-coordinates you wrote, at one recorded breakpoint (`layoutSummary.breakpoint`) — a sparse
+layout can compact further when react-grid-layout lays it out client-side, and other breakpoints
+machine-reflow. So don't present a preview table as the final rendered arrangement; the
+ground-truth layout is the one from a post-persist `dvt_dashboard_get(format="concise")`.
+
+For example:
 
 | Row | Panels |
 |-----|--------|
@@ -2639,17 +2739,23 @@ remains out of scope. Don't add one on your own initiative.
 
 ### 4a. Design flow — ground every choice in a served catalog (no guessing)
 
-Design (step 4) is not a single decision — it's four mechanical stages, each grounded in a
+Design (step 4) is not a single decision — it's five mechanical stages, each grounded in a
 served MCP catalog. At every stage below, **call the named tool and pick from what it returns** —
 never recall options from memory or prose, and never offer a user something the catalog didn't
 serve. Work the stages in order; each stage's output constrains the next.
 
 | Stage | Tool | Grounds |
 |---|---|---|
+| 0. Dashboard | `dvt_dashboard_reference()` | What the top-level dashboard spec shape looks like |
 | 1. Page | `dvt_page_reference()` | Which page layout modes exist, with fit guidance |
 | 2. Blocks & charts | `dvt_chart_reference()` / `dvt_block_reference()` | Which panel types fit the data shapes and key questions |
-| 3. Specs | `dvt_chart_reference(type, property_path)` / `dvt_block_reference(type, property_path)` | Exactly which properties exist on the chosen page/panel |
+| 3. Specs | `dvt_dashboard_reference(section, property_path)` / `dvt_chart_reference(chart_type, property_path)` / `dvt_block_reference(block_type, property_path)` / `dvt_page_reference(page_type, property_path)` | Exactly which properties exist on the dashboard, chosen page, or panel |
 | 4. Interactivity | `dvt_interaction_reference()` | Which interactivity surface is actually shipped |
+
+**0 — Dashboard.** Call `dvt_dashboard_reference()` with no arguments to enumerate the top-level
+dashboard spec keys (`meta`, `theme`, `layout`, `panels`, `pages`, `tabBar`, `cache`, ...) with
+`required`/`whenToUse` guidance and a minimal valid skeleton. This is the shape everything else
+below hangs off of — ground it before picking a page mode.
 
 **1 — Page.** Call `dvt_page_reference()` with no arguments to enumerate the available page
 layout modes and their fit guidance. Where the build-style answer (§3b) doesn't already force
@@ -2662,9 +2768,10 @@ types to the data shapes you profiled (step 1) and the key questions you set (st
 authoring the full spec, propose a sample layout — a panel-by-panel sketch (type, purpose, rough
 position) — and get user confirmation.
 
-**3 — Specs.** For each chosen panel type, and for the page itself, drill down with
-`property_path` to fetch exactly which properties exist. Declare only served properties — never
-author a field you haven't confirmed exists. Validate with `dvt_spec_validate`.
+**3 — Specs.** For each chosen panel type, for the page itself, and for the dashboard-level
+sections from stage 0 (`meta`, `theme`, ...), drill down with `property_path` to fetch exactly
+which properties exist. Declare only served properties — never author a field you haven't
+confirmed exists. Validate with `dvt_spec_validate`.
 
 **4 — Interactivity.** Call `dvt_interaction_reference()` with no arguments to enumerate the
 shipped interactivity surface (filter controls, brush cross-filter, context-menu actions, drill,
@@ -2701,6 +2808,23 @@ Headless/batch runs and edit flows (surgical edits, §"Choosing your approach") 
 2. Validate with `dvt_spec_validate` — fix field errors and heed `warnings` (typos, and panels that will render EMPTY).
 3. **Render and actually look at it:** `dvt_dashboard_render_inline` at desktop (`width` ~1280–1440) AND mobile (`width` ~390–414), for each `page`. Read the image: is there a clear headline? Any unreadable text, squished labels, empty panels, flat bars? Does it answer the question?
 4. Iterate on what you saw, then save via the API / MCP. **Don't ship a dashboard you haven't looked at.**
+
+**When render-verify is unavailable (DVT-1014).** Render depends on the dvt-render (Chromium)
+service, a heavier path than the JSON API. From some hosted MCP/agent sessions
+`dvt_dashboard_render_inline` fails with `api_unreachable` (a transport-level failure on the
+long-held inline request) or `api_timeout` **even when plain calls — `dvt_data_query`,
+`dvt_dashboard_get` — succeed against the same API**. That means the render dispatch path is
+unavailable in this context, NOT that the API is down; don't report it as an outage and don't
+retry it in a loop. Fall back to structural verification — `dvt_spec_validate` plus
+`dvt_data_query` on each panel's SQL — or run render-verify from a local `make dev` context
+where the render service is reachable. Say which verification you actually did.
+
+**Renders you intend to diff.** `dvt_dashboard_render` persists an artifact and is diffable;
+`dvt_dashboard_render_inline` stores nothing, so `dvt_dashboard_diff` 422s on inline renders at
+any dimensions. `dvt_dashboard_diff` also rejects a pair whose `width`, `height`, or `format`
+differ — but it does **not** check panel scope, so two renders of *different* panels (both
+defaulting to 800×600) pass validation and return a meaningless diff instead of an error. Keep
+`width`, `height`, `format`, and `panel_id` consistent yourself across any pair you diff.
 
 **Close every build/reflow/multi-panel edit with three things:** the final layout table (from the
 apply/preview `plan.layoutSummary`, or a closing `dvt_dashboard_get(format="concise")` after an
@@ -2856,6 +2980,99 @@ This tool is far cheaper than `dvt_dashboard_get(format="full")` when you only n
 | What decision this element informs | `meta.panels[id].intent` | Agent / research |
 | Metric-level assumptions (joins, filters, grain) | `meta.panels[id].assumptions[]` | Agent / research |
 | Data-quality caveats for this element | `meta.panels[id].notes` | Agent / research |
+
+## Data sources & querying (`dvt_data_query`)
+
+Every panel's `data.query` runs against a dvt **data source**. `dvt_data_query` runs the
+same SQL ad-hoc, through the same pushdown engine: dvt pushes the SQL down, the caller's
+warehouse executes it, only result rows come back. The warehouse role and any
+statement-timeout on that role bound what a query can do and how long it may run.
+
+### Naming a source — `source_id`
+
+`source_id` is the data source's **NAME**, not a UUID. Find it on an element's `sourceId`
+(via `dvt_dashboard_get`) or in the workspace's data-sources list.
+
+- **Omit it** (or pass `""`) to query **`demo-postgres`** — a shared, read-only sample
+  Postgres every workspace can query with no connection setup at all. This is the easiest
+  way to explore dvt or test a query shape before a real warehouse connection exists.
+- In **snowflake native mode** (`DVT_MODE=snowflake`) the app boot-provisions exactly one
+  secretless, caller's-rights source named **`Host Snowflake`**. Pass
+  `source_id="Host Snowflake"` to run against the caller's own Snowflake account.
+
+### Table naming depends on the source type
+
+| Source type | Table reference |
+|---|---|
+| Warehouse (Snowflake, BigQuery, Databricks SQL, Redshift, Postgres, …) | **fully-qualified** `database.schema.table` |
+| `csv` | **bare** table name — the source's own sanitized name |
+| `google_sheets` | **bare** table name — one table per tab |
+
+Warehouse connections may carry no default database/schema, so an unqualified
+`FROM orders` can fail; `Host Snowflake`'s caller's-rights session pins no default
+database/schema either. Fully-qualified names are also deterministic regardless of
+session context and role defaults. Never rely on an implicit current db/schema.
+
+csv and google_sheets are the **opposite** — a database/schema qualifier is an error.
+
+**`google_sheets` tab names.** Every tab in the spreadsheet is one queryable table:
+`SELECT … FROM <tab>`, with no spreadsheet-name or connection-name prefix. The table name
+is the tab's title sanitized to a SQL identifier:
+
+1. lowercased,
+2. each non-alphanumeric character replaced with `_`,
+3. a `t_` prefix added if the result would otherwise start with a digit,
+4. `_2`, `_3`, … appended to disambiguate tabs whose titles sanitize to the same name.
+
+So a tab titled `"Q1 2026"` becomes `q1_2026`; a second tab that also sanitizes to
+`q1_2026` becomes `q1_2026_2`. If unsure of a source's exact table names, describe the
+source or inspect a prior successful query's `columns` — don't guess from the tab labels.
+
+### `Host Snowflake` — the shared-object rule (DVT-1767)
+
+Shared (imported) databases — `SNOWFLAKE.ACCOUNT_USAGE`, `SNOWFLAKE_SAMPLE_DATA`, any
+Marketplace or data-share import — **cannot be queried directly** under caller's rights.
+Snowflake forbids CALLER grants on shared objects, so such queries always fail, and a
+panel authored against one always fails too. Wrap the shared data in an **owned** table,
+view, or model first and query that:
+
+```sql
+create view my_db.my_schema.v as select ... from snowflake.account_usage....
+```
+
+Owned objects additionally need a CALLER grant to the APPLICATION **at every level** —
+these do **not** cascade (DVT-2456):
+
+```sql
+grant caller usage on database <db> to application <app>;
+grant caller usage on schema <db>.<schema> to application <app>;
+grant caller select on view <db>.<schema>.<view> to application <app>;
+```
+
+A failing query's error names the exact level still missing.
+
+### Execution paths and result shapes
+
+- **Fast path** — when `ASYNC_QUERY_ENABLED` is off on the Go API, or a cached result is
+  immediately available, the endpoint returns 200 and the tool returns the result directly:
+  one call, one result. The tool is therefore useful even before the flag is enabled.
+- **Async path** — longer warehouse queries return 202 and the tool polls to completion
+  (budget ~2 minutes; 1s ticks for the first 10s, then 2s). If the poll window is exhausted
+  the in-flight record comes back with `status:"running"` and a `note` pointing at
+  `dvt_data_query_status`. Use `dvt_data_query_cancel` to abort a job you no longer need.
+
+| Outcome | Shape |
+|---|---|
+| succeeded | `{status:"succeeded", columns, rows, rowCount, …}` |
+| failed | `{status:"failed", error, elapsed_ms}` |
+| canceled | `{status:"canceled", elapsed_ms}` |
+
+If a query succeeded but its result cache has since expired (rare), the record is returned
+as-is with a `note` advising a re-run — there is no result to surface in that case.
+
+**Errors.** A 409 `oauth-consent-required` means the source needs OAuth re-authorization in
+the dvt UI before queries can run. A 403 means the caller's API key lacks permission to
+query this source.
 
 ## Scheduled exports (DVT-731, DVT-791, ADR-0051)
 
