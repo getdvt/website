@@ -1,0 +1,72 @@
+---
+/**
+ * Shared demo-video section: the finished product film, embedded on the
+ * homepage and /product. Click-to-play only — no autoplay, no reveal.
+ */
+---
+
+<section class="demo-video">
+  <div class="container">
+    <h2>Watch dvt build a dashboard, then verify it.</h2>
+    <p class="dv-sub">
+      One Claude Code session turns a live Postgres connection into a working dashboard, then traces
+      a number on it back to the exact SQL, table, and column that produced it.
+    </p>
+    <figure>
+      <video
+        controls
+        preload="metadata"
+        playsinline
+        poster="/demo/dvt-demo-poster.jpg"
+        width="1440"
+        height="900"
+      >
+        <source src="/demo/dvt-demo.webm" type="video/webm" />
+        <source src="/demo/dvt-demo.mp4" type="video/mp4" />
+        Your browser doesn't support embedded video. <a href="/demo/dvt-demo.mp4">Download the film</a> instead.
+      </video>
+      <figcaption>2 min</figcaption>
+    </figure>
+  </div>
+</section>
+
+<style>
+  .demo-video {
+    padding: var(--space-section) 0;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--color-neutral-200);
+  }
+  .demo-video h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-3);
+  }
+  .dv-sub {
+    font-size: var(--text-base);
+    color: var(--color-neutral-600);
+    line-height: 1.65;
+    max-width: 60ch;
+    margin-bottom: var(--space-8);
+  }
+  figure {
+    margin: 0;
+  }
+  video {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1440 / 900;
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    background: var(--color-neutral-100);
+  }
+  figcaption {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-neutral-500);
+    margin-top: var(--space-2);
+  }
+</style>
