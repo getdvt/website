@@ -2,8 +2,8 @@
 /**
  * Faithful static mockup of the in-app Comments pane
  * (web/src/components/CommentsPane.tsx): a panel-anchored thread with a human
- * review comment, an agent reply (teal "dvt agent" glyph), a resolve control,
- * and the "Open Claude" launch handoff (AgentLaunchButton). Pure HTML/CSS.
+ * review comment, an agent reply (teal "dvt agent" glyph), and a resolve
+ * control. Pure HTML/CSS.
  */
 ---
 
@@ -14,7 +14,6 @@
       <span class="cm-filter">Resolved</span>
       <span class="cm-filter">All</span>
     </div>
-    <button class="cm-launch" type="button" tabindex="-1">Open Claude ↗</button>
   </div>
 
   <div class="cm-thread">
@@ -58,8 +57,6 @@
   .cm-head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
     border-bottom: 1px solid var(--color-neutral-200);
     background: var(--bg-secondary);
@@ -71,17 +68,6 @@
     color: var(--color-neutral-400);
   }
   .cm-filter.active { color: var(--color-neutral-900); }
-  .cm-launch {
-    font-size: var(--text-xs);
-    font-weight: 600;
-    color: var(--color-white);
-    background: var(--color-brand-navy);
-    border: none;
-    border-radius: var(--radius-md);
-    padding: 5px 10px;
-    cursor: default;
-    white-space: nowrap;
-  }
 
   .cm-thread { padding: var(--space-4); }
   .cm-anchor {

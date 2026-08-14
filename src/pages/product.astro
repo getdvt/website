@@ -3,6 +3,7 @@ import Base from '../layouts/Base.astro';
 import Nav from '../components/Nav.astro';
 import Handraise from '../components/Handraise.astro';
 import Footer from '../components/Footer.astro';
+import DemoVideo from '../components/DemoVideo.astro';
 import VersionHistoryMock from '../components/product/VersionHistoryMock.astro';
 import CommentThreadMock from '../components/product/CommentThreadMock.astro';
 import SkillsMock from '../components/product/SkillsMock.astro';
@@ -50,6 +51,8 @@ const more = [
       </div>
     </section>
 
+    <DemoVideo />
+
     <!-- Version control & visual diffs -->
     <section id="history" class="section feat" data-reveal>
       <div class="container feat-row">
@@ -86,7 +89,7 @@ const more = [
           </p>
           <ul class="feat-list">
             <li><strong>Anchored threads.</strong> A comment knows which panel it's about: by name, even after the panel is renamed.</li>
-            <li><strong>One-click handoff.</strong> "Open Claude" launches your agent straight into the open review queue.</li>
+            <li><strong>Two ways in.</strong> Ask Claude from the header's "Search or ask Claude…" field, or reach the review queue directly through dvt's MCP tools.</li>
             <li><strong>Everyone can review.</strong> Comment and resolve sit at the viewer floor: reviewers don't need edit rights.</li>
           </ul>
         </div>
@@ -150,7 +153,6 @@ const more = [
 <style>
   .page-hero {
     padding: var(--space-16) 0 var(--space-12);
-    border-bottom: 1px solid var(--color-neutral-200);
   }
   .eyebrow {
     font-size: var(--text-sm);
