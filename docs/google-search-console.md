@@ -1,127 +1,122 @@
-# Google Search Console — Setup Walkthrough
+# Google Search Console — bootstrap
 
-**Priority:** Do this before publishing any new SEO content. Without it, Google doesn't
-know your sitemap exists and new pages index slowly or not at all.
+Ownership of the `sc-domain:dvt.dev` Search Console property is established by a script,
+not a manual walkthrough. `scripts/gsc-bootstrap.mjs` (DVT-2996) is run-once and
+idempotent — safe to re-run any time.
 
-**Time to complete:** ~15 minutes.
+## What it does
 
----
+1. **getToken** — requests a DNS_TXT site-verification token from Google for the
+   `seo-automation` service account + `dvt.dev`.
+2. **cloudflare-txt** — creates that token as a TXT record in Cloudflare DNS. Additive
+   only: it never modifies or deletes an existing record.
+3. **verify** — completes DNS_TXT verification via `webResource.insert`, retrying with
+   backoff while the TXT record propagates.
+4. **co-owner** — adds `collin@dvt.dev` as a co-owner of the verified resource
+   (best-effort; a failure here is logged, not fatal).
+5. **sc-property** — registers the `sc-domain:dvt.dev` property in Search Console.
+6. **sitemap** — submits `https://dvt.dev/sitemap-index.xml`.
+7. **smoke** — runs a `searchAnalytics.query` to confirm the property responds (0 rows
+   is a pass — the property may be new).
 
-## Prerequisites
+## Running it
 
-- Access to the `dvt.dev` Cloudflare Pages project (or DNS records)
-- A Google account (use a shared team account or your personal one — ownership can be
-  transferred later)
-
----
-
-## Step 1 — Open Search Console
-
-Go to [search.google.com/search-console](https://search.google.com/search-console).
-Click **"Start now"** and sign in.
-
----
-
-## Step 2 — Add a property
-
-Click **"Add property"** (top-left dropdown → "Add property").
-
-Choose **"Domain"** (not "URL prefix") and enter `dvt.dev`.
-
-> The Domain property covers all protocols (http/https) and all subdomains automatically —
-> it's the right choice for a root domain. The URL prefix property only covers one
-> protocol + subdomain combination.
-
----
-
-## Step 3 — Verify ownership (DNS method)
-
-Google will give you a **TXT record** to add to your DNS. It looks like:
-```
-google-site-verification=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+```bash
+doppler run --project dvt --config ops -- node scripts/gsc-bootstrap.mjs
 ```
 
-**Add it in Cloudflare:**
+Add `--dry-run` to perform auth + all read calls except the smoke query, print what each
+write step would do, and make no writes:
 
-1. Open [dash.cloudflare.com](https://dash.cloudflare.com) → select the `dvt.dev` zone.
-2. Go to **DNS → Records**.
-3. Click **"Add record"**:
-   - Type: `TXT`
-   - Name: `@` (the root, i.e. `dvt.dev`)
-   - Content: paste the full `google-site-verification=...` string
-   - TTL: Auto
-4. Click **Save**.
+```bash
+doppler run --project dvt --config ops -- node scripts/gsc-bootstrap.mjs --dry-run
+```
 
-Back in Search Console, click **"Verify"**.
+The script exits 0 with a `bootstrap complete` summary line on success, or exits 1
+naming the failing step.
 
-> DNS changes propagate in seconds on Cloudflare but Google may take a minute or two
-> to confirm. If it fails, wait 2 minutes and try again.
+`GSC_CO_OWNER` overrides the co-owner grantee (defaults to `collin@dvt.dev`) — leave it
+unset unless deliberately redirecting the ownership grant.
 
----
+## Secrets
 
-## Step 4 — Submit the sitemap
+Both live in Doppler project `dvt`, config `ops` — a dedicated operator config, not `prd`.
+`prd` syncs into the Fly product runtimes (ADR-0026), and the dvt secrets-registry carves
+out `CLOUDFLARE_*` as Terraform-owned; a registry row for these two is a follow-up ticket
+(DVT-3045):
 
-After verification, you're inside the Search Console dashboard for dvt.dev.
+| Secret | Purpose |
+|---|---|
+| `GSC_SERVICE_ACCOUNT_JSON` | full JSON key for `seo-automation@getdvt.iam.gserviceaccount.com` (GCP project `getdvt`) |
+| `CLOUDFLARE_DNS_TOKEN` | Cloudflare API token scoped to DNS edit on the `dvt.dev` zone |
 
-1. Left sidebar → **"Sitemaps"**
-2. In the "Add a new sitemap" field enter the full URL: `https://dvt.dev/sitemap-index.xml`
-3. Click **"Submit"**
+Neither is ever logged by the script.
 
-> Note: the relative path `sitemap-index.xml` is rejected with "Invalid sitemap address" on Domain properties. Use the full URL.
+## Idempotency
 
-The sitemap URL is `https://dvt.dev/sitemap-index.xml` — this is generated automatically
-by the `@astrojs/sitemap` integration and contains references to all pages. Astro
-generates it at build time whenever a page has `export const prerender = true`.
+Every step checks before it writes (or tolerates an "already exists" response), so
+re-running the script is safe. DNS writes are additive-only — the pre-existing
+`google-site-verification=vhlz4cp_...` TXT record belongs to the founder's personal
+Search Console verification and must never be removed.
 
-**Verify it's working:** after submitting, the status should show "Success" with the
-number of discovered URLs. If it shows an error, check:
-- Run `npm run build` locally and confirm `sitemap-index.xml` exists in `dist/`
-- Check that every page in `src/pages/` has `export const prerender = true`
+The dedup check is content-equality on the TXT value, so a *changed* verification token
+would add a second record, not replace the old one. The token is stable in practice, so
+this shouldn't happen — if cruft appears, clean it up manually in the Cloudflare
+dashboard, never by re-running this script.
 
----
+## DNS source of truth
 
-## Step 5 — Request indexing for key pages
+The apex TXT record this script creates lives outside infra's `cloudflare/dns.tf` (the
+declared source of truth for the `dvt.dev` zone). After the first live run it must be
+`terraform import`ed there, per that file's existing Resend-records precedent (follow-up
+infra ticket, DVT-3046). Until then the record is deliberately script-managed — don't
+delete it by hand.
 
-Once the sitemap is submitted, go to the **URL Inspection** tool (top search bar in
-Search Console). Enter each key URL and click **"Request Indexing"**:
+## Key rotation
 
-- `https://dvt.dev/`
-- `https://dvt.dev/spec`
-- `https://dvt.dev/vision`
+The org policy `iam.disableServiceAccountKeyCreation` blocks new SA keys by default.
+Rotating `GSC_SERVICE_ACCOUNT_JSON` requires a temporary project-level override, held by
+`collin@dvt.dev` (`roles/orgpolicy.policyAdmin`):
 
-This doesn't guarantee same-day indexing but puts the URLs in Google's crawl queue
-immediately rather than waiting for the next crawl cycle.
+```bash
+set -o pipefail  # a failed gcloud must not blank the Doppler secret via empty stdin
 
----
+gcloud resource-manager org-policies disable-enforce \
+  iam.disableServiceAccountKeyCreation --project=getdvt
 
-## Step 6 — What to check weekly (once indexed)
+# create the new key on stdout (never touches disk), load it straight into Doppler:
+gcloud iam service-accounts keys create /dev/stdout \
+  --iam-account=seo-automation@getdvt.iam.gserviceaccount.com \
+  | doppler secrets set GSC_SERVICE_ACCOUNT_JSON --project dvt --config ops
 
-In Search Console:
+# once confirmed working, retire the old key:
+gcloud iam service-accounts keys list --iam-account=seo-automation@getdvt.iam.gserviceaccount.com
+gcloud iam service-accounts keys delete <OLD_KEY_ID> \
+  --iam-account=seo-automation@getdvt.iam.gserviceaccount.com
 
-- **Performance → Search results**: which queries are driving impressions/clicks.
-  Look for the `JSON dashboard spec`, `dbt dashboarding`, and `dvt` brand terms
-  appearing. Click volume will be low at first — impressions are the signal to watch.
-- **Coverage**: any pages with errors (redirects, 404s, noindex flags). Should be clean.
-- **Core Web Vitals**: flag any LCP or CLS regressions. dvt.dev is a static Astro
-  site so this should be green, but check after any layout changes.
+# restore enforcement EVEN IF a step above failed — the override must never outlive the rotation:
+gcloud resource-manager org-policies enable-enforce \
+  iam.disableServiceAccountKeyCreation --project=getdvt
 
----
+# verify it actually restored (expect "enforced: true"):
+gcloud resource-manager org-policies describe \
+  iam.disableServiceAccountKeyCreation --project=getdvt --effective
+```
 
-## Ongoing: adding new pages
+### Rotating `CLOUDFLARE_DNS_TOKEN`
 
-Whenever a new page is added to `src/pages/`:
-1. Make sure it has `export const prerender = true`
-2. Rebuild + deploy (Cloudflare Pages auto-deploys on `website/main` merge)
-3. The sitemap updates automatically at deploy time
-4. Use URL Inspection → "Request Indexing" on the new page to speed up discovery
+Zone-scoped `DNS:Edit`, not record-scoped — its blast radius covers every DNS record in
+the `dvt.dev` zone (Workspace MX, Resend's DKIM/SPF, the Pages apex CNAME), far beyond
+what this script touches. Rotate by minting a new token in the Cloudflare dashboard,
+`doppler secrets set CLOUDFLARE_DNS_TOKEN --project dvt --config ops`, then revoking the
+old token in the dashboard.
 
----
+## Ongoing
 
-## Notes
-
-- `robots.txt` is now live at `/robots.txt` (added 2026-06-07) with the sitemap
-  directive. Googlebot will pick this up on its next crawl.
-- Cloudflare Web Analytics (cookieless) is already on the site — it covers real-user
-  traffic but doesn't show search queries. Search Console is the query-level signal.
-- Transfer Search Console ownership to a shared `team@dvt.dev` account when email
-  is set up — don't leave it tied to a personal account only.
+- Weekly: check GSC coverage + performance for `sc-domain:dvt.dev` (soon automated by the
+  growth-monitor SEO extension, DVT-3002).
+- Gotcha: relative sitemap paths are rejected on Domain properties — sitemap URLs must be
+  absolute.
+- Output mode is `'static'`, so pages prerender by default — the explicit
+  `export const prerender = true` is repo convention (every existing page carries it);
+  keep following it on new pages.
