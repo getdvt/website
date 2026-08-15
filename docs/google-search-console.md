@@ -25,8 +25,8 @@ idempotent — safe to re-run any time.
 doppler run --project dvt --config ops -- node scripts/gsc-bootstrap.mjs
 ```
 
-Add `--dry-run` to perform auth and all read calls and print what each write step would
-do, without making any writes:
+Add `--dry-run` to perform auth + all read calls except the smoke query, print what each
+write step would do, and make no writes:
 
 ```bash
 doppler run --project dvt --config ops -- node scripts/gsc-bootstrap.mjs --dry-run
@@ -35,11 +35,15 @@ doppler run --project dvt --config ops -- node scripts/gsc-bootstrap.mjs --dry-r
 The script exits 0 with a `bootstrap complete` summary line on success, or exits 1
 naming the failing step.
 
+`GSC_CO_OWNER` overrides the co-owner grantee (defaults to `collin@dvt.dev`) — leave it
+unset unless deliberately redirecting the ownership grant.
+
 ## Secrets
 
 Both live in Doppler project `dvt`, config `ops` — a dedicated operator config, not `prd`.
 `prd` syncs into the Fly product runtimes (ADR-0026), and the dvt secrets-registry carves
-out `CLOUDFLARE_*` as Terraform-owned; a registry row for these two is a follow-up ticket:
+out `CLOUDFLARE_*` as Terraform-owned; a registry row for these two is a follow-up ticket
+(DVT-3045):
 
 | Secret | Purpose |
 |---|---|
@@ -65,8 +69,8 @@ dashboard, never by re-running this script.
 The apex TXT record this script creates lives outside infra's `cloudflare/dns.tf` (the
 declared source of truth for the `dvt.dev` zone). After the first live run it must be
 `terraform import`ed there, per that file's existing Resend-records precedent (follow-up
-infra ticket). Until then the record is deliberately script-managed — don't delete it by
-hand.
+infra ticket, DVT-3046). Until then the record is deliberately script-managed — don't
+delete it by hand.
 
 ## Key rotation
 
@@ -75,6 +79,8 @@ Rotating `GSC_SERVICE_ACCOUNT_JSON` requires a temporary project-level override,
 `collin@dvt.dev` (`roles/orgpolicy.policyAdmin`):
 
 ```bash
+set -o pipefail  # a failed gcloud must not blank the Doppler secret via empty stdin
+
 gcloud resource-manager org-policies disable-enforce \
   iam.disableServiceAccountKeyCreation --project=getdvt
 
@@ -111,4 +117,6 @@ old token in the dashboard.
   growth-monitor SEO extension, DVT-3002).
 - Gotcha: relative sitemap paths are rejected on Domain properties — sitemap URLs must be
   absolute.
-- New pages need `export const prerender = true` to be crawlable/indexable at all.
+- Output mode is `'static'`, so pages prerender by default — the explicit
+  `export const prerender = true` is repo convention (every existing page carries it);
+  keep following it on new pages.

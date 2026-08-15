@@ -22,8 +22,8 @@
 //   doppler run --project dvt --config ops -- node scripts/gsc-bootstrap.mjs
 //
 // Flags:
-//   --dry-run   perform auth + all read calls, print what each write would
-//               do, and make no writes.
+//   --dry-run   perform auth + all read calls except the smoke query, print
+//               what each write would do, and make no writes.
 //
 // Required env:
 //   GSC_SERVICE_ACCOUNT_JSON  full GCP service-account JSON, as one string
@@ -337,7 +337,7 @@ async function ensureWebResourceVerified(accessToken) {
 async function ensureCoOwner(accessToken, resourceId) {
   if (!resourceId) {
     log('co-owner', DRY_RUN ? '[dry-run] skipped (no verified resource yet)' : 'skipped (no resource id)');
-    return false;
+    return DRY_RUN ? true : false;
   }
   let resource;
   try {
