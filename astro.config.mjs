@@ -14,9 +14,12 @@ export default defineConfig({
   site: 'https://dvt.dev',
   integrations: [
     sitemap({
-      // Cloudflare Pages serves 404.astro's output at the site root as a
-      // fallback page, not a crawlable route — keep it out of the sitemap.
-      filter: (page) => !page.endsWith('/404'),
+      // @astrojs/sitemap already excludes 404.astro's built output
+      // (dist/client/404.html) from the generated sitemap by default — this
+      // filter is a belt-and-braces guard in case that default ever
+      // changes. Sitemap URLs are trailing-slash (e.g.
+      // "https://dvt.dev/404/"), so match on that form.
+      filter: (page) => !/\/404\/?$/.test(page),
       serialize(item) {
         const lastmod = lastmodMap.get(item.url);
         if (lastmod) item.lastmod = lastmod;

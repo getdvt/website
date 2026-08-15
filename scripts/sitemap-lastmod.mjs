@@ -119,7 +119,24 @@ function staticPageLastmods() {
 /** @returns {Map<string, string>} full URL -> ISO date string */
 export function buildLastmodMap() {
   const map = new Map();
-  for (const [url, date] of blogLastmods()) map.set(url, date);
+  const posts = blogLastmods();
+  for (const [url, date] of posts) map.set(url, date);
   for (const [url, date] of staticPageLastmods()) map.set(url, date);
+
+  // The /blog/ listing page's own git-commit date (src/pages/blog/index.astro)
+  // doesn't move when a post is added or edited — the page renders the post
+  // list dynamically at build time — so left alone it can report *older*
+  // than its own content. Stamp it with the max of its git-derived date (if
+  // any) and every post's lastmod instead; keep whichever original string
+  // wins untouched rather than reformatting it.
+  const listingUrl = `${SITE}/blog/`;
+  let newest = map.get(listingUrl);
+  for (const date of posts.values()) {
+    if (!newest || new Date(date).getTime() > new Date(newest).getTime()) {
+      newest = date;
+    }
+  }
+  if (newest) map.set(listingUrl, newest);
+
   return map;
 }
