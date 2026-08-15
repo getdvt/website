@@ -341,10 +341,12 @@ async function ensureCoOwner(accessToken, resourceId) {
   }
   let resource;
   try {
+    // The Site Verification API returns webResource.id pre-URL-encoded, so
+    // re-encoding here would double-encode it and 400 — DVT-3048.
     resource = await googleFetch(
       'co-owner',
       accessToken,
-      `${SITE_VERIFICATION_BASE}/webResource/${encodeURIComponent(resourceId)}`
+      `${SITE_VERIFICATION_BASE}/webResource/${resourceId}`
     );
   } catch (err) {
     log('co-owner', `best-effort: could not read resource (${err.message}); continuing`);
@@ -366,7 +368,7 @@ async function ensureCoOwner(accessToken, resourceId) {
     await googleFetch(
       'co-owner',
       accessToken,
-      `${SITE_VERIFICATION_BASE}/webResource/${encodeURIComponent(resourceId)}`,
+      `${SITE_VERIFICATION_BASE}/webResource/${resourceId}`,
       {
         method: 'PUT',
         body: JSON.stringify({ ...resource, owners: [...owners, CO_OWNER] }),
