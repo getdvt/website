@@ -158,7 +158,7 @@ The full staged walk-through, with the rubric for each stage, is **Design flow**
 | `filter-bar` | Horizontal band grouping several filter elements in one light surface (DVT-551) | `panels` (required — ordered list of child filter element ids from the same page's `panels[]`), `title?`; child filters should set `chrome:"none"` to avoid doubled chrome; children are NOT page grid items; semantic pass enforces existence / no double-placement |
 | `container` | Tabbed container — one page region holding several panel sets behind tabs (layout primitive, not a chart) | `spec.layout: "tabs"` (required), `tabs[]` (required) each `{ id, label, panels:[childId…], layout }`, `defaultTab?`. **Children stay real elements in `panels[]`** referenced by id (never inlined); each tab carries its own mini 24-col `layout`, and the container itself occupies one cell in the page grid. Children are NOT in the page grid. Single level only (no tabs-in-tabs). NOT the same as page-level tabs (`pages[]`+`tabBar`). The semantic validator rejects missing refs / a child placed twice / a child also in the page grid / nesting / a bad `defaultTab` / a tab id that collides with a panel id |
 
-Any panel can also carry a `drill` object (retained for back-compat, now inert on its own — DVT-555) and/or a `contextMenu` object (right-click action menu). Drill navigation is now triggered via a `contextMenu` action of `type:"drill"`; for overlay presentation use `openOverlay` — see **Filters & drill-downs**.
+Any panel can also carry a `contextMenu` object (right-click action menu — filter/drill/link/copy/export/openOverlay) and/or a `drill` object (retained for back-compat, inert on its own — DVT-555; wire drill navigation via `onClick` or a `contextMenu` action instead). `onClick` (a single, disclosed left-click action — filter/drill/openOverlay) is narrower: a property on every panel type that resolves a clicked datum (every `chart:*` type, plus `table`/`kpi`/`stat`/`metric-strip`) — but `chart:line:racing` is inert at runtime (no affordance, no dispatch; DVT-3041); the schema rejects it on `filter`, `filter-bar`, `container`, `divider`, `section`, `text`, `html`, `hero`, `media`, which surface no clicked datum. See **Filters & drill-downs** for the full field reference and the post-DVT-2722 actionability rule (which surfaces need a row-field `valueFrom` vs. `category`/`value`/`seriesName`).
 
 ### ⚠️ Chart spec — critical: do NOT use Vega-lite encoding syntax
 
@@ -1742,11 +1742,76 @@ which controls which panels re-query — the two are independent).
 }
 ```
 
-**`drill`** — a property on **any** panel (not a `type`). Retained for back-compat but **inert on its own** (DVT-555): the left-click trigger was removed. To wire drill navigation, use a `contextMenu` action of `type:"drill"` (right-click menu, see below). The `drill` object fields (`targetPage`, `param`, `valueFrom`, `valueType`) are unchanged and the same binding contract applies — the clicked value enters the target page's panels by name through `data.params`, never interpolated.
+**`onClick`** (DVT-2719/2720/2721, ADR-0035 Amendment 1) — a property on **every panel type that
+resolves a clicked datum**: every `chart:*` type (including animated) — but `chart:line:racing` is
+inert at runtime (no affordance, no dispatch; DVT-3041) — plus `table`/`kpi`/`stat`/
+`metric-strip`; the schema rejects it on `filter`, `filter-bar`, `container`, `divider`, `section`,
+`text`, `html`, `hero`, `media`, which surface no clicked datum. A single, **bare** action object
+(NOT `{ action, affordance }`) fired by a plain **left-click** on a mark/row — DOM surfaces
+(`table`/`kpi`/`stat`/`metric-strip`) additionally activate on **keyboard** Enter/Space. `type` ∈
+`filter` | `drill` | `openOverlay` — the navigation-safe subset of `contextMenu`'s vocabulary (no
+`link`/`copy`/`export`; those stay behind a deliberate right-click choice). The required `label`
+doubles as the hover-affordance text: there is no author-facing affordance opt-out — `when` narrows
+which datums are clickable, it does not hide the disclosure on a clickable one. The renderer itself
+withholds the affordance when the action could never fire (see the actionability rule below), in
+edit mode, and in a static render.
+
+**Actionability (post-DVT-2722)** — what a real click carries differs by surface, and that gates
+which `valueFrom`/`when.field` actually fires:
+
+- A **non-animated `chart:*`** mark's click carries `category`/`value`/`seriesName` **and** the
+  clicked row — but only on families whose compiled series data is numeric AND row-indexed.
+  Elsewhere a row-field `valueFrom`/`when.field` is unreliable (DVT-3040) — the cases below
+  illustrate the rule, they are not a closed list: object-item families (`chart:pie`,
+  `chart:funnel`, `chart:map`, `chart:sunburst`, `chart:treemap`, `chart:sankey`, `chart:gauge`),
+  array-tuple families (`chart:scatter`, `chart:heatmap`, `chart:calendar`), and any family whose
+  matched datum compiles to the ECharts per-datum object form — `chart:waterfall`, or any
+  row-indexed family carrying `colorRules`, where a matched datum compiles to `{value, itemStyle}`
+  — the clicked item IS the ECharts datum, not a `queryResult.rows` entry, so the binding resolves
+  to nothing; on pivoting families (`seriesField`/stacked — `dataIndex` indexes the pivoted shape)
+  it can resolve against the WRONG row. Prefer `category`/`value`/`seriesName` on all of those.
+- An **animated chart**'s click carries the same token triple but **NO row** — a row-field
+  `valueFrom`/`when.field` is never actionable there.
+- On `chart:*` the `when` disclosure is per-**SERIES**, not per-datum: a mark failing `when` still
+  shows the cursor/emphasis/label and then no-ops on click — only the DOM surfaces
+  (`table`/`kpi`/`stat`/`metric-strip`) suppress the affordance per datum.
+- `table`/`kpi`/`stat`/`metric-strip` carry a **ROW ONLY** — never the token triple — so on those
+  four, `valueFrom`/`when.field` **MUST** name a real row field; a click-only token
+  (`category`/`value`/`seriesName`) or an **absent** `valueFrom` (default `category`) is never
+  actionable there and shows **no affordance**. On `table` the mouse target is a data cell, but the
+  bound datum is the whole **ROW** — `when` narrowing, keyboard focus, and dispatch are all per data
+  row, one tab stop per actionable row (Enter/Space activates).
+- `kpi`/`stat`/`metric-strip` additionally bind from **`rows[0]` only** — a field present on
+  another row but absent from `rows[0]` never satisfies a `when`/binding on those three.
+- The rule applies **per `bindings` entry and all-or-nothing**: on `table`/`kpi`/`stat`/`metric-strip`
+  every entry's `valueFrom` must name a real row field — a single entry using a click-only token, or
+  omitting `valueFrom` (default `category`), makes the whole action unactionable and withholds the
+  affordance.
+
+Use `when: { field }` to narrow **which datums** are clickable (never as an affordance opt-out on a
+datum that IS clickable). Shares the exact same field vocabulary as the matching `contextMenu` action
+below — see its fields there; the two can be declared on the same panel.
+
+```json
+{ "id": "rev-by-region", "type": "chart:bar", "title": "Revenue by region — click a bar to drill in",
+  "data": { "sourceId": "db", "query": "SELECT region, SUM(amount) AS rev FROM demo.public.orders GROUP BY 1" },
+  "onClick": { "type": "drill", "label": "Open {category} detail", "targetPage": "region-detail", "param": "region", "valueFrom": "category" },
+  "spec": { "series": [{ "type": "bar", "dataField": "rev" }] } }
+```
+
+**`drill`** — a property on **any** panel (not a `type`). Retained for back-compat but **inert on
+its own** (DVT-555) regardless of trigger: to wire real drill navigation, use `onClick` above (the
+plain left-click quick path) or a `contextMenu` action of `type:"drill"` (right-click menu, better
+when a source should offer several destinations, or drill sits alongside other actions on one
+menu). The `drill` object fields (`targetPage`, `param`, `valueFrom`, `valueType`) are the SAME
+fields either trigger carries, and the same binding contract applies — the clicked value enters the
+target page's panels by name through `data.params`, never interpolated.
 
 **`contextMenu`** — a property on **any** panel (and, additively, on any `table` column,
 ADR-0035). The **right-click menu**: an ordered `actions[]` list, each parameterized by the clicked
-mark/row, that turns a dashboard from read-only into explorable. This is the correct way to wire drill navigation (DVT-555) and overlay presentation. Like `filter`/`drill` it
+mark/row, that turns a dashboard from read-only into explorable. Reach for it over `onClick` when a
+datum needs several actions, or an action outside `onClick`'s navigation-safe subset (`link`,
+`copy`, `export`). Like `onClick`/`filter`/`drill` it
 is interactive-only (a no-op in a static PNG render). Six action types:
 
 ```json
@@ -1787,14 +1852,16 @@ for tables). `valueType` — as above.
   `{seriesName}`, and `{<field>}` for any field of the clicked row. On **tables** every
   field works. On **charts**, `{category}`/`{value}`/`{seriesName}` always work; arbitrary
   `{<field>}` / `valueFrom:<field>` resolve the clicked mark's source row on row-per-mark
-  charts (bar, line, area, scatter, pie) — for a pivoting stacked/multi-series chart, bind
-  from `category`/`value`/`seriesName` instead.
+  charts (bar, line, area) — see the onClick Actionability rule above for the full DVT-3040
+  mechanism — for a pivoting stacked/multi-series chart, bind from `category`/`value`/
+  `seriesName` instead.
 - **`filter`** — cross-filters the **current** page (no navigation): `param` (required
   unless using `bindings`), `valueFrom?` (default `category`), `valueType?`, `targets?`
   (`"all"` | panel-id list). Same value→query binding + targeting as a `filter` control.
 - **`drill`** — navigates to a page: `targetPage` + `param` (required unless using
-  `bindings`), `valueFrom?`, `valueType?`. This is the canonical drill trigger (DVT-555:
-  the bare `drill` property is now inert). One menu can hold several drill destinations.
+  `bindings`), `valueFrom?`, `valueType?`. Real drill navigation is wired via this contextMenu
+  action or the equivalent `onClick` action above — the bare `drill` panel property stays inert
+  either way (DVT-555). One menu can hold several drill destinations.
 - **`openOverlay`** (ADR-0036) — opens `targetPage` as a **modal or drawer overlay** *over*
   the current page (detail-on-demand), instead of navigating away. A superset of `drill`:
   `targetPage` (required), optional `param`/`valueFrom`/`valueType` (or `bindings`, the
@@ -1868,18 +1935,33 @@ A reader who never touches a control still gets the whole story.
 
 The canonical moves, smallest to largest:
 
-**1 — KPI/mark → drill-to-detail (DVT-141).** A summary mark answers "how much"; a right-click
-`drill` opens a detail page answering "why". Use when each summary category has a meaningful,
-same-shape breakdown a reader will want on demand.
+**1 — KPI/mark → drill-to-detail (DVT-141).** A summary mark or KPI tile answers "how much"; a
+click opens a detail page answering "why". Use `onClick` for the default plain-left-click quick
+path (below), or a `contextMenu` drill action when the source should offer several destinations, or
+drill sits alongside other actions on one right-click menu. Use when each summary category has a
+meaningful, same-shape breakdown a reader will want on demand. **Mind the actionability rule:** a
+chart mark's click carries `category`/`value`/`seriesName`, but a `kpi`/`stat`/`metric-strip` click
+carries only the clicked **row** — `valueFrom` must name a real row field there, never `category`.
 
 ```json
 { "id": "rev-by-region", "type": "chart:bar", "title": "Revenue by region",
   "data": { "sourceId": "db", "query": "SELECT region, SUM(amount) AS revenue FROM orders GROUP BY 1 ORDER BY 2 DESC" },
-  "contextMenu": { "actions": [
-    { "type": "drill", "label": "Break down {category}", "targetPage": "region-detail",
-      "param": "region", "valueFrom": "category", "valueType": "string" } ] },
+  "onClick": { "type": "drill", "label": "Break down {category}", "targetPage": "region-detail",
+    "param": "region", "valueFrom": "category", "valueType": "string" },
   "spec": { "series": [{ "type": "bar", "dataField": "revenue" }] } }
 // region-detail's panels read %(region)s from data.params — the clicked value, never string-interpolated.
+```
+
+On a `kpi` tile the same `valueFrom:"category"` would be silently inert — there is no click token
+triple to read `category` from, only the bound row — so name a real row field instead:
+
+```json
+{ "id": "top-region-kpi", "type": "kpi", "title": "Top region",
+  "data": { "sourceId": "db", "query": "SELECT region, SUM(amount) AS revenue FROM orders GROUP BY 1 ORDER BY 2 DESC LIMIT 1" },
+  "onClick": { "type": "drill", "label": "Break down {region}", "targetPage": "region-detail",
+    "param": "region", "valueFrom": "region", "valueType": "string" },
+  "spec": { "valueField": "revenue", "agg": "sum" } }
+// kpi/stat/metric-strip bind from rows[0] only, and only via a real row field — "category"/"value"/"seriesName" are never actionable there.
 ```
 
 *When NOT to use:* if the "detail" page would just repeat the same numbers, or there's only one
@@ -2553,6 +2635,7 @@ Place a format where a value renders: `"axisLabel": { "format": {…} }`, a tabl
 
 - Before authoring, classify the request — the two execution paths have very different costs.
 - **Surgical edit** — the user names an existing element and a specific change ("change the Q3 revenue KPI to red", "fix the funnel title typo", "make this axis start at zero"). Read that one element with `dvt_element_get`, then apply a `dvt_element_patch`. Do NOT run the full audit→narrative→design method and do NOT re-send the whole spec — it wastes tokens and risks rebuilding panels the user didn't ask you to touch.
+- **Page-level surgical edit** — the user names an existing page and a change to the page itself, not a panel ("rename this page", "restyle this page's existing HTML frame", "widen the hero tile on tablet", "recolor this page's background"). Read the page's current `version` with `dvt_page_list`, then apply a `dvt_page_patch` — it reaches a page's `title`, `background`, `theme`, and `layout` (htmlSlots `layout.html`, and per-breakpoint grid `layout.items.{lg,md,sm,xs}`, including adding a breakpoint that doesn't exist yet). Do NOT delete-and-recreate the page and do NOT re-send the whole spec for this — `dvt_page_patch` preserves every element's id and revision history, unlike `dvt_dashboard_apply_spec`, which fully replaces the spec and re-keys every element. It does not reach `spec.meta`/panelDocs/`keyQuestions` (dashboard-level; DVT-2678) or a page's `position` (use `dvt_pages_reorder`) or `layout.mode` (mode transitions stay full-build).
 - **Block-level reads, not full-spec reads.** If you don't already know the element's id, read the dashboard ONCE with `dvt_dashboard_get(format="concise")` (manifest + `provenanceSummary`, no heavy spec) or `dvt_dashboard_docs` (cheap doc tree) to locate the page/element id, then pull ONLY that element via `dvt_element_get`. Never load the full page spec (`dvt_dashboard_get(format="full")`) just to change one panel.
 - **Full build** — the user wants something new or exploratory ("help me understand our sales", "build a pipeline dashboard", "restructure this to tell a story"). Run the full authoring method below. **Interactive session** (a user is watching): persist via the incremental flow in "Persisting the build" (§4b) below, not a single full-spec apply. **Headless/batch run:** persist via a single full-spec `dvt_dashboard_apply_spec` call.
 - When in doubt (an edit spanning several elements, or one that changes the dashboard's story), prefer the full method. A single named property on a single named element is the clear signal for the surgical path.
