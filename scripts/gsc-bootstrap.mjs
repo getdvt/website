@@ -19,7 +19,7 @@
 //   7. Runs a smoke searchAnalytics.query to confirm the property responds.
 //
 // Invocation (secrets come from Doppler, never from the shell):
-//   doppler run --project dvt --config prd -- node scripts/gsc-bootstrap.mjs
+//   doppler run --project dvt --config ops -- node scripts/gsc-bootstrap.mjs
 //
 // Flags:
 //   --dry-run   perform auth + all read calls, print what each write would
@@ -43,13 +43,16 @@ const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const DOMAIN = 'dvt.dev';
 const SC_PROPERTY = 'sc-domain:dvt.dev';
 const SITEMAP_URL = 'https://dvt.dev/sitemap-index.xml';
-const CO_OWNER = 'collin@dvt.dev';
+// TODO: move to a shared team account once one exists; for now the only
+// human with Search Console access is the founder.
+const CO_OWNER = process.env.GSC_CO_OWNER ?? 'collin@dvt.dev';
 
 /** A failure tied to a named bootstrap step, so main() can report cleanly. */
 class StepError extends Error {
-  constructor(step, message) {
+  constructor(step, message, status) {
     super(`[${step}] ${message}`);
     this.step = step;
+    this.status = status;
   }
 }
 
@@ -169,7 +172,7 @@ async function googleFetch(step, accessToken, url, init = {}) {
   }
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    throw new StepError(step, `${init.method ?? 'GET'} ${url} -> ${res.status}: ${snippet(text)}`);
+    throw new StepError(step, `${init.method ?? 'GET'} ${url} -> ${res.status}: ${snippet(text)}`, res.status);
   }
   if (res.status === 204) return null;
   const text = await res.text();
@@ -192,13 +195,15 @@ async function cfFetch(step, token, url, init = {}) {
   }
   const json = await res.json().catch(() => null);
   if (!res.ok || (json && json.success === false)) {
-    throw new StepError(step, `${init.method ?? 'GET'} ${url} -> ${res.status}: ${snippet(json)}`);
+    throw new StepError(step, `${init.method ?? 'GET'} ${url} -> ${res.status}: ${snippet(json)}`, res.status);
   }
   return json;
 }
 
 /** Step 1: get the DNS_TXT verification token for the SA + dvt.dev. */
 async function getVerificationToken(accessToken) {
+  // POST /token is non-mutating — it just returns a stable token for this SA
+  // + domain, so it's safe to call even in dry-run.
   const json = await googleFetch('getToken', accessToken, `${SITE_VERIFICATION_BASE}/token`, {
     method: 'POST',
     body: JSON.stringify({
@@ -323,11 +328,16 @@ async function ensureWebResourceVerified(accessToken) {
   }
 }
 
-/** Step 4: add collin@dvt.dev as co-owner. Best-effort — never fatal. */
+/**
+ * Step 4: add collin@dvt.dev as co-owner. Best-effort — never fatal.
+ * Returns true only when ownership is confirmed (already an owner, or the
+ * PUT succeeded); returns false on any skip/failure so main() can report
+ * honestly instead of implying success.
+ */
 async function ensureCoOwner(accessToken, resourceId) {
   if (!resourceId) {
     log('co-owner', DRY_RUN ? '[dry-run] skipped (no verified resource yet)' : 'skipped (no resource id)');
-    return;
+    return false;
   }
   let resource;
   try {
@@ -338,18 +348,18 @@ async function ensureCoOwner(accessToken, resourceId) {
     );
   } catch (err) {
     log('co-owner', `best-effort: could not read resource (${err.message}); continuing`);
-    return;
+    return false;
   }
 
   const owners = resource?.owners ?? [];
   if (owners.includes(CO_OWNER)) {
     log('co-owner', `${CO_OWNER} already an owner`);
-    return;
+    return true;
   }
 
   if (DRY_RUN) {
     log('co-owner', `[dry-run] would add ${CO_OWNER} as owner`);
-    return;
+    return true;
   }
 
   try {
@@ -363,9 +373,11 @@ async function ensureCoOwner(accessToken, resourceId) {
       }
     );
     log('co-owner', `added ${CO_OWNER} as owner`);
+    return true;
   } catch (err) {
     // Co-ownership is best-effort, not a hard failure.
     log('co-owner', `best-effort: failed to add co-owner (${err.message}); continuing`);
+    return false;
   }
 }
 
@@ -380,7 +392,7 @@ async function ensureSearchConsoleProperty(accessToken) {
     await googleFetch('sc-property', accessToken, url, { method: 'PUT' });
     log('sc-property', `${SC_PROPERTY} added`);
   } catch (err) {
-    if (err instanceof StepError && /409|already/i.test(err.message)) {
+    if (err instanceof StepError && err.status === 409) {
       log('sc-property', `${SC_PROPERTY} already added`);
       return;
     }
@@ -401,6 +413,10 @@ async function submitSitemap(accessToken) {
 
 /** Step 7: smoke-query analytics to confirm the property responds. */
 async function smokeQuery(accessToken) {
+  if (DRY_RUN) {
+    log('smoke', '[dry-run] would POST searchAnalytics/query for last 7 days');
+    return;
+  }
   const end = new Date();
   const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
   const fmt = (d) => d.toISOString().slice(0, 10);
@@ -432,12 +448,24 @@ async function main() {
   const verificationToken = await getVerificationToken(accessToken);
   await ensureCloudflareTxt(cfToken, verificationToken);
   const resource = await ensureWebResourceVerified(accessToken);
-  await ensureCoOwner(accessToken, resource?.id ?? resource?.site?.identifier);
+  // resource?.site?.identifier is deliberately not used as a fallback here:
+  // it 404s against the webResource endpoint (which expects the resource
+  // id), and that failure was being swallowed as best-effort.
+  const coOwnerConfirmed = await ensureCoOwner(accessToken, resource?.id);
   await ensureSearchConsoleProperty(accessToken);
   await submitSitemap(accessToken);
   await smokeQuery(accessToken);
 
   console.log(DRY_RUN ? 'bootstrap complete (dry-run — no writes made)' : 'bootstrap complete');
+  if (!coOwnerConfirmed) {
+    console.log(
+      [
+        '',
+        `WARNING: ${CO_OWNER} was NOT added as a Search Console owner —`,
+        're-run the script or add manually via the Site Verification API',
+      ].join('\n')
+    );
+  }
 }
 
 main().catch((err) => {
