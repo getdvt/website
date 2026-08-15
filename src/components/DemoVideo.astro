@@ -3,30 +3,44 @@
  * Shared demo-video section: the finished product film, embedded on the
  * homepage and /product. Click-to-play only — no autoplay, no reveal.
  */
+interface Props {
+  heading?: string;
+  sub?: string;
+  slug?: string;
+  figcaption?: string;
+  ariaLabel?: string;
+}
+
+const {
+  heading = 'Watch dvt build a dashboard, then verify it.',
+  sub = 'One Claude Code session turns a live Postgres connection into a working dashboard, then traces a number on it back to the exact SQL, and through it to the table and column that produced it.',
+  slug = 'dvt-demo',
+  figcaption = '2:13 · silent screen capture',
+  ariaLabel = 'dvt product demo: a Claude Code session builds a dashboard on a live Postgres connection, then traces a number back to its source SQL, table, and column. Silent screen capture, 2 minutes 13 seconds.',
+} = Astro.props;
 ---
 
 <section class="demo-video">
   <div class="container">
-    <h2>Watch dvt build a dashboard, then verify it.</h2>
+    <h2>{heading}</h2>
     <p class="dv-sub">
-      One Claude Code session turns a live Postgres connection into a working dashboard, then traces
-      a number on it back to the exact SQL, and through it to the table and column that produced it.
+      {sub}
     </p>
     <figure>
       <video
         controls
         preload="none"
         playsinline
-        poster="/demo/dvt-demo-poster.jpg"
+        poster={`/demo/${slug}-poster.jpg`}
         width="1440"
         height="900"
-        aria-label="dvt product demo: a Claude Code session builds a dashboard on a live Postgres connection, then traces a number back to its source SQL, table, and column. Silent screen capture, 2 minutes 13 seconds."
+        aria-label={ariaLabel}
       >
-        <source src="/demo/dvt-demo.webm" type="video/webm" />
-        <source src="/demo/dvt-demo.mp4" type="video/mp4" />
-        Your browser doesn't support embedded video. <a href="/demo/dvt-demo.mp4">Download the film</a> instead.
+        <source src={`/demo/${slug}.webm`} type="video/webm" />
+        <source src={`/demo/${slug}.mp4`} type="video/mp4" />
+        Your browser doesn't support embedded video. <a href={`/demo/${slug}.mp4`}>Download the film</a> instead.
       </video>
-      <figcaption>2:13 &middot; silent screen capture</figcaption>
+      <figcaption>{figcaption}</figcaption>
     </figure>
   </div>
 </section>
