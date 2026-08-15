@@ -1,0 +1,74 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+
+export const prerender = true;
+---
+
+<Base title="Page not found — dvt" description="This page doesn't exist.">
+  <Nav />
+  <main>
+    <section class="page-hero">
+      <div class="container">
+        <div class="eyebrow">404</div>
+        <h1>Page not found</h1>
+        <p class="lead">
+          There's no page at this address — it may have moved, or the link is wrong.
+        </p>
+        <div class="links">
+          <a href="/" class="link-primary">Go home</a>
+          <a href="/blog">Read the blog</a>
+          <a href="/quickstart">Quickstart</a>
+        </div>
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .page-hero {
+    padding: var(--space-24) 0;
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+  .eyebrow {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-brand-mark);
+    margin-bottom: var(--space-4);
+  }
+  .page-hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(var(--text-3xl), 5vw, 56px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-5);
+  }
+  .lead {
+    font-size: var(--text-lg);
+    color: var(--color-neutral-600);
+    line-height: 1.65;
+    max-width: 680px;
+    margin-bottom: var(--space-8);
+  }
+  .links {
+    display: flex;
+    gap: var(--space-6);
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .links a {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--color-neutral-600);
+  }
+  .links a:hover { color: var(--color-neutral-900); }
+  .link-primary {
+    color: var(--color-brand-mark) !important;
+  }
+</style>
