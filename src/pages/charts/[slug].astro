@@ -39,13 +39,57 @@ if (!def || !def.option) {
 // mutates the shared, imported ChartDef option.
 function ensureHeadroom(option: Record<string, unknown>): Record<string, unknown> {
   const opt = structuredClone(option) as Record<string, any>;
+
+  // `grid` may be a single object or an array of grids (multi-grid charts);
+  // normalize so every rule below applies uniformly to each entry.
+  const getGrids = (): any[] | null => {
+    if (Array.isArray(opt.grid)) return opt.grid;
+    if (opt.grid && typeof opt.grid === 'object') return [opt.grid];
+    return null;
+  };
+  const ensureGrids = (): any[] => {
+    const existing = getGrids();
+    if (existing) return existing;
+    opt.grid = {};
+    return [opt.grid];
+  };
+  const bumpGridMin = (key: 'top' | 'bottom', min: number) => {
+    for (const g of ensureGrids()) {
+      if (typeof g[key] !== 'number' || g[key] < min) g[key] = min;
+    }
+  };
+
   const yAxis = Array.isArray(opt.yAxis) ? opt.yAxis[0] : opt.yAxis;
   if (yAxis && typeof yAxis === 'object' && yAxis.name) {
-    opt.grid = opt.grid ?? {};
-    if (typeof opt.grid.top !== 'number' || opt.grid.top < 56) opt.grid.top = 56;
+    bumpGridMin('top', 64);
     if (typeof yAxis.nameGap !== 'number' || yAxis.nameGap < 20) yAxis.nameGap = 20;
   }
-  if (opt.grid && typeof opt.grid === 'object') opt.grid.containLabel = true;
+
+  const xAxis = Array.isArray(opt.xAxis) ? opt.xAxis[0] : opt.xAxis;
+  if (xAxis && typeof xAxis === 'object' && xAxis.name) {
+    bumpGridMin('bottom', 48);
+    if (typeof xAxis.nameGap !== 'number' || xAxis.nameGap < 26) xAxis.nameGap = 26;
+  }
+
+  // Horizontal visualMap sliders (heatmap, etc.) sit at the bottom of the
+  // chart and clip x-axis labels unless the grid leaves room for them.
+  // Skip non-cartesian charts (e.g. the choropleth map) — they have a
+  // visualMap but no grid/axes and must pass through unchanged.
+  const visualMap = Array.isArray(opt.visualMap) ? opt.visualMap[0] : opt.visualMap;
+  const isCartesian = Boolean(opt.xAxis || opt.yAxis);
+  if (
+    visualMap &&
+    typeof visualMap === 'object' &&
+    isCartesian &&
+    (visualMap.orient === 'horizontal' || (visualMap.orient === undefined && 'bottom' in visualMap))
+  ) {
+    if (typeof visualMap.bottom !== 'number') visualMap.bottom = 0;
+    bumpGridMin('bottom', 72);
+  }
+
+  const grids = getGrids();
+  if (grids) for (const g of grids) g.containLabel = true;
+
   return opt;
 }
 
