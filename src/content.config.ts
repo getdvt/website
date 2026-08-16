@@ -29,6 +29,7 @@ const chartPages = defineCollection({
     metaDescription: z.string().min(80).max(180),
     whenToUse: z.string().min(60),
     targetQuery: z.string().min(3),
+    summary: z.string().min(20).max(120),
   }),
 });
 

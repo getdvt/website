@@ -18,7 +18,7 @@
  * single source of truth either way.
  */
 
-import { families, type ChartDef, type Family } from './charts';
+import { families, type ChartDef } from './charts';
 import { chartPageExtras } from './chart-page-extras';
 import chartPagesRaw from './chart-pages.json';
 
@@ -29,6 +29,7 @@ interface ChartPageEntry {
   metaDescription: string;
   whenToUse: string;
   targetQuery: string;
+  summary: string;
 }
 const chartPages = chartPagesRaw as ChartPageEntry[];
 const pageByType = new Map(chartPages.map((p) => [p.type, p]));
@@ -53,7 +54,12 @@ export function baseType(dvtType: string): string {
 // small synthetic "Maps" group, per spec. lines/chord fold into the existing
 // `flow` family group instead (see the loop below).
 const MAPS_GROUP: ChartGroup = { id: 'maps', label: 'Maps' };
-const flowFamily = families.find((f) => f.id === 'flow') as Family;
+const flowFamily = families.find((f) => f.id === 'flow');
+if (!flowFamily) {
+  throw new Error(
+    "charts.ts family 'flow' not found — chart-page-lookup.ts sibling overrides depend on it"
+  );
+}
 const FLOW_GROUP: ChartGroup = { id: flowFamily.id, label: flowFamily.label };
 
 /** base dvtType -> resolved ChartDef + group. First match wins, walking

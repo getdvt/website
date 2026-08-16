@@ -724,8 +724,8 @@ const animated: ChartDef[] = [
       animationDuration: 0, animationDurationUpdate: 1400, animationEasing: 'linear', animationEasingUpdate: 'linear',
     },
     spec: `{ "type": "chart:bar:racing",
-  "animation": { "frameField": "month" },
-  "spec": { "categoryField": "plan", "valueField": "revenue" } }`,
+  "spec": { "animation": { "frameField": "month" },
+            "categoryField": "plan", "valueField": "revenue" } }`,
   },
   {
     dvtType: 'chart:line:racing',
@@ -746,8 +746,8 @@ const animated: ChartDef[] = [
       animationDuration: 2600, animationEasing: 'cubicOut',
     },
     spec: `{ "type": "chart:line:racing",
-  "animation": { "frameField": "quarter" },
-  "spec": { "valueField": "revenue" } }`,
+  "spec": { "animation": { "frameField": "quarter" },
+            "valueField": "revenue" } }`,
   },
 ];
 

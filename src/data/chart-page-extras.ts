@@ -173,8 +173,8 @@ export const chartPageExtras: ChartDef[] = [
       ],
     },
     spec: `{ "type": "chart:geo:animated",
-  "animation": { "frameField": "week" },
-  "spec": { "geo": { "map": "world" },
+  "spec": { "animation": { "frameField": "week" },
+            "geo": { "map": "world" },
             "series": [{ "type": "effectScatter", "coordinateSystem": "geo" }] } }`,
   },
 ];

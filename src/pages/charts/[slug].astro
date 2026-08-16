@@ -118,8 +118,9 @@ const jsonLd = [
       <div class="container narrow">
         <h2>Minimal dvt spec</h2>
         <p>
-          The smallest working spec for a {page.data.title.toLowerCase()}. Drop it into a dvt
-          dashboard and point <code>data.query</code> at your own warehouse.
+          The panel body for a {page.data.title.toLowerCase()}. Add an <code>id</code> and
+          <code>title</code>, give it a <code>data</code> block whose <code>query</code> points at
+          your warehouse, and it drops into any dvt dashboard.
         </p>
         <SpecReveal code={prettySpec} lang="json" open={true} />
       </div>

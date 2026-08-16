@@ -3,7 +3,12 @@
 // Guard: every chart:* member of the vendored PanelType enum (except the
 // non-page chart:custom) must have exactly one corresponding entry in
 // src/data/chart-pages.json, and every entry's id must follow the slug law
-// derived from its type (chart:bar:stacked -> bar-stacked).
+// derived from its type (chart:bar:stacked -> bar-stacked). Also guards that
+// every chart-pages.json entry actually resolves to a renderable ChartDef in
+// src/data/charts.ts or src/data/chart-page-extras.ts — a deleted/renamed
+// `families`/`chartPageExtras` entry passes checks (a)-(d) but would only
+// fail at Cloudflare deploy build time (chart-page-lookup.ts throws), so
+// catching it here mirrors check-chart-types.mjs's regex approach.
 //
 // Coverage split (mirrors check-chart-types.mjs):
 //   - PR trigger (paths filter in .github/workflows/chart-types-drift.yml)
@@ -14,7 +19,7 @@
 //     via scripts/sync-panel-types.sh, which will then flag the new/removed
 //     type here on the next PR.
 //
-// Zero external dependencies: reads two local files, pure Node built-ins.
+// Zero external dependencies: reads local files, pure Node built-ins.
 //
 
 import { readFileSync } from 'fs';
@@ -24,6 +29,8 @@ import { dirname, resolve } from 'path';
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PAGES_FILE = resolve(REPO_ROOT, 'src/data/chart-pages.json');
 const ENUM_FILE = resolve(REPO_ROOT, 'src/data/panel-types.json');
+const CHARTS_FILE = resolve(REPO_ROOT, 'src/data/charts.ts');
+const EXTRAS_FILE = resolve(REPO_ROOT, 'src/data/chart-page-extras.ts');
 
 const pages = JSON.parse(readFileSync(PAGES_FILE, 'utf8'));
 const { panelTypes } = JSON.parse(readFileSync(ENUM_FILE, 'utf8'));
@@ -87,12 +94,48 @@ if (dupIds.length > 0) {
 }
 
 // (d) every entry has non-empty title/metaDescription/whenToUse/targetQuery.
-const REQUIRED_STRING_FIELDS = ['title', 'metaDescription', 'whenToUse', 'targetQuery'];
+const REQUIRED_STRING_FIELDS = ['title', 'metaDescription', 'whenToUse', 'targetQuery', 'summary'];
 for (const entry of pages) {
   for (const field of REQUIRED_STRING_FIELDS) {
     if (typeof entry[field] !== 'string' || entry[field].trim().length === 0) {
       errors.push(`Entry '${entry.id ?? '(no id)'}' is missing a non-empty '${field}'`);
     }
+  }
+}
+
+// (e) resolution guard: every chart-pages.json `type` must appear among the
+// dvtType literals defined in charts.ts `families` ∪ chart-page-extras.ts
+// `chartPageExtras` — the two files chart-page-lookup.ts actually resolves
+// against at render time. Mirrors check-chart-types.mjs's regex extraction
+// (incl. stripping a trailing " (label)" display suffix), run once per file
+// so a missing match names the file to fix.
+const dvtTypeRe = /dvtType:\s*'([^']+)'/g;
+const stripLabel = (raw) => raw.replace(/\s*\([^)]*\)\s*$/, '').trim();
+
+function extractDvtTypes(file) {
+  const source = readFileSync(file, 'utf8');
+  const matches = [...source.matchAll(dvtTypeRe)];
+  if (matches.length === 0) {
+    errors.push(
+      `Regex /dvtType:\\s*'([^']+)'/g matched nothing in ${file} — the file shape may have ` +
+        `changed; update the regex in scripts/check-chart-pages.mjs.`
+    );
+    return new Set();
+  }
+  return new Set(matches.map(([, raw]) => stripLabel(raw)));
+}
+
+const chartsTypes = extractDvtTypes(CHARTS_FILE);
+const extrasTypes = extractDvtTypes(EXTRAS_FILE);
+const resolvableTypes = new Set([...chartsTypes, ...extrasTypes]);
+
+for (const entry of pages) {
+  if (!resolvableTypes.has(entry.type)) {
+    errors.push(
+      `chart-pages.json entry '${entry.id}' has type '${entry.type}', which does not resolve ` +
+        `to any dvtType literal in ${CHARTS_FILE} or ${EXTRAS_FILE} — fix chart-pages.json, or ` +
+        `restore/rename the matching entry in whichever of those two files dropped it.`
+    );
   }
 }
 
