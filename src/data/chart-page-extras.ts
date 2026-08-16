@@ -150,7 +150,7 @@ export const chartPageExtras: ChartDef[] = [
     dvtType: 'chart:geo:animated',
     title: 'Animated map',
     blurb:
-      'A geographic measure spreading across regions over time. Illustrative render — ripple effects stand in for time-lapse playback; a real build binds registered GeoJSON regions and a time field.',
+      'A geographic measure spreading across regions over time. Illustrative render: ripple effects stand in for time-lapse playback; a real build binds registered GeoJSON regions and a time field.',
     option: {
       textStyle, grid: flowGrid, tooltip: tooltipItem,
       xAxis: hiddenAxis, yAxis: hiddenAxis,

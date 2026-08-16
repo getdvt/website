@@ -64,11 +64,11 @@ const pageURL = new URL(`/charts/${page.id}/`, Astro.site).href;
 // not just in the meta description.
 const ILLUSTRATIVE_NOTE: Record<string, string> = {
   'chart:lines':
-    'Illustrative render on an abstract canvas — a real dvt build binds the lines series to registered GeoJSON geography.',
+    'Illustrative render on an abstract canvas: a real dvt build binds the lines series to registered GeoJSON geography.',
   'chart:map':
-    'Illustrative render — a real dvt build binds GeoJSON regions and draws actual geography.',
+    'Illustrative render: a real dvt build binds GeoJSON regions and draws actual geography.',
   'chart:geo:animated':
-    'Illustrative render — a real dvt build animates flows over registered GeoJSON geography.',
+    'Illustrative render: a real dvt build animates flows over registered GeoJSON geography.',
 };
 const illustrativeNote = ILLUSTRATIVE_NOTE[page.data.type];
 const jsonLd = [
@@ -118,8 +118,8 @@ const jsonLd = [
       <div class="container narrow">
         <h2>Minimal dvt spec</h2>
         <p>
-          The panel body for a {page.data.title.toLowerCase()}. Add an <code>id</code> and
-          <code>title</code>, give it a <code>data</code> block whose <code>query</code> points at
+          The panel body for a {page.data.title.toLowerCase()}. Add an <code>id</code> and <code>title</code>,
+          give it a <code>data</code> block whose <code>query</code> points at
           your warehouse, and it drops into any dvt dashboard.
         </p>
         <SpecReveal code={prettySpec} lang="json" open={true} />

@@ -39,6 +39,7 @@ on:
       - 'src/data/charts.ts'
       - 'src/data/panel-types.json'
       - 'src/data/chart-pages.json'
+      - 'src/data/chart-page-extras.ts'
       - 'scripts/check-chart-types.mjs'
       - 'scripts/check-chart-pages.mjs'
       - '.github/workflows/chart-types-drift.yml'
