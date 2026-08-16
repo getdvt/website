@@ -27,7 +27,10 @@
   `2337f49d7760f8d0d1d1f8e493c67a440ef47f9b429a0e723a2ada6be9511e18`.
 - **Reproduce it** — the vendored file is a deterministic function of the upstream one:
   ```
-  gh api repos/getdvt/dvt/contents/spec/schema/dashboard.schema.json \
+  # ?ref= pins the SAME commit this block records. Without it the fetch follows the
+  # default branch, so the first upstream schema commit makes the sha mismatch and
+  # read as a bug rather than as expected drift.
+  gh api "repos/getdvt/dvt/contents/spec/schema/dashboard.schema.json?ref=1374178aba454f5feb26ac00653e2b77f5b9dedc" \
     -H "Accept: application/vnd.github.raw" > /tmp/upstream.json
   node scripts/normalize-schema.mjs /tmp/upstream.json | shasum -a 256   # must match the sha256 above
   ```

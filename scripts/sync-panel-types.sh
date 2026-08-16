@@ -159,7 +159,7 @@ fi
 # have been produced successfully. Writing the schema before extracting the enum
 # meant a failed extraction left a clobbered schema next to a stale enum — the
 # exact drift the header promises is impossible. `mv` within one filesystem is
-# atomic, so an interrupt can no longer leave a truncated 225KB JSON in the tree.
+# atomic, so an interrupt can no longer leave a truncated ~97KB JSON in the tree.
 # ---------------------------------------------------------------------------
 SCHEMA_FILE="$SCHEMA_FILE" DST="$DST.tmp" node -e '
 const fs = require("fs");

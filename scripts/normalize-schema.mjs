@@ -45,7 +45,46 @@ const NAME_KEYED = new Set([
   '$defs',
   'definitions',
   'dependentSchemas',
+  // Both of these are keyed by PROPERTY NAME too, and this schema has 6 properties
+  // literally called `description`. Omitting them was a live divergence: given
+  // `dependentRequired: { description: ["lang"] }`, a naive walk emits
+  // `dependentRequired: {}` — so `{"description":"hello"}` is REJECTED by upstream
+  // and ACCEPTED by the normalized copy. Neither keyword appears upstream today,
+  // so adding them does not change the vendored artifact; it closes a latent hole.
+  'dependencies', // draft-07 legacy; schema-valued form normalizes, array-of-names form is data
+  'dependentRequired',
 ]);
+
+// Every key this walk expects to meet in KEYWORD position. The walk's correctness
+// is a claim about a specific keyword vocabulary, so a keyword it has never been
+// audited against must fail loudly rather than be guessed at.
+//
+// This matters more than it looks: the weekly sweep normalizes BOTH sides, so a
+// normalizer bug produces ZERO drift signal (DVT-3124). It would surface only as
+// the snippet gate accepting specs the real engine rejects — exactly the failure
+// this file's schema-aware walk exists to prevent. Today's upstream uses 33
+// keyword-position keys, all standard, so this is satisfied on day one and fires
+// the first time upstream adopts a construct nobody has checked this walk against.
+const KNOWN_KEYWORDS = new Set([
+  // core / identifiers
+  '$schema', '$id', '$ref', '$defs', '$comment', '$anchor', '$dynamicRef', '$dynamicAnchor',
+  'definitions', 'id',
+  // annotations
+  'title', 'description', 'default', 'examples', 'deprecated', 'readOnly', 'writeOnly',
+  // applicators
+  'allOf', 'anyOf', 'oneOf', 'not', 'if', 'then', 'else',
+  'items', 'prefixItems', 'additionalItems', 'contains',
+  'properties', 'patternProperties', 'additionalProperties', 'unevaluatedProperties',
+  'unevaluatedItems', 'propertyNames', 'dependentSchemas', 'dependencies',
+  // validation
+  'type', 'enum', 'const', 'required', 'dependentRequired',
+  'minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf',
+  'minLength', 'maxLength', 'pattern', 'format',
+  'minItems', 'maxItems', 'uniqueItems', 'minContains', 'maxContains',
+  'minProperties', 'maxProperties',
+  'contentEncoding', 'contentMediaType', 'contentSchema',
+]);
+const unknownKeywords = new Set();
 
 // Keywords whose values are literal DATA, not schemas. Never descend — an object
 // inside `enum`/`const`/`default`/`examples` may legitimately carry a key called
@@ -66,6 +105,7 @@ function normalize(node, keysAreNames) {
       out[key] = normalize(value, false);
       continue;
     }
+    if (!KNOWN_KEYWORDS.has(key)) unknownKeywords.add(key);
     if (STRIP.has(key)) continue; // annotation position — this is the strip
     if (OPAQUE.has(key)) {
       out[key] = value; // literal data, copied untouched
@@ -90,7 +130,22 @@ try {
   process.exit(1);
 }
 
+const normalized = normalize(parsed, false);
+
+if (unknownKeywords.size > 0) {
+  console.error(
+    `ERROR: ${src} uses keyword(s) this normalizer has not been audited against: ` +
+      `${[...unknownKeywords].sort().join(', ')}.\n` +
+      'Refusing to normalize. A keyword whose children are keyed by PROPERTY NAME (like\n' +
+      '`properties` or `dependentRequired`) must be added to NAME_KEYED, and one whose value is\n' +
+      'literal DATA must be added to OPAQUE — otherwise the walk will either strip real schema\n' +
+      'or keep prose it was meant to remove, and the weekly sweep cannot detect either because\n' +
+      'it normalizes both sides. Audit the keyword, then add it to KNOWN_KEYWORDS.'
+  );
+  process.exit(1);
+}
+
 // Stable 2-space formatting with a trailing newline. Key ORDER is preserved from
 // the source (JSON.stringify follows insertion order), so the output is a
-// deterministic function of the input — which is what makes the byte-compare valid.
-process.stdout.write(JSON.stringify(normalize(parsed, false), null, 2) + '\n');
+// deterministic function of the input — which is what makes the compare valid.
+process.stdout.write(JSON.stringify(normalized, null, 2) + '\n');

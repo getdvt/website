@@ -87,6 +87,21 @@ jobs:
       - name: Assert chart-pages.json covers every page-worthy PanelType member
         run: node scripts/check-chart-pages.mjs
 
+      # The vendored schema must be a FIXED POINT of the normalizer. This is the
+      # PR-time half of the drift story and it needs no token and no network: it
+      # catches a PR that edits scripts/normalize-schema.mjs (or hand-edits the
+      # vendored file) and forgets to re-run ./scripts/sync-panel-types.sh, which
+      # would otherwise stay green until the Monday sweep. Zero-dep, so it runs
+      # before `npm ci` alongside the other two.
+      - name: Assert the vendored schema is a fixed point of the normalizer
+        run: |
+          if ! node scripts/normalize-schema.mjs src/data/dashboard.schema.json \
+               | cmp -s - src/data/dashboard.schema.json; then
+            echo "::error::src/data/dashboard.schema.json is not a fixed point of scripts/normalize-schema.mjs — the vendored copy and the normalizer disagree. Fix: run ./scripts/sync-panel-types.sh and commit both vendored artifacts."
+            exit 1
+          fi
+          echo "OK — vendored schema is a fixed point of the normalizer."
+
       - name: npm ci
         run: npm ci
 
@@ -179,9 +194,13 @@ jobs:
       # $defs/Panel or $defs/TableSpec upstream would leave both jobs green while
       # the snippet gate silently checks a stale contract — and the two `table`
       # bugs that motivated that gate were TableSpec violations, not enum ones.
-      # Byte-compare is valid by construction: sync-panel-types.sh copies the
-      # schema verbatim (`cp`), so any difference is real drift.
-      - name: Compare full upstream schema to vendored copy (byte-exact)
+      # Validity of the compare: sync-panel-types.sh produces the vendored file by
+      # running the SAME scripts/normalize-schema.mjs over the same upstream bytes,
+      # so any difference in the NORMALIZED forms is real STRUCTURAL drift. Note the
+      # compare is asymmetric on purpose — only the upstream side is normalized here;
+      # the vendored file is compared as committed, so a local hand-edit to it
+      # (including adding annotation prose back) still goes red.
+      - name: Compare full upstream schema to vendored copy (structural, normalized)
         if: vars.DVT_SCHEMA_APP_ID != ''
         run: |
           # `cmp -s` also exits non-zero when a file is MISSING, which would report
@@ -205,4 +224,4 @@ jobs:
             diff src/data/dashboard.schema.json /tmp/upstream-normalized.json | head -50 || true
             exit 1
           fi
-          echo "OK — vendored dashboard.schema.json is byte-identical to upstream."
+          echo "OK — vendored dashboard.schema.json matches upstream structurally (normalized compare)."
