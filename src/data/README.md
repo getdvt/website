@@ -15,7 +15,7 @@
 ## dashboard.schema.json
 
 - **Source**: `getdvt/dvt` -> `spec/schema/dashboard.schema.json`.
-- **Vendored**: 2026-08-16, from `getdvt/dvt` `origin/main` @ `1374178aba454f5feb26ac00653e2b77f5b9dedc`
+- **Vendored**: 2026-08-15, from `getdvt/dvt` `origin/main` @ `1374178aba454f5feb26ac00653e2b77f5b9dedc`
   (blob sha `ddfbfba94de7dc0e21fe9ace75ecf7acb42fbd9f`, upstream sha256
   `715ddb53f18d709db4d1f0e5c16f8c244497aa6e46e8b264058f94a86712c0e8`).
 - **⚠️ NOT a verbatim copy — this is the NORMALIZED form.** `description` and `$comment` annotation
@@ -49,3 +49,8 @@
   upstream edits, which by the argument above cannot affect any gate.
 - Do NOT hand-edit it; do NOT import it from a page or component (it would land in the client
   bundle). It is read only by `scripts/check-chart-specs.mjs` at build/CI time.
+- A hand-edit does not wait for the Monday sweep to surface: the `drift` job asserts at PR time that
+  this file is a FIXED POINT of the normalizer (`normalize(vendored) == vendored`), so editing either
+  this file or `scripts/normalize-schema.mjs` without re-running the sync goes red on the PR. That
+  gate is also what makes the asymmetric weekly compare rigorous — it discharges the premise that
+  lets `cmp normalize(upstream) vendored` stand in for a normalized-to-normalized compare.
