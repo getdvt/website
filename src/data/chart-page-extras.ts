@@ -81,10 +81,14 @@ export const chartPageExtras: ChartDef[] = [
           labelLayout: { hideOverlap: true },
           data: [
             { name: 'San Francisco', value: [-122.42, 37.77, 1] },
-            { name: 'London', value: [-0.13, 51.51, 1] },
+            // Multiple arcs converge above this node — keep the label off
+            // to the side so no arc crosses the text.
+            { name: 'London', value: [-0.13, 51.51, 1], label: { position: [-32, 16], align: 'right' } },
             { name: 'Tokyo', value: [139.69, 35.69, 1] },
             { name: 'São Paulo', value: [-46.63, -23.55, 1] },
-            { name: 'Sydney', value: [151.21, -33.87, 1] },
+            // The London→Sydney arc curves down through the default 'top'
+            // label position — push it below the node instead.
+            { name: 'Sydney', value: [151.21, -33.87, 1], label: { position: 'bottom' } },
           ],
         },
       ],

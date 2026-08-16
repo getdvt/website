@@ -63,6 +63,12 @@ function ensureHeadroom(option: Record<string, unknown>): Record<string, unknown
   if (yAxis && typeof yAxis === 'object' && yAxis.name) {
     bumpGridMin('top', 64);
     if (typeof yAxis.nameGap !== 'number' || yAxis.nameGap < 20) yAxis.nameGap = 20;
+    // The name is drawn center-anchored on the axis line by default, which
+    // overflows past the left canvas edge for long names. Left-align it so
+    // it starts at the axis line and grows rightward instead.
+    if (!yAxis.nameTextStyle?.align) {
+      yAxis.nameTextStyle = { ...(yAxis.nameTextStyle ?? {}), align: 'left' };
+    }
   }
 
   const xAxis = Array.isArray(opt.xAxis) ? opt.xAxis[0] : opt.xAxis;
