@@ -10,11 +10,10 @@
  * Same rules as charts.ts: every `option` is JSON-pure (no functions), since
  * it is serialized into a JSON script tag and parsed client-side.
  *
- * chart:lines, chart:map, and chart:geo:animated render as an abstract,
- * illustrative composition (a stylized flow / bubble layout on a hidden
- * cartesian grid) rather than binding real GeoJSON regions, which the site
- * runtime does not register. Each entry's blurb says so explicitly — a real
- * dvt build binds GeoJSON for these types.
+ * chart:lines, chart:map, and chart:geo:animated bind a real registered
+ * `world` GeoJSON map (src/data/world.geo.json, lazy-loaded by
+ * src/scripts/charts.ts) rather than an abstract cartesian stand-in — see
+ * DVT-3081.
  */
 
 import type { ChartDef } from './charts';
@@ -42,42 +41,50 @@ const tooltipItem = {
   borderColor: '#27272A',
   textStyle: { color: '#FAFAFA', fontSize: 11, fontFamily: FONT },
 };
-// Hidden value axis: an abstract canvas for the flow/bubble compositions
-// below, not a real measured axis — so it carries no name and does not
-// trigger the yAxis.name margin rule.
-const hiddenAxis = { type: 'value' as const, min: 0, max: 100, show: false };
-// Margin-affordance rule: always containLabel + left/right/bottom >= 24.
-const flowGrid = { left: 24, right: 24, top: 22, bottom: 24, containLabel: true };
+// Shared base `geo` fragment for the world-map compositions below: the
+// registered `world` map (lazy-loaded by src/scripts/charts.ts), roam
+// disabled so charts stay legible at the fixed 320px gallery height, silent
+// so hover/tooltip stays on the data series layered above it.
+const worldGeo = {
+  map: 'world' as const,
+  roam: false,
+  silent: true,
+  itemStyle: { areaColor: '#F1F5F9', borderColor: '#fff' },
+};
 
 export const chartPageExtras: ChartDef[] = [
   {
     dvtType: 'chart:lines',
     title: 'Flow map',
     blurb:
-      'Directional movement between origin/destination points. Illustrative render on an abstract canvas; a real build binds the `lines` series to a `geo` coordinate system with registered GeoJSON.',
+      'Directional movement between origin/destination points, drawn as animated arcs over registered world geography.',
     option: {
-      color: [C.indigo], textStyle, grid: flowGrid, tooltip: tooltipItem,
-      xAxis: hiddenAxis, yAxis: hiddenAxis,
+      color: [C.indigo], textStyle, tooltip: tooltipItem,
+      geo: worldGeo,
       series: [
         {
-          type: 'effectScatter', coordinateSystem: 'cartesian2d', symbolSize: 10,
-          itemStyle: { color: C.navy },
-          label: { show: true, position: 'top', fontFamily: FONT, fontSize: 10, color: '#71717A', formatter: '{b}' },
+          type: 'lines', coordinateSystem: 'geo', polyline: false, zlevel: 1,
+          lineStyle: { color: C.indigo, width: 1.5, curveness: 0.25, opacity: 0.55 },
+          effect: { show: true, symbol: 'arrow', symbolSize: 7, period: 4, trailLength: 0.15, color: C.sky },
           data: [
-            { name: 'Origin', value: [12, 70] },
-            { name: 'Hub', value: [52, 40] },
-            { name: 'Destination A', value: [86, 62] },
-            { name: 'Destination B', value: [84, 18] },
+            { coords: [[-122.42, 37.77], [-0.13, 51.51]] },
+            { coords: [[-122.42, 37.77], [139.69, 35.69]] },
+            { coords: [[-46.63, -23.55], [-0.13, 51.51]] },
+            { coords: [[-0.13, 51.51], [151.21, -33.87]] },
           ],
         },
         {
-          type: 'lines', coordinateSystem: 'cartesian2d', polyline: false,
-          lineStyle: { color: C.indigo, width: 1.5, curveness: 0.25, opacity: 0.5 },
-          effect: { show: true, symbol: 'arrow', symbolSize: 7, period: 5, trailLength: 0.15, color: C.sky },
+          type: 'effectScatter', coordinateSystem: 'geo', symbolSize: 8, zlevel: 2,
+          itemStyle: { color: C.navy },
+          rippleEffect: { scale: 2.4, period: 3.5, brushType: 'stroke' },
+          label: { show: true, position: 'top', fontFamily: FONT, fontSize: 10, color: '#71717A', formatter: '{b}' },
+          labelLayout: { hideOverlap: true },
           data: [
-            { coords: [[12, 70], [52, 40]] },
-            { coords: [[52, 40], [86, 62]] },
-            { coords: [[52, 40], [84, 18]] },
+            { name: 'San Francisco', value: [-122.42, 37.77, 1] },
+            { name: 'London', value: [-0.13, 51.51, 1] },
+            { name: 'Tokyo', value: [139.69, 35.69, 1] },
+            { name: 'São Paulo', value: [-46.63, -23.55, 1] },
+            { name: 'Sydney', value: [151.21, -33.87, 1] },
           ],
         },
       ],
@@ -119,26 +126,28 @@ export const chartPageExtras: ChartDef[] = [
   {
     dvtType: 'chart:map',
     title: 'Choropleth map',
-    blurb:
-      'Geography-encoded measure by region, color intensity for value. Illustrative render on an abstract canvas; a real build binds the `map` series to registered GeoJSON regions.',
+    blurb: 'Geography-encoded measure by region, color intensity for value, drawn over registered world geography.',
     option: {
-      textStyle, grid: flowGrid, tooltip: tooltipItem,
+      textStyle, tooltip: tooltipItem,
       visualMap: {
-        min: 0, max: 100, calculable: true, orient: 'horizontal', left: 'center', bottom: 0,
-        itemHeight: 60, textStyle: { color: '#A1A1AA', fontSize: 11, fontFamily: FONT },
+        min: 0, max: 100, calculable: false, orient: 'horizontal', left: 'center', bottom: 0,
+        itemWidth: 10, itemHeight: 80, textStyle: { color: '#A1A1AA', fontSize: 10, fontFamily: FONT },
         inRange: { color: ['#EEF2FF', C.indigoLight, C.indigo] },
       },
-      xAxis: hiddenAxis, yAxis: hiddenAxis,
       series: [{
-        type: 'scatter', coordinateSystem: 'cartesian2d', symbol: 'roundRect',
-        symbolSize: [34, 34],
-        label: { show: true, fontFamily: FONT, fontSize: 10, color: '#fff', formatter: '{b}' },
+        type: 'map', map: 'world', roam: false,
+        itemStyle: { areaColor: '#F1F5F9', borderColor: '#fff' },
+        emphasis: { itemStyle: { areaColor: C.indigoLight }, label: { show: false } },
+        select: { disabled: true },
         data: [
-          { name: 'NA', value: [16, 68, 82] },
-          { name: 'EMEA', value: [48, 74, 61] },
-          { name: 'APAC', value: [78, 60, 44] },
-          { name: 'LATAM', value: [30, 30, 28] },
-          { name: 'AFR', value: [58, 22, 19] },
+          { name: 'United States of America', value: 82 },
+          { name: 'Brazil', value: 47 },
+          { name: 'Germany', value: 61 },
+          { name: 'United Kingdom', value: 58 },
+          { name: 'France', value: 53 },
+          { name: 'India', value: 39 },
+          { name: 'Japan', value: 71 },
+          { name: 'Australia', value: 44 },
         ],
       }],
     },
@@ -150,24 +159,23 @@ export const chartPageExtras: ChartDef[] = [
     dvtType: 'chart:geo:animated',
     title: 'Animated map',
     blurb:
-      'A geographic measure spreading across regions over time. Illustrative render: ripple effects stand in for time-lapse playback; a real build binds registered GeoJSON regions and a time field.',
+      'A geographic measure spreading across regions over time, ripple effects standing in for time-lapse playback over registered world geography.',
     option: {
-      textStyle, grid: flowGrid, tooltip: tooltipItem,
-      xAxis: hiddenAxis, yAxis: hiddenAxis,
+      textStyle, tooltip: tooltipItem,
+      geo: worldGeo,
       series: [
         {
-          type: 'scatter', coordinateSystem: 'cartesian2d', symbolSize: 8,
-          itemStyle: { color: '#D4D4D8' },
-          data: [[16, 68], [48, 74], [78, 60], [30, 30], [58, 22], [66, 44]],
-        },
-        {
-          type: 'effectScatter', coordinateSystem: 'cartesian2d', symbolSize: 20,
+          type: 'effectScatter', coordinateSystem: 'geo', symbolSize: 14,
           itemStyle: { color: C.indigo },
           rippleEffect: { scale: 3.2, period: 3, brushType: 'stroke' },
           label: { show: true, position: 'top', fontFamily: FONT, fontSize: 10, color: '#71717A', formatter: '{b}' },
+          labelLayout: { hideOverlap: true },
           data: [
-            { name: 'Wk 1', value: [48, 74] },
-            { name: 'Wk 4', value: [78, 60] },
+            { name: 'San Francisco', value: [-122.42, 37.77, 0.6] },
+            { name: 'London', value: [-0.13, 51.51, 0.9] },
+            { name: 'Tokyo', value: [139.69, 35.69, 0.7] },
+            { name: 'São Paulo', value: [-46.63, -23.55, 0.4] },
+            { name: 'Sydney', value: [151.21, -33.87, 0.3] },
           ],
         },
       ],

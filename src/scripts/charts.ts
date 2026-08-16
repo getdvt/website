@@ -23,6 +23,23 @@ function lib() {
   return libPromise;
 }
 
+// World boundaries (Natural Earth-derived, public domain) are bundled locally
+// and loaded on demand — no CDN fetch at runtime — so charts that don't need
+// geography never pay for the ~250KB GeoJSON payload.
+let worldPromise: Promise<void> | null = null;
+function worldMap(echarts: typeof import('echarts')): Promise<void> {
+  worldPromise ??= import('../data/world.geo.json').then((m) => {
+    echarts.registerMap('world', m.default as any);
+  });
+  return worldPromise;
+}
+
+function needsWorld(option: AnyOption): boolean {
+  if (option?.geo?.map === 'world') return true;
+  const series = Array.isArray(option?.series) ? option.series : [];
+  return series.some((s: AnyOption) => s?.map === 'world' || s?.coordinateSystem === 'geo');
+}
+
 function readOption(el: HTMLElement): AnyOption | null {
   const tag = el.querySelector('script[type="application/json"]');
   if (!tag || !tag.textContent) return null;
@@ -45,6 +62,11 @@ async function boot(el: HTMLElement) {
   const echarts = await lib();
   // The element may have been removed/hidden while the lib loaded.
   if (instances.has(el) || !visible(el)) return;
+
+  if (needsWorld(option)) {
+    await worldMap(echarts);
+    if (instances.has(el) || !visible(el)) return;
+  }
 
   const chart = echarts.init(el, null, { renderer: 'canvas' });
   instances.set(el, chart);
