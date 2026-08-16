@@ -94,7 +94,8 @@ export const chartPageExtras: ChartDef[] = [
       ],
     },
     spec: `{ "type": "chart:lines",
-  "spec": { "series": [{ "type": "lines", "coordinateSystem": "geo",
+  "spec": { "geo": { "map": "world" },
+            "series": [{ "type": "lines", "coordinateSystem": "geo",
               "effect": { "show": true, "symbol": "arrow" } }] } }`,
   },
   {
@@ -186,7 +187,6 @@ export const chartPageExtras: ChartDef[] = [
     },
     spec: `{ "type": "chart:geo:animated",
   "spec": { "animation": { "frameField": "week" },
-            "geo": { "map": "world" },
-            "series": [{ "type": "effectScatter", "coordinateSystem": "geo" }] } }`,
+            "series": [{ "type": "map", "map": "world" }] } }`,
   },
 ];
