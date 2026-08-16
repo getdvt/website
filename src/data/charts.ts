@@ -736,7 +736,9 @@ const animated: ChartDef[] = [
     option: {
       color: PALETTE, textStyle, grid, tooltip,
       xAxis: { type: 'category', data: ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8', 'Q9', 'Q10'], boundaryGap: false, axisLabel, axisLine: baseAxisLine, axisTick: { show: false } },
-      yAxis: valY(),
+      // Pinned (not auto-scaled) so the progressive reveal loop doesn't
+      // rescale the axis every frame as partial data is drawn in.
+      yAxis: valY({ max: 120 }),
       series: [{
         type: 'line', smooth: true, showSymbol: false,
         data: [20, 32, 28, 45, 60, 55, 72, 85, 92, 110],

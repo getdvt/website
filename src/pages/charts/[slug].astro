@@ -10,6 +10,15 @@ import { resolveChartDef, groupOf, siblingsFor } from '../../data/chart-page-loo
 
 export const prerender = true;
 
+// dvt's bundled `world` map compiles chart:geo:animated as a timeline
+// choropleth (a `map` series + visualMap driven by a time field), not the
+// effectScatter ripple animation this page renders — call that out so a
+// reader doesn't mistake the stand-in for the real playback.
+const PAGE_NOTES: Record<string, string> = {
+  'geo-animated':
+    'Illustrative animation — in a dvt build, chart:geo:animated plays a timeline choropleth over your bound regions; the ripples here stand in for that playback.',
+};
+
 export async function getStaticPaths() {
   const pages = await getCollection('chartPages');
   return pages.map((p) => ({
@@ -106,6 +115,7 @@ const prettySpec = JSON.stringify(JSON.parse(def.spec), null, 2);
 
 const group = groupOf(page.data.type);
 const siblings = siblingsFor(page.data.type);
+const pageNote = PAGE_NOTES[page.id];
 
 const pageURL = new URL(`/charts/${page.id}/`, Astro.site).href;
 
@@ -147,6 +157,7 @@ const jsonLd = [
       <div class="container">
         <div class="chart-card">
           <EChart option={option} height="320px" animate={def.animate} label={page.data.title} />
+          {pageNote && <p class="chart-note">{pageNote}</p>}
         </div>
       </div>
     </section>
@@ -267,6 +278,13 @@ const jsonLd = [
     border-radius: var(--radius-lg);
     padding: var(--space-8) var(--space-6) var(--space-6);
     box-shadow: var(--shadow-sm);
+  }
+
+  .chart-note {
+    margin-top: var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--color-neutral-500);
+    text-align: center;
   }
 
   .spec-section h2,

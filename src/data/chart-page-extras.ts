@@ -49,7 +49,7 @@ const worldGeo = {
   map: 'world' as const,
   roam: false,
   silent: true,
-  itemStyle: { areaColor: '#F1F5F9', borderColor: '#fff' },
+  itemStyle: { areaColor: '#F4F4F5', borderColor: '#fff' },
 };
 
 export const chartPageExtras: ChartDef[] = [
@@ -57,7 +57,7 @@ export const chartPageExtras: ChartDef[] = [
     dvtType: 'chart:lines',
     title: 'Flow map',
     blurb:
-      'Directional movement between origin/destination points, drawn as animated arcs over registered world geography.',
+      'Directional movement between origin/destination points, drawn as animated arcs over real world geography.',
     option: {
       color: [C.indigo], textStyle, tooltip: tooltipItem,
       geo: worldGeo,
@@ -130,7 +130,7 @@ export const chartPageExtras: ChartDef[] = [
   {
     dvtType: 'chart:map',
     title: 'Choropleth map',
-    blurb: 'Geography-encoded measure by region, color intensity for value, drawn over registered world geography.',
+    blurb: 'Geography-encoded measure by region, color intensity for value, drawn over real world geography.',
     option: {
       textStyle, tooltip: tooltipItem,
       visualMap: {
@@ -140,11 +140,11 @@ export const chartPageExtras: ChartDef[] = [
       },
       series: [{
         type: 'map', map: 'world', roam: false,
-        itemStyle: { areaColor: '#F1F5F9', borderColor: '#fff' },
+        itemStyle: { areaColor: '#F4F4F5', borderColor: '#fff' },
         emphasis: { itemStyle: { areaColor: C.indigoLight }, label: { show: false } },
         select: { disabled: true },
         data: [
-          { name: 'United States of America', value: 82 },
+          { name: 'United States', value: 82 },
           { name: 'Brazil', value: 47 },
           { name: 'Germany', value: 61 },
           { name: 'United Kingdom', value: 58 },
@@ -163,7 +163,7 @@ export const chartPageExtras: ChartDef[] = [
     dvtType: 'chart:geo:animated',
     title: 'Animated map',
     blurb:
-      'A geographic measure spreading across regions over time, ripple effects standing in for time-lapse playback over registered world geography.',
+      'A geographic measure spreading across regions over time, ripple effects standing in for time-lapse playback over real world geography.',
     option: {
       textStyle, tooltip: tooltipItem,
       geo: worldGeo,

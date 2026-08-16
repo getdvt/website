@@ -28,9 +28,17 @@ function lib() {
 // geography never pay for the ~250KB GeoJSON payload.
 let worldPromise: Promise<void> | null = null;
 function worldMap(echarts: typeof import('echarts')): Promise<void> {
-  worldPromise ??= import('../data/world.geo.json').then((m) => {
-    echarts.registerMap('world', m.default as any);
-  });
+  worldPromise ??= import('../data/world.geo.json')
+    .then((m) => {
+      echarts.registerMap('world', m.default as any);
+    })
+    .catch((err) => {
+      // Clear the memo on failure so a later retry (e.g. a subsequent chart
+      // scrolling into view) re-attempts the import instead of replaying a
+      // cached rejection forever.
+      worldPromise = null;
+      throw err;
+    });
   return worldPromise;
 }
 
@@ -64,7 +72,12 @@ async function boot(el: HTMLElement) {
   if (instances.has(el) || !visible(el)) return;
 
   if (needsWorld(option)) {
-    await worldMap(echarts);
+    try {
+      await worldMap(echarts);
+    } catch (err) {
+      console.error('Failed to load world map GeoJSON:', err);
+      return;
+    }
     if (instances.has(el) || !visible(el)) return;
   }
 
