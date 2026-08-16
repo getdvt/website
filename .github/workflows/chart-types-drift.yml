@@ -15,7 +15,16 @@ name: Chart-type drift check
 #   - UPSTREAM drift (a silent rename in getdvt/dvt while both local files sit
 #     unchanged) is caught by the weekly `schedule:` sweep in the `upstream-sweep`
 #     job below. That job mints a short-lived GitHub App installation token and
-#     reads origin/main's enum live via `gh api`. Auth = the `getdvt-ci-reader`
+#     reads origin/main's schema live via `gh api`, then checks it TWICE: a
+#     set-compare of $defs.PanelType.enum against panel-types.json, and a
+#     byte-compare of the whole file against the vendored dashboard.schema.json,
+#     after normalizing the upstream fetch with the same scripts/normalize-schema.mjs
+#     the vendored copy was produced by (this repo is public; upstream annotation
+#     prose is stripped, so a raw compare would report permanent false drift).
+#     The second is what keeps the snippet gate honest — it validates against the
+#     WHOLE schema, so a change to $defs/Panel or $defs/TableSpec (the class of
+#     change that motivated the gate) would otherwise leave every job green while
+#     the gate silently checked a stale contract. Auth = the `getdvt-ci-reader`
 #     App (Contents: read on getdvt/dvt), wired as the `DVT_SCHEMA_APP_ID` repo
 #     variable + `DVT_SCHEMA_APP_PRIVATE_KEY` repo secret. See the setup runbook:
 #     .github/github-app-ci-reader.md. The sweep is a no-op until the App is
@@ -30,7 +39,10 @@ name: Chart-type drift check
 # not run on PRs (job-level event guard) and skips when the App is unprovisioned,
 # so it would report a false green. The PR-time gate is the `drift` job only.
 #
-# No npm install required — all scripts have zero external dependencies.
+# The two enum/page guards (check-chart-types.mjs, check-chart-pages.mjs) stay
+# dependency-free and run first. The snippet-schema guard (check-chart-specs.mjs)
+# needs ajv, hence the `npm ci` step before it, ordered after the two
+# zero-dependency checks so a dependency-install failure cannot mask them.
 
 on:
   pull_request:
@@ -40,8 +52,15 @@ on:
       - 'src/data/panel-types.json'
       - 'src/data/chart-pages.json'
       - 'src/data/chart-page-extras.ts'
+      - 'src/data/dashboard.schema.json'
       - 'scripts/check-chart-types.mjs'
       - 'scripts/check-chart-pages.mjs'
+      - 'scripts/check-chart-specs.mjs'
+      # A change here changes what the vendored schema IS, and what the weekly
+      # sweep compares against — so it must re-run the gates.
+      - 'scripts/normalize-schema.mjs'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/chart-types-drift.yml'
   schedule:
     - cron: '23 13 * * 1'   # Mondays 13:23 UTC — weekly upstream-drift sweep
@@ -60,12 +79,34 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
       - name: Assert all dvtType values are valid PanelType members
         run: node scripts/check-chart-types.mjs
 
       - name: Assert chart-pages.json covers every page-worthy PanelType member
         run: node scripts/check-chart-pages.mjs
+
+      # The vendored schema must be a FIXED POINT of the normalizer. This is the
+      # PR-time half of the drift story and it needs no token and no network: it
+      # catches a PR that edits scripts/normalize-schema.mjs (or hand-edits the
+      # vendored file) and forgets to re-run ./scripts/sync-panel-types.sh, which
+      # would otherwise stay green until the Monday sweep. Zero-dep, so it runs
+      # before `npm ci` alongside the other two.
+      - name: Assert the vendored schema is a fixed point of the normalizer
+        run: |
+          if ! node scripts/normalize-schema.mjs src/data/dashboard.schema.json \
+               | cmp -s - src/data/dashboard.schema.json; then
+            echo "::error::src/data/dashboard.schema.json is not a fixed point of scripts/normalize-schema.mjs — the vendored copy and the normalizer disagree. Fix: run ./scripts/sync-panel-types.sh and commit both vendored artifacts."
+            exit 1
+          fi
+          echo "OK — vendored schema is a fixed point of the normalizer."
+
+      - name: npm ci
+        run: npm ci
+
+      - name: Assert every chart-catalog snippet validates against dvt's Panel schema (structure only — not data-binding or ECharts keys)
+        run: node scripts/check-chart-specs.mjs
 
   upstream-sweep:
     name: upstream-enum-sweep
@@ -147,3 +188,40 @@ jobs:
           }
           console.log("OK — upstream enum matches vendored copy (" + vendored.length + " types).");
           '
+
+      # HIGH-1: the enum compare above only covers $defs.PanelType.enum. The
+      # snippet gate validates against the WHOLE vendored schema, so a change to
+      # $defs/Panel or $defs/TableSpec upstream would leave both jobs green while
+      # the snippet gate silently checks a stale contract — and the two `table`
+      # bugs that motivated that gate were TableSpec violations, not enum ones.
+      # Validity of the compare: sync-panel-types.sh produces the vendored file by
+      # running the SAME scripts/normalize-schema.mjs over the same upstream bytes,
+      # so any difference in the NORMALIZED forms is real STRUCTURAL drift. Note the
+      # compare is asymmetric on purpose — only the upstream side is normalized here;
+      # the vendored file is compared as committed, so a local hand-edit to it
+      # (including adding annotation prose back) still goes red.
+      - name: Compare full upstream schema to vendored copy (structural, normalized)
+        if: vars.DVT_SCHEMA_APP_ID != ''
+        run: |
+          # `cmp -s` also exits non-zero when a file is MISSING, which would report
+          # a deleted vendored copy as "drift". Check existence first so the error
+          # names the real cause.
+          if [[ ! -f src/data/dashboard.schema.json ]]; then
+            echo "::error::Vendored src/data/dashboard.schema.json is missing. Fix: run ./scripts/sync-panel-types.sh and commit both vendored artifacts."
+            exit 1
+          fi
+          # Normalize the upstream fetch with the SAME script that produced the
+          # vendored copy, then compare normalized-to-normalized. The vendored copy
+          # is structure-only (this repo is public; upstream's annotation prose is
+          # internal commentary), so a raw compare would report permanent drift.
+          node scripts/normalize-schema.mjs /tmp/upstream-schema.json > /tmp/upstream-normalized.json
+
+          if ! cmp -s /tmp/upstream-normalized.json src/data/dashboard.schema.json; then
+            echo "::error::Upstream spec/schema/dashboard.schema.json has drifted STRUCTURALLY from the vendored copy in src/data/dashboard.schema.json. (Annotation-prose-only upstream edits are normalized away and will NOT trigger this.) Fix: run ./scripts/sync-panel-types.sh and commit both vendored artifacts."
+            # Diff the WHOLE files — `head -50` already bounds the log. Truncating the
+            # inputs instead would print an empty diff for drift past the truncation
+            # point, i.e. "it drifted" with no evidence of where.
+            diff src/data/dashboard.schema.json /tmp/upstream-normalized.json | head -50 || true
+            exit 1
+          fi
+          echo "OK — vendored dashboard.schema.json matches upstream structurally (normalized compare)."

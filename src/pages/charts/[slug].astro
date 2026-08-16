@@ -166,9 +166,10 @@ const jsonLd = [
       <div class="container narrow">
         <h2>Minimal dvt spec</h2>
         <p>
-          The panel body for a {page.data.title.toLowerCase()}. Add an <code>id</code> and <code>title</code>,
-          give it a <code>data</code> block whose <code>query</code> points at
-          your warehouse, and it drops into any dvt dashboard.
+          The panel body for a {page.data.title.toLowerCase()}. Add an <code>id</code> and <code>title</code> of your own;
+          the sample data is inline, so it renders the moment you paste it into a dvt dashboard. Point it at
+          your warehouse by swapping that sample data for a <code>data</code> block whose <code>query</code> returns
+          the same shape.
         </p>
         <SpecReveal code={prettySpec} lang="json" open={true} />
       </div>

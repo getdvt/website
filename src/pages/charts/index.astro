@@ -80,27 +80,37 @@ const jsonLd = [
       </div>
     </section>
 
-    {groups.map(({ group, pages }) => (
-      <section class="section group-section" id={group.id}>
-        <div class="container">
-          <div class="group-head">
-            <svg class="group-glyph" viewBox="0 0 32 32" aria-hidden="true" set:html={GLYPHS[group.id] ?? FALLBACK_GLYPH} />
-            <div>
-              <h2>{group.label}</h2>
-              <p>{groupBlurb[group.id] ?? ''}</p>
+    <div class="charts-layout">
+      <nav class="section-nav" aria-label="Chart families">
+        {groups.map(({ group }) => (
+          <a href={`#${group.id}`}>{group.label}</a>
+        ))}
+      </nav>
+
+      <div class="sections-column">
+        {groups.map(({ group, pages }) => (
+          <section class="section group-section" id={group.id}>
+            <div class="container">
+              <div class="group-head">
+                <svg class="group-glyph" viewBox="0 0 32 32" aria-hidden="true" set:html={GLYPHS[group.id] ?? FALLBACK_GLYPH} />
+                <div>
+                  <h2>{group.label}</h2>
+                  <p>{groupBlurb[group.id] ?? ''}</p>
+                </div>
+              </div>
+              <div class="card-grid">
+                {pages.map((p) => (
+                  <a href={`/charts/${p.id}/`} class="type-card">
+                    <h3>{p.title}</h3>
+                    <p>{p.summary}</p>
+                  </a>
+                ))}
+              </div>
             </div>
-          </div>
-          <div class="card-grid">
-            {pages.map((p) => (
-              <a href={`/charts/${p.id}/`} class="type-card">
-                <h3>{p.title}</h3>
-                <p>{p.summary}</p>
-              </a>
-            ))}
-          </div>
-        </div>
-      </section>
-    ))}
+          </section>
+        ))}
+      </div>
+    </div>
 
     <Handraise />
   </main>
@@ -137,8 +147,97 @@ const jsonLd = [
     max-width: 620px;
   }
 
+  /* ── Left-side section nav (desktop only, see breakpoint below) ──── */
+  /* Below 1024px .charts-layout stays a plain block wrapper (no width/padding
+     of its own) so the section markup renders pixel-identical to before this
+     nav existed: each .group-section keeps spanning full viewport width with
+     its own .container centering the content. */
+  .section-nav {
+    display: none;
+  }
+
+  @media (min-width: 1024px) {
+    .charts-layout {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-8);
+      /* 1080px .container max-width + 200px nav column + var(--space-8) (32px)
+         gap + 2 * var(--space-6) of this element's own padding-inline
+         (box-sizing: border-box, see global.css:13-16, so that padding comes
+         out of max-width rather than adding on top of it), so
+         .sections-column resolves to exactly 1080px: the same cap every
+         other page on the site uses, instead of a bespoke width. */
+      max-width: 1360px;
+      margin-inline: auto;
+      padding-inline: var(--space-6);
+    }
+    .section-nav {
+      display: flex;
+      flex-direction: column;
+      flex: 0 0 200px;
+      gap: var(--space-2);
+      position: sticky;
+      /* Site nav (Nav.astro) is sticky at top:0, height 60px; clear it plus a
+         little breathing room. */
+      top: calc(60px + var(--space-6));
+      padding: var(--space-4) 0;
+    }
+    .section-nav a {
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-md);
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--color-neutral-500);
+      transition: color var(--transition-fast), background var(--transition-fast);
+    }
+    .section-nav a:hover {
+      color: var(--color-neutral-900);
+    }
+    .section-nav a:focus-visible {
+      outline: 2px solid var(--color-brand-mark);
+      outline-offset: 2px;
+    }
+    .section-nav a[aria-current='true'] {
+      color: var(--color-neutral-900);
+      background: var(--color-neutral-100);
+      font-weight: 600;
+    }
+    .sections-column {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  /* Astro scopes this component's styles to elements it renders; <html> is
+     rendered by Base.astro, so this needs :global to actually reach it. */
+  @media (prefers-reduced-motion: reduce) {
+    :global(html) {
+      scroll-behavior: auto;
+    }
+  }
+
   .group-section {
     padding: var(--space-16) 0;
+    /* Land an anchor jump clear of the fixed site nav. Deliberately NOT inside the
+       1024px block: a deep link like /charts#trend has to clear the nav on mobile
+       too, where the nav's height is `auto` rather than the desktop 60px, so the
+       base is sized for the MOBILE nav, which is the taller of the two: at ≤768px
+       Nav.astro wraps to two rows — padding-block ×2 (24) + the .btn-access row
+       (8+8 padding + a 14px/1.6 line box = 38.4) + row-gap (8) + the links row
+       (22.4) + the 1px border ≈ 93.8px. 104px leaves ~10px clearance; a 64px
+       allowance would still land an <h2> under it. Both rules live here, in this
+       order, because they have equal specificity — the desktop override only wins
+       by coming second in source.
+       Known rough edges, both resolved by DVT-3119 (publish --nav-h from
+       Nav.astro): in the 769–1023px band the nav is already the 60px desktop
+       layout while this rule still applies 104px (harmless extra whitespace), and
+       below ~300px the CTA row can wrap a third time and exceed 104px. */
+    scroll-margin-top: 104px;
+  }
+  @media (min-width: 1024px) {
+    .group-section {
+      scroll-margin-top: calc(60px + var(--space-6));
+    }
   }
   .group-section:not(:last-of-type) {
     border-bottom: 1px solid var(--color-neutral-200);
@@ -199,3 +298,67 @@ const jsonLd = [
     line-height: 1.55;
   }
 </style>
+
+<script>
+  // Highlights the section-nav link for whichever chart-family section is
+  // currently in view. Guards on the nav element so it no-ops if absent.
+  // Below 1024px the nav is display:none but still present in markup, so
+  // this still runs there too, harmlessly, since the nav is invisible.
+  const nav = document.querySelector<HTMLElement>('.section-nav');
+
+  if (nav) {
+    const links = Array.from(nav.querySelectorAll<HTMLAnchorElement>('a[href^="#"]'));
+    const sections = links
+      .map((link) => document.getElementById(link.getAttribute('href')!.slice(1)))
+      .filter((section): section is HTMLElement => section !== null);
+
+    const setActive = (id: string) => {
+      for (const link of links) {
+        if (link.getAttribute('href') === `#${id}`) {
+          link.setAttribute('aria-current', 'true');
+        } else {
+          link.removeAttribute('aria-current');
+        }
+      }
+    };
+
+    if (sections.length > 0) {
+      // An IO callback receives only the targets whose intersection CHANGED, not
+      // the full observed set — so scrolling out of a section can fire with a
+      // single non-intersecting entry, which would leave the highlight stuck on
+      // the section just left. Keep a running map of every section's visibility
+      // and pick the winner across the whole map each time.
+      //
+      // Compare intersected HEIGHT, not intersectionRatio: ratio is normalised by
+      // each section's own height, so under this shrunk root band it systematically
+      // favours short sections (Maps, 4 cards) over tall ones (Comparison).
+      const visibleHeight = new Map();
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            visibleHeight.set(
+              entry.target.id,
+              entry.isIntersecting ? entry.intersectionRect.height : 0
+            );
+          }
+          let bestId = null;
+          let bestHeight = 0;
+          for (const [id, height] of visibleHeight) {
+            if (height > bestHeight) {
+              bestHeight = height;
+              bestId = id;
+            }
+          }
+          if (bestId !== null) {
+            setActive(bestId);
+          }
+        },
+        // Treat the band just below the fixed site nav down to the vertical
+        // midpoint of the viewport as "in view" for active-state purposes.
+        { rootMargin: '-96px 0px -50% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] }
+      );
+
+      sections.forEach((section) => observer.observe(section));
+    }
+  }
+</script>
