@@ -282,7 +282,7 @@ const trend: ChartDef[] = [
       yAxis: valY(),
       series: [
         { name: 'This year', type: 'line', smooth: true, data: [40, 52, 49, 63, 71, 68, 84, 95], showSymbol: false, lineStyle: { width: 2.5, color: C.indigo } },
-        { name: 'Last year', type: 'line', smooth: true, data: [30, 34, 38, 41, 44, 48, 52, 58], showSymbol: false, lineStyle: { width: 2, color: C.sky, type: 'dashed' } },
+        { name: 'Last year', type: 'line', smooth: true, data: [30, 34, 38, 41, 44, 48, 52, 58], showSymbol: false, lineStyle: { width: 2, color: C.sky, type: 'dashed' }, itemStyle: { color: C.sky } },
       ],
     },
     spec: `{ "type": "chart:line:smooth",
@@ -343,7 +343,7 @@ const trend: ChartDef[] = [
       textStyle, tooltip: tooltipItem,
       visualMap: { min: 0, max: 10, calculable: true, orient: 'horizontal', left: 'center', bottom: 0, itemHeight: 60, textStyle: axisLabel, inRange: { color: ['#EEF2FF', C.indigoLight, C.indigo] } },
       calendar: {
-        top: 20, left: 30, right: 10, cellSize: ['auto', 14], range: '2026-01',
+        top: 20, left: 30, right: 10, cellSize: ['auto', 32], range: '2026-01',
         itemStyle: { borderWidth: 2, borderColor: '#fff' },
         dayLabel: { fontFamily: FONT, fontSize: 10, color: '#A1A1AA' },
         monthLabel: { fontFamily: FONT, fontSize: 10, color: '#A1A1AA' },
@@ -580,7 +580,7 @@ const flow: ChartDef[] = [
       textStyle, tooltip: tooltipItem,
       series: [{
         type: 'graph', layout: 'force', roam: false, force: { repulsion: 90, edgeLength: 50 },
-        label: { show: true, fontFamily: FONT, fontSize: 9, color: '#52525B' },
+        label: { show: true, position: 'bottom', distance: 6, fontFamily: FONT, fontSize: 9, color: '#52525B' },
         lineStyle: { color: '#D4D4D8', width: 1 },
         data: [
           { name: 'dvt', symbolSize: 26, itemStyle: { color: C.indigo } },
@@ -611,7 +611,7 @@ const flow: ChartDef[] = [
         { dim: 2, name: 'Scale', nameTextStyle: axisLabel, axisLabel },
         { dim: 3, name: 'Trust', nameTextStyle: axisLabel, axisLabel },
       ],
-      parallel: { left: 28, right: 28, top: 24, bottom: 16 },
+      parallel: { left: 28, right: 28, top: 30, bottom: 16 },
       series: [{
         type: 'parallel', lineStyle: { width: 2, opacity: 0.6 },
         data: [[20, 80, 60, 90], [60, 50, 80, 70], [40, 70, 40, 85], [80, 30, 90, 50]],
@@ -736,7 +736,9 @@ const animated: ChartDef[] = [
     option: {
       color: PALETTE, textStyle, grid, tooltip,
       xAxis: { type: 'category', data: ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8', 'Q9', 'Q10'], boundaryGap: false, axisLabel, axisLine: baseAxisLine, axisTick: { show: false } },
-      yAxis: valY(),
+      // Pinned (not auto-scaled) so the progressive reveal loop doesn't
+      // rescale the axis every frame as partial data is drawn in.
+      yAxis: valY({ max: 120 }),
       series: [{
         type: 'line', smooth: true, showSymbol: false,
         data: [20, 32, 28, 45, 60, 55, 72, 85, 92, 110],

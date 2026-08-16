@@ -23,6 +23,31 @@ function lib() {
   return libPromise;
 }
 
+// World boundaries (Natural Earth-derived, public domain) are bundled locally
+// and loaded on demand — no CDN fetch at runtime — so charts that don't need
+// geography never pay for the ~250KB GeoJSON payload.
+let worldPromise: Promise<void> | null = null;
+function worldMap(echarts: typeof import('echarts')): Promise<void> {
+  worldPromise ??= import('../data/world.geo.json')
+    .then((m) => {
+      echarts.registerMap('world', m.default as any);
+    })
+    .catch((err) => {
+      // Clear the memo on failure so a later retry (e.g. a subsequent chart
+      // scrolling into view) re-attempts the import instead of replaying a
+      // cached rejection forever.
+      worldPromise = null;
+      throw err;
+    });
+  return worldPromise;
+}
+
+function needsWorld(option: AnyOption): boolean {
+  if (option?.geo?.map === 'world') return true;
+  const series = Array.isArray(option?.series) ? option.series : [];
+  return series.some((s: AnyOption) => s?.map === 'world' || s?.coordinateSystem === 'geo');
+}
+
 function readOption(el: HTMLElement): AnyOption | null {
   const tag = el.querySelector('script[type="application/json"]');
   if (!tag || !tag.textContent) return null;
@@ -46,6 +71,16 @@ async function boot(el: HTMLElement) {
   // The element may have been removed/hidden while the lib loaded.
   if (instances.has(el) || !visible(el)) return;
 
+  if (needsWorld(option)) {
+    try {
+      await worldMap(echarts);
+    } catch (err) {
+      console.error('Failed to load world map GeoJSON:', err);
+      return;
+    }
+    if (instances.has(el) || !visible(el)) return;
+  }
+
   const chart = echarts.init(el, null, { renderer: 'canvas' });
   instances.set(el, chart);
   if (prefersReduced) option.animation = false;
@@ -61,16 +96,34 @@ async function boot(el: HTMLElement) {
 function runAnimation(kind: string, chart: EChartsType, option: AnyOption, el: HTMLElement) {
   if (kind === 'race-bar') {
     let data = (option.series[0].data as number[]).slice();
-    setInterval(() => {
+    const tick = () => {
       if (document.hidden || !visible(el)) return;
       data = data.map((v) => Math.round(Math.max(24, Math.min(420, v + (Math.random() * 70 - 26)))));
       chart.setOption({ series: [{ type: 'bar', data }] });
-    }, 1600);
+    };
+    tick();
+    setInterval(tick, 1600);
   } else if (kind === 'progressive-line') {
-    setInterval(() => {
+    const full = (option.series[0].data as number[]).slice();
+    const seriesType = option.series[0].type;
+    let i = 2;
+    let hold = 0;
+    const tick = () => {
       if (document.hidden || !visible(el)) return;
-      chart.setOption(option, true);
-    }, 5400);
+      if (i < full.length) {
+        i++;
+        chart.setOption({
+          series: [{ type: seriesType, data: full.slice(0, i).concat(new Array(full.length - i).fill(null)) }],
+        });
+      } else if (hold < 8) {
+        hold++;
+      } else {
+        i = 2;
+        hold = 0;
+      }
+    };
+    tick();
+    setInterval(tick, 320);
   }
 }
 

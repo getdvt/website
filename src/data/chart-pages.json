@@ -246,7 +246,7 @@
     "id": "lines",
     "type": "chart:lines",
     "title": "Flow map",
-    "metaDescription": "See when a flow map's directional lines represent origin-destination movement well, view an illustrative render, and copy a dvt JSON spec.",
+    "metaDescription": "See when a flow map's directional lines represent origin-destination movement well, view a live example, and copy a dvt JSON spec.",
     "whenToUse": "Use a flow map to visualize directional movement between points, like shipment routes or migration flows, where the line encodes a path rather than a category axis. It suits data with a genuine origin-destination structure that a bar or line chart can't represent. When the flows are between named stages rather than spatial points, a sankey diagram is usually the better fit.",
     "targetQuery": "flow map",
     "summary": "Visualize directional movement between points, like shipment routes."
@@ -291,7 +291,7 @@
     "id": "map",
     "type": "chart:map",
     "title": "Choropleth map",
-    "metaDescription": "Learn when a choropleth map's geography matters to the story, view an illustrative live example, and copy a minimal dvt JSON spec to start.",
+    "metaDescription": "Learn when a choropleth map's geography matters to the story, view a live example, and copy a minimal dvt JSON spec to start.",
     "whenToUse": "Use a choropleth map to show a measure by geographic region through color intensity, like revenue by state or churn rate by country. It's the right choice whenever geography itself is part of the story a reader needs to see. When the underlying regions don't matter and only the ranked values do, a horizontal bar chart communicates the same numbers more precisely.",
     "targetQuery": "choropleth map",
     "summary": "Show a measure by geographic region through color intensity."
@@ -300,7 +300,7 @@
     "id": "geo-animated",
     "type": "chart:geo:animated",
     "title": "Animated map",
-    "metaDescription": "See when an animated map shows geographic change over time effectively, view an illustrative live example, and copy a working dvt JSON spec.",
+    "metaDescription": "See when an animated map shows geographic change over time effectively, view a live ripple-animated example, and copy a working dvt JSON spec.",
     "whenToUse": "Use an animated map to show how a geographic measure changes over time, like case counts or usage spreading across regions period by period. The animation makes the pace and direction of geographic change visible in a way a single static map can't. For presentations where a viewer needs to inspect an exact value, pair it with a table or provide a static snapshot alongside the animation.",
     "targetQuery": "animated map",
     "summary": "Show a geographic measure changing over time, region by region."
