@@ -1,0 +1,205 @@
+---
+import Base from '../../layouts/Base.astro';
+import Nav from '../../components/Nav.astro';
+import Handraise from '../../components/Handraise.astro';
+import Footer from '../../components/Footer.astro';
+import { pageGroups } from '../../data/chart-page-lookup';
+import { families } from '../../data/charts';
+
+export const prerender = true;
+
+const groups = pageGroups();
+
+// One-line descriptor: the first sentence of the authored whenToUse prose,
+// truncated as a belt-and-braces guard (chart-pages.json content is
+// hand-authored short prose, so this should never actually trip).
+function descriptor(whenToUse: string): string {
+  const firstSentence = whenToUse.split(/(?<=[.!?])\s+/)[0] ?? whenToUse;
+  return firstSentence.length > 130 ? `${firstSentence.slice(0, 127)}…` : firstSentence;
+}
+
+const groupBlurb: Record<string, string> = Object.fromEntries(
+  families.map((f) => [f.id, f.blurb])
+);
+groupBlurb.maps = 'Geography-encoded measures: choropleths and time-lapse spread.';
+
+// Static, per-group glyphs — 34 live ECharts canvases on one index page would
+// be heavy for zero payoff; a small neutral-tone SVG per family is enough to
+// scan the page.
+const GLYPHS: Record<string, string> = {
+  comparison:
+    '<rect x="5" y="16" width="5" height="11" rx="1"/><rect x="14" y="9" width="5" height="18" rx="1"/><rect x="23" y="13" width="5" height="14" rx="1"/>',
+  trend:
+    '<polyline points="4,23 11,15 17,19 28,6" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
+  'part-to-whole':
+    '<circle cx="16" cy="16" r="10" fill="none" stroke-width="5"/><path d="M16 6 A10 10 0 0 1 24 22" fill="none" stroke-width="5" opacity="0.4"/>',
+  correlation:
+    '<circle cx="8" cy="21" r="2"/><circle cx="15" cy="14" r="2"/><circle cx="21" cy="18" r="2"/><circle cx="26" cy="9" r="2"/><circle cx="12" cy="24" r="2"/>',
+  flow:
+    '<path d="M4 8 C14 8 14 16 24 16 C14 16 14 24 4 24" fill="none" stroke-width="2"/><path d="M4 16 L28 16" fill="none" stroke-width="2" opacity="0.35"/>',
+  statistical:
+    '<rect x="10" y="11" width="12" height="10" rx="1" fill="none" stroke-width="2"/><line x1="16" y1="5" x2="16" y2="11" stroke-width="2"/><line x1="16" y1="21" x2="16" y2="27" stroke-width="2"/>',
+  animated: '<path d="M10 6 L26 16 L10 26 Z"/>',
+  maps:
+    '<circle cx="16" cy="16" r="11" fill="none" stroke-width="2"/><path d="M5 16 H27 M16 5 C21 10 21 22 16 27 C11 22 11 10 16 5 Z" fill="none" stroke-width="1.4" opacity="0.55"/>',
+};
+
+const allPages = groups.flatMap((g) => g.pages);
+const jsonLd = [
+  {
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://dvt.dev/' },
+      { '@type': 'ListItem', position: 2, name: 'Charts', item: 'https://dvt.dev/charts/' },
+    ],
+  },
+  {
+    '@type': 'ItemList',
+    itemListElement: allPages.map((p, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: p.title,
+      url: `https://dvt.dev/charts/${p.id}/`,
+    })),
+  },
+];
+---
+
+<Base
+  title="Chart types — examples + JSON specs | dvt"
+  description="Every chart type dvt ships: when to use it, a live ECharts example, and a minimal JSON spec you can drop straight into a dashboard."
+  jsonLd={jsonLd}
+>
+  <Nav />
+  <main>
+    <section class="page-hero">
+      <div class="container">
+        <div class="eyebrow">Chart types</div>
+        <h1>{allPages.length} chart types, each a few lines of spec.</h1>
+        <p class="lead">
+          Open a type for a live ECharts render — the same library dvt dashboards draw with —
+          guidance on when to use it, and a minimal JSON spec you can copy straight into a
+          dashboard.
+        </p>
+      </div>
+    </section>
+
+    {groups.map(({ group, pages }) => (
+      <section class="section group-section" id={group.id}>
+        <div class="container">
+          <div class="group-head">
+            <svg class="group-glyph" viewBox="0 0 32 32" aria-hidden="true" set:html={GLYPHS[group.id]} />
+            <div>
+              <h2>{group.label}</h2>
+              <p>{groupBlurb[group.id]}</p>
+            </div>
+          </div>
+          <div class="card-grid">
+            {pages.map((p) => (
+              <a href={`/charts/${p.id}/`} class="type-card">
+                <h3>{p.title}</h3>
+                <p>{descriptor(p.whenToUse)}</p>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+    ))}
+
+    <Handraise />
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .page-hero {
+    padding: var(--space-16) 0 var(--space-12);
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+  .eyebrow {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-brand-mark);
+    margin-bottom: var(--space-4);
+  }
+  .page-hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(var(--text-3xl), 5vw, 56px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-5);
+    max-width: 720px;
+  }
+  .lead {
+    font-size: var(--text-lg);
+    color: var(--color-neutral-600);
+    line-height: 1.65;
+    max-width: 620px;
+  }
+
+  .group-section {
+    padding: var(--space-10) 0;
+  }
+  .group-section:not(:last-of-type) {
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+  .group-head {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-4);
+    margin-bottom: var(--space-6);
+  }
+  .group-glyph {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    color: var(--color-brand-mark);
+    stroke: currentColor;
+    fill: currentColor;
+    margin-top: 2px;
+  }
+  .group-head h2 {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-1);
+  }
+  .group-head p {
+    font-size: var(--text-sm);
+    color: var(--color-neutral-500);
+    max-width: 60ch;
+  }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: var(--space-4);
+  }
+  .type-card {
+    display: block;
+    padding: var(--space-5);
+    background: var(--color-white);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-lg);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  }
+  .type-card:hover {
+    border-color: var(--color-brand-mark);
+    box-shadow: var(--shadow-md);
+  }
+  .type-card h3 {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-2);
+  }
+  .type-card p {
+    font-size: var(--text-sm);
+    color: var(--color-neutral-500);
+    line-height: 1.55;
+  }
+</style>
