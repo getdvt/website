@@ -1,0 +1,160 @@
+name: IndexNow ping
+
+# Pings the IndexNow API (https://api.indexnow.org/indexnow) with the set of
+# dvt.dev pages that changed on a push to main, so Bing/Yandex/etc. recrawl
+# faster than organic discovery (DVT-2995).
+#
+# Build + deploy of dvt.dev runs on Cloudflare native Git builds (ADR-0040,
+# DVT-373/DVT-381) — there is no deploy workflow in this repo. This workflow
+# rides alongside the CF build on every push to main; it does not deploy
+# anything itself.
+#
+# Pre-deploy snapshot race: this job's own `npm run build` produces the
+# "next" sitemap almost immediately, but the live site the CF build produces
+# lags behind by however long that build takes. So step order matters:
+#   1. Fetch the CURRENTLY LIVE sitemap ("prev") as the very first step,
+#      before node setup / npm ci / build eat any time — the sooner this
+#      runs after the push, the more likely it reflects the pre-deploy state
+#      rather than a CF build that raced ahead of us.
+#   2. Build locally to get "next" (the sitemap this push produces).
+#   3. Diff prev vs next locally — this is what determines the URL list to
+#      submit, independent of whether the live CF deploy has finished yet.
+#   4. Before pinging, poll the live sitemap until it matches what we built
+#      (bounded wait), so the diff we submit corresponds to what's actually
+#      live when IndexNow (and any crawler that follows up immediately)
+#      looks at dvt.dev. On timeout we ping anyway — the pages will be live
+#      soon and a delayed crawl still beats no ping.
+#
+# The site currently emits a single sitemap chunk (sitemap-0.xml, well under
+# @astrojs/sitemap's 45,000-URL split threshold). If that ever changes,
+# this workflow (and scripts/indexnow-ping.mjs) need to handle multiple
+# sitemap files.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Submission mode'
+        type: choice
+        options:
+          - full
+          - diff
+        default: full
+
+permissions:
+  contents: read
+
+# Intentionally no `concurrency:` group here. The pre-deploy snapshot MUST
+# happen at push time (see the header comment) — queuing a run behind an
+# earlier one would delay its snapshot until after its own CF deploy is
+# live, making prev==next and silently dropping the ping. Runs are
+# per-commit-pair and IndexNow POSTs are idempotent crawl hints, so
+# overlapping runs are safe; the only cost is an occasional harmless
+# wait-for-deploy timeout warning when a newer deploy lands over an older
+# run's wait loop. Do not re-add a shared concurrency group.
+
+jobs:
+  ping:
+    name: indexnow-ping
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 1 (shallow) is load-bearing, not just a speed default:
+      # scripts/sitemap-lastmod.mjs omits static-page lastmods on shallow
+      # clones, and byte-equality between this runner's build and the CF
+      # native build — both the `cmp -s` deploy-wait check and the lastmod
+      # diff — depends on BOTH clones being shallow. Setting fetch-depth: 0
+      # here would flag every static page as changed on every push and burn
+      # the full 10-minute wait loop every run.
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      # Grab the live sitemap FIRST, before node setup/build eat any time —
+      # see the header comment on the pre-deploy snapshot race.
+      - name: Snapshot live sitemap (pre-deploy)
+        run: |
+          if curl -fsS https://dvt.dev/sitemap-0.xml -o /tmp/prev-sitemap.xml; then
+            echo "fetched live sitemap-0.xml"
+          else
+            echo "::warning::could not fetch live sitemap-0.xml"
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.mode }}" = "full" ]; then
+              # --full ignores --prev entirely, so an empty placeholder is harmless.
+              echo '<urlset/>' > /tmp/prev-sitemap.xml
+            else
+              # Diff mode needs a real prev snapshot to avoid treating every
+              # URL as new — don't spam the API on a fetch flake.
+              echo "skip=true" >> "$GITHUB_ENV"
+            fi
+          fi
+
+      - uses: actions/setup-node@v6
+        if: env.skip != 'true'
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        if: env.skip != 'true'
+        run: npm ci
+
+      - name: Build
+        if: env.skip != 'true'
+        run: npm run build
+
+      - name: Determine whether the sitemap changed
+        if: env.skip != 'true'
+        id: diff
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.mode }}" = "full" ]; then
+            echo "count=1" >> "$GITHUB_OUTPUT"
+          else
+            node scripts/indexnow-ping.mjs --prev /tmp/prev-sitemap.xml --next dist/client/sitemap-0.xml --dry-run
+          fi
+
+      - name: No sitemap changes
+        if: env.skip != 'true' && steps.diff.outputs.count == '0'
+        run: echo "no sitemap changes, skipping wait + ping"
+
+      - name: Wait for deploy to go live
+        if: env.skip != 'true' && steps.diff.outputs.count != '0'
+        run: |
+          for i in $(seq 1 20); do
+            if curl -fsS https://dvt.dev/sitemap-0.xml -o /tmp/live-sitemap.xml && cmp -s /tmp/live-sitemap.xml dist/client/sitemap-0.xml; then
+              echo "live sitemap matches built sitemap after $((i * 30))s"
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "::warning::live sitemap did not match built sitemap within 10 minutes; pinging anyway"
+
+      # The IndexNow script treats a non-2xx key-file fetch as a 4xx-style
+      # config bug and exits fatal-red by design (see indexnow-ping.mjs), so
+      # a not-yet-live key file (e.g. right after this file was first added,
+      # or a transient CF propagation gap) would red main. This preflight
+      # catches that case ahead of time and skips the ping instead. It's
+      # also what makes it safe to run the first-ever `workflow_dispatch
+      # mode=full` submission early: as long as it's triggered after the
+      # deploy that adds the key file is live, this check confirms it.
+      - name: Verify IndexNow key file is live
+        if: env.skip != 'true' && steps.diff.outputs.count != '0'
+        run: |
+          key_file=$(find public -maxdepth 1 -regextype posix-extended -regex 'public/[0-9a-f]{8,128}\.txt' -printf '%f\n')
+          expected="${key_file%.txt}"
+          if [ -z "$key_file" ]; then
+            echo "::warning::no IndexNow key file found in public/ — skipping ping"
+            echo "skip=true" >> "$GITHUB_ENV"
+          elif curl -fsS "https://dvt.dev/${key_file}" -o /tmp/live-key.txt && [ "$(cat /tmp/live-key.txt)" = "$expected" ]; then
+            echo "IndexNow key file is live at https://dvt.dev/${key_file}"
+          else
+            echo "::warning::IndexNow key file not live — skipping ping"
+            echo "skip=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Ping IndexNow (diff)
+        if: env.skip != 'true' && steps.diff.outputs.count != '0' && !(github.event_name == 'workflow_dispatch' && inputs.mode == 'full')
+        run: node scripts/indexnow-ping.mjs --prev /tmp/prev-sitemap.xml --next dist/client/sitemap-0.xml
+
+      - name: Ping IndexNow (full)
+        if: env.skip != 'true' && github.event_name == 'workflow_dispatch' && inputs.mode == 'full'
+        run: node scripts/indexnow-ping.mjs --next dist/client/sitemap-0.xml --full
