@@ -38,7 +38,9 @@ on:
     paths:
       - 'src/data/charts.ts'
       - 'src/data/panel-types.json'
+      - 'src/data/chart-pages.json'
       - 'scripts/check-chart-types.mjs'
+      - 'scripts/check-chart-pages.mjs'
       - '.github/workflows/chart-types-drift.yml'
   schedule:
     - cron: '23 13 * * 1'   # Mondays 13:23 UTC — weekly upstream-drift sweep
@@ -60,6 +62,9 @@ jobs:
 
       - name: Assert all dvtType values are valid PanelType members
         run: node scripts/check-chart-types.mjs
+
+      - name: Assert chart-pages.json covers every page-worthy PanelType member
+        run: node scripts/check-chart-pages.mjs
 
   upstream-sweep:
     name: upstream-enum-sweep

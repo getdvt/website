@@ -1,0 +1,274 @@
+[
+  {
+    "id": "bar",
+    "type": "chart:bar",
+    "title": "Bar chart",
+    "metaDescription": "See when to use a bar chart to compare values across categories, view a live ECharts example, and copy a ready-to-use JSON spec for your dvt dashboard.",
+    "whenToUse": "Use a bar chart to compare a single measure across categories, like revenue by region or signups by plan. Bar length is one of the most accurately perceived visual encodings, so it works well even with a dozen or more categories. Reach for a line chart instead when the categories are actually points in time.",
+    "targetQuery": "bar chart"
+  },
+  {
+    "id": "bar-horizontal",
+    "type": "chart:bar:horizontal",
+    "title": "Horizontal bar chart",
+    "metaDescription": "Learn when a horizontal bar chart beats a vertical one, see a live ECharts render, and copy a minimal JSON spec you can drop into a dvt dashboard.",
+    "whenToUse": "Use a horizontal bar chart when category labels are long, or when you're ranking many categories and need the extra vertical room to list them. It reads naturally as a leaderboard, from the top-ranked item down. Prefer the vertical layout when you have a handful of short labels instead.",
+    "targetQuery": "horizontal bar chart"
+  },
+  {
+    "id": "bar-stacked",
+    "type": "chart:bar:stacked",
+    "title": "Stacked bar chart",
+    "metaDescription": "Understand when a stacked bar chart shows a total and its composition clearly, view a live example, and copy a minimal JSON spec for your dvt build.",
+    "whenToUse": "Use a stacked bar chart to show a total and its composition at the same time, such as revenue split by plan tier across months. It works best with two to four series — beyond that, segments become too thin to compare accurately. If only the composition matters and not the total, use a 100% stacked bar instead.",
+    "targetQuery": "stacked bar chart"
+  },
+  {
+    "id": "bar-stacked-percent",
+    "type": "chart:bar:stacked-percent",
+    "title": "100% stacked bar chart",
+    "metaDescription": "See when a 100% stacked bar chart makes proportional composition easy to read, view a live ECharts example, and copy a working dvt JSON spec.",
+    "whenToUse": "Use a 100% stacked bar chart when the proportion each segment contributes matters more than the absolute total, like the share of traffic from each channel over time. Every bar is normalized to the same height, which makes shifts in mix easy to spot but hides changes in overall volume. Pair it with a totals chart nearby if the absolute numbers matter too.",
+    "targetQuery": "100% stacked bar chart"
+  },
+  {
+    "id": "bar-racing",
+    "type": "chart:bar:racing",
+    "title": "Bar chart race",
+    "metaDescription": "Learn when a bar chart race tells a ranking-over-time story effectively, watch a live animated example, and copy a ready dvt JSON spec.",
+    "whenToUse": "Use a bar chart race to tell the story of a ranking changing over time, such as market share shifting between competitors across years. The animation makes reordering visible in a way a static chart can't, which is effective for presentations and public dashboards. Avoid it for analytical dashboards where a viewer needs to read precise values — a static ranked bar chart or table is easier to inspect.",
+    "targetQuery": "bar chart race"
+  },
+  {
+    "id": "line",
+    "type": "chart:line",
+    "title": "Line chart",
+    "metaDescription": "See why a line chart is the default for trends over time, explore a live ECharts render, and copy a minimal JSON spec into your dvt dashboard.",
+    "whenToUse": "Use a line chart as the default for a trend over time — daily active users, monthly revenue, or any metric you're tracking across ordered periods. Multiple lines let you compare trends across segments without the clutter of stacked bars. For categorical data without a meaningful order, use a bar chart instead.",
+    "targetQuery": "line chart"
+  },
+  {
+    "id": "line-smooth",
+    "type": "chart:line:smooth",
+    "title": "Smooth line chart",
+    "metaDescription": "Learn when spline interpolation on a smooth line chart is honest and when it isn't, see a live example, and copy a ready dvt JSON spec.",
+    "whenToUse": "Use a smooth line chart only when the underlying data is genuinely continuous, since the spline interpolation implies values exist between your actual data points. It reads as more polished for presentations, but on weekly or monthly snapshots the smoothing can misrepresent what happened between periods. When in doubt, the straight line chart is the more honest default.",
+    "targetQuery": "smooth line chart"
+  },
+  {
+    "id": "line-step",
+    "type": "chart:line:step",
+    "title": "Step line chart",
+    "metaDescription": "See when a step line chart correctly represents discrete state changes, view a live ECharts example, and copy a minimal dvt JSON spec.",
+    "whenToUse": "Use a step line chart for metrics that change in discrete jumps and hold steady in between, like a plan tier, a feature flag, or an on/off state. The stepped shape shows exactly when a change happened rather than implying a gradual transition. For continuously varying values, a straight or smooth line chart is the better fit.",
+    "targetQuery": "step line chart"
+  },
+  {
+    "id": "line-racing",
+    "type": "chart:line:racing",
+    "title": "Animated line chart race",
+    "metaDescription": "Learn when an animated line chart race helps tell a trend's story, watch a live progressive-draw example, and copy a ready dvt JSON spec.",
+    "whenToUse": "Use an animated line chart race to progressively draw a trend line as it advances through time, which draws attention to the pace and direction of change during a presentation. It's a storytelling device rather than an analytical one — the reader watches rather than inspects. For a dashboard a viewer will study and re-read, a static line chart is easier to interpret precisely.",
+    "targetQuery": "animated line chart race"
+  },
+  {
+    "id": "area",
+    "type": "chart:area",
+    "title": "Area chart",
+    "metaDescription": "See when an area chart's fill honestly represents trend and magnitude together, view a live ECharts render, and copy a working dvt JSON spec.",
+    "whenToUse": "Use an area chart when both the trend and the magnitude of a metric matter, like cumulative signups or total pipeline value over time. The filled region only reads honestly when the baseline is zero — a non-zero baseline exaggerates the visual change. For two to four related series stacked to show composition over time, use a stacked area.",
+    "targetQuery": "area chart"
+  },
+  {
+    "id": "pie",
+    "type": "chart:pie",
+    "title": "Pie chart",
+    "metaDescription": "Learn when a pie chart's part-to-whole encoding actually works, see a live ECharts example, and copy a minimal JSON spec for a dvt dashboard.",
+    "whenToUse": "Use a pie chart when the specific share each slice contributes to a whole is the point, and you have five or fewer categories. Beyond that, slices get too thin to compare by angle, and a bar chart becomes the more accurate choice. Reach for a bar chart whenever comparing categories to each other matters more than their share of the total.",
+    "targetQuery": "pie chart"
+  },
+  {
+    "id": "donut",
+    "type": "chart:donut",
+    "title": "Donut chart",
+    "metaDescription": "See when a donut chart's center label earns its place over a plain pie, view a live example, and copy a ready-to-use dvt JSON spec.",
+    "whenToUse": "Use a donut chart like a pie chart for part-to-whole composition with five or fewer categories, but take advantage of the center hole to surface a headline number like total revenue or ARR. It suits KPI-oriented dashboards where the total and its breakdown both matter. As with pie charts, switch to a bar chart once you have more than a handful of categories.",
+    "targetQuery": "donut chart"
+  },
+  {
+    "id": "scatter",
+    "type": "chart:scatter",
+    "title": "Scatter plot",
+    "metaDescription": "Learn when a scatter plot reveals correlation and outliers between two variables, view a live ECharts render, and copy a minimal dvt JSON spec.",
+    "whenToUse": "Use a scatter plot to show the relationship between two quantitative variables, like ad spend versus signups, so you can spot correlation, clusters, and outliers at a glance. Add a size or color channel to encode a third variable as a bubble scatter. For a single measure over time, a line chart communicates the trend more directly.",
+    "targetQuery": "scatter plot"
+  },
+  {
+    "id": "effect-scatter",
+    "type": "chart:effect-scatter",
+    "title": "Animated scatter plot",
+    "metaDescription": "See when an animated scatter plot's ripple effect earns attention for outliers, watch a live ECharts example, and copy a working dvt JSON spec.",
+    "whenToUse": "Use an animated scatter plot to draw the eye to specific outliers or highlighted points within a larger scatter, using a rippling effect that a static marker can't achieve. It works well when a handful of points — the biggest deals, the most recent events — deserve emphasis over the rest of the cloud. Skip the animation for dense scatter plots where every point matters equally.",
+    "targetQuery": "animated scatter plot"
+  },
+  {
+    "id": "heatmap",
+    "type": "chart:heatmap",
+    "title": "Heatmap",
+    "metaDescription": "Learn when a heatmap's color-intensity grid beats a table of numbers, see a live ECharts example, and copy a minimal JSON spec for dvt.",
+    "whenToUse": "Use a heatmap to show a value across two categorical dimensions, like activity by day of week and hour of day, with color intensity standing in for magnitude. It's dense with information and reveals patterns — like a weekly rhythm — that a table of numbers hides. Reach for a line or bar chart instead when only one of the two dimensions actually matters.",
+    "targetQuery": "heatmap"
+  },
+  {
+    "id": "calendar",
+    "type": "chart:calendar",
+    "title": "Calendar heatmap",
+    "metaDescription": "See when a calendar heatmap surfaces daily streaks and gaps at a glance, view a live ECharts render, and copy a ready dvt JSON spec.",
+    "whenToUse": "Use a calendar heatmap for daily-granularity data over months or years, like commit activity or login counts per day, laid out in the familiar calendar grid. It's built for spotting streaks, gaps, and seasonal rhythm at a glance rather than reading exact values. For a shorter time range or when precise values matter, a line chart or table is easier to read.",
+    "targetQuery": "calendar heatmap"
+  },
+  {
+    "id": "waterfall",
+    "type": "chart:waterfall",
+    "title": "Waterfall chart",
+    "metaDescription": "Learn when a waterfall chart clarifies signed increases and decreases to a total, see a live example, and copy a minimal dvt JSON spec.",
+    "whenToUse": "Use a waterfall chart to bridge a starting value to an ending value through a sequence of signed increases and decreases, like ARR movement from new business, expansion, and churn. Color coding by sign makes it immediately clear which steps grew the total and which shrank it. For a simple before/after comparison without the intermediate steps, a bar chart is simpler.",
+    "targetQuery": "waterfall chart"
+  },
+  {
+    "id": "gauge",
+    "type": "chart:gauge",
+    "title": "Gauge chart",
+    "metaDescription": "See when a gauge chart's status zones earn their space over a plain number, view a live ECharts example, and copy a working dvt JSON spec.",
+    "whenToUse": "Use a gauge chart for a single value against a known range with clear status zones, like SLA compliance or budget burn rate, where the color of the zone communicates status instantly. Use it sparingly — a labeled number with a sparkline usually communicates the same information more precisely in less space. Avoid using more than one or two gauges on a single dashboard; the arc encoding doesn't scale to density.",
+    "targetQuery": "gauge chart"
+  },
+  {
+    "id": "radar",
+    "type": "chart:radar",
+    "title": "Radar chart",
+    "metaDescription": "Learn when a radar chart compares entities across many dimensions well, view a live ECharts example, and copy a minimal dvt JSON spec.",
+    "whenToUse": "Use a radar chart to compare two or three entities across five to ten shared dimensions at once, like a competitive scorecard or a performance profile. The resulting polygon shape makes overall strengths and weaknesses visible in a single glance. Avoid it with more entities or more dimensions — overlapping polygons and compressed axes quickly become unreadable; a table is more precise when exact values matter.",
+    "targetQuery": "radar chart"
+  },
+  {
+    "id": "funnel",
+    "type": "chart:funnel",
+    "title": "Funnel chart",
+    "metaDescription": "See when a funnel chart makes stage-by-stage conversion drop-off obvious, view a live ECharts render, and copy a ready-to-use dvt JSON spec.",
+    "whenToUse": "Use a funnel chart for sequential stages where volume narrows at each step, like a signup-to-paid conversion flow. The tapering shape makes drop-off between stages immediately visible, which a bar chart of the same numbers doesn't communicate as directly. For flows that branch or merge rather than narrow in a straight line, use a sankey diagram instead.",
+    "targetQuery": "funnel chart"
+  },
+  {
+    "id": "treemap",
+    "type": "chart:treemap",
+    "title": "Treemap",
+    "metaDescription": "Learn when a treemap packs hierarchical composition into less space than a pie, see a live ECharts example, and copy a minimal dvt JSON spec.",
+    "whenToUse": "Use a treemap for hierarchical part-to-whole data where the area of each rectangle should encode its value, like headcount by department and team. It packs far more categories into a fixed space than a pie chart can, while still showing hierarchy through nesting. When precise comparison between values matters more than the overview, a sorted bar chart is easier to read.",
+    "targetQuery": "treemap"
+  },
+  {
+    "id": "sankey",
+    "type": "chart:sankey",
+    "title": "Sankey diagram",
+    "metaDescription": "See when a sankey diagram answers 'where does it go?' better than a funnel, view a live ECharts render, and copy a working dvt JSON spec.",
+    "whenToUse": "Use a sankey diagram to answer 'where does it go?' — flows between stages where the width of each band is proportional to quantity, like traffic source through to purchase. It's the right choice when a flow branches, merges, or leaks at multiple points, which a simple funnel can't represent. Keep the node count modest; too many nodes and links turn the diagram into a tangle.",
+    "targetQuery": "sankey diagram"
+  },
+  {
+    "id": "tree",
+    "type": "chart:tree",
+    "title": "Tree diagram",
+    "metaDescription": "Learn when a tree diagram makes parent-child branching the message, view a live ECharts example, and copy a minimal JSON spec for dvt.",
+    "whenToUse": "Use a tree diagram for parent-child hierarchies where the branching structure itself is the message, like an org chart or a category taxonomy. It makes depth and fan-out visible in a way a flat list or table can't. For hierarchical values where area should encode magnitude rather than structure, use a treemap or sunburst instead.",
+    "targetQuery": "tree diagram"
+  },
+  {
+    "id": "sunburst",
+    "type": "chart:sunburst",
+    "title": "Sunburst chart",
+    "metaDescription": "See when a sunburst chart's concentric rings show hierarchy and composition together, view a live ECharts example, and copy a dvt JSON spec.",
+    "whenToUse": "Use a sunburst chart for hierarchical part-to-whole data shown as concentric rings, like revenue by region and then by country within region. Each ring represents a level of the hierarchy, so you can read both the overall composition and the drill-down in one view. For a hierarchy where rectangular area is easier to compare than ring segments, a treemap is often the better fit.",
+    "targetQuery": "sunburst chart"
+  },
+  {
+    "id": "boxplot",
+    "type": "chart:boxplot",
+    "title": "Box plot",
+    "metaDescription": "Learn when a box plot's quartiles and outliers beat a bar chart of averages, view a live ECharts example, and copy a minimal dvt JSON spec.",
+    "whenToUse": "Use a box plot to summarize the distribution of a measure across groups — quartiles, median, and outliers — like deal size by region. It's built for comparing spread and skew across groups, which a bar chart of averages hides entirely. Reach for a bar chart instead when only the central tendency, not the distribution, is the point.",
+    "targetQuery": "box plot"
+  },
+  {
+    "id": "candlestick",
+    "type": "chart:candlestick",
+    "title": "Candlestick chart",
+    "metaDescription": "See when a candlestick chart's OHLC bodies and wicks matter over a line, view a live ECharts render, and copy a ready-to-use dvt JSON spec.",
+    "whenToUse": "Use a candlestick chart for financial open-high-low-close data, where the body and wicks show price action and volatility within each period. It's the standard for anyone reading price ranges rather than a single closing value. For a simpler single-value trend, a line chart communicates direction with far less visual density.",
+    "targetQuery": "candlestick chart"
+  },
+  {
+    "id": "graph",
+    "type": "chart:graph",
+    "title": "Network graph",
+    "metaDescription": "Learn when a network graph makes entity relationships and clusters visible, view a live force-directed ECharts example, and copy a dvt JSON spec.",
+    "whenToUse": "Use a network graph to show entities and the relationships between them, like a dependency map, a knowledge graph, or a topology diagram. Node size and edge weight can encode importance and connection strength, and force-directed layout surfaces natural clusters. For hierarchical relationships with a single root, a tree diagram is usually clearer than a general graph.",
+    "targetQuery": "network graph"
+  },
+  {
+    "id": "lines",
+    "type": "chart:lines",
+    "title": "Flow map",
+    "metaDescription": "See when a flow map's directional lines represent origin-destination movement well, view an illustrative render, and copy a dvt JSON spec.",
+    "whenToUse": "Use a flow map to visualize directional movement between points, like shipment routes or migration flows, where the line encodes a path rather than a category axis. It suits data with a genuine origin-destination structure that a bar or line chart can't represent. When the flows are between named stages rather than spatial points, a sankey diagram is usually the better fit.",
+    "targetQuery": "flow map"
+  },
+  {
+    "id": "parallel",
+    "type": "chart:parallel",
+    "title": "Parallel coordinates chart",
+    "metaDescription": "Learn when a parallel coordinates chart compares many entities across many axes, view a live ECharts example, and copy a minimal dvt JSON spec.",
+    "whenToUse": "Use a parallel coordinates chart to compare many entities across many dimensions at once, with each dimension on its own vertical axis and each entity drawn as a connecting line. It's effective for spotting clusters and outliers across a high-dimensional dataset, like comparing vendors on price, speed, scale, and trust simultaneously. With more than a handful of dimensions or entities the lines start to overplot, so pair it with filtering or highlighting.",
+    "targetQuery": "parallel coordinates chart"
+  },
+  {
+    "id": "pictorial-bar",
+    "type": "chart:pictorial-bar",
+    "title": "Pictogram chart",
+    "metaDescription": "See when a pictogram chart's repeated icons communicate a count intuitively, view a live ECharts example, and copy a working dvt JSON spec.",
+    "whenToUse": "Use a pictogram chart when an icon-repeated bar communicates a count more intuitively than a plain bar, like repeated dots or icons showing units sold. It suits editorial and infographic-style moments where visual character matters as much as precision. For dense analytical dashboards where accuracy and screen space matter more than style, use a standard bar chart.",
+    "targetQuery": "pictogram chart"
+  },
+  {
+    "id": "theme-river",
+    "type": "chart:theme-river",
+    "title": "Stream graph",
+    "metaDescription": "Learn when a stream graph's flowing bands show category volume over time, view a live ECharts render, and copy a minimal dvt JSON spec.",
+    "whenToUse": "Use a stream graph to show how the volumes of several categories rise and fall over time, like traffic by channel across months, rendered as flowing bands around a central axis. Its organic shape makes overall volume trends easy to read even as individual bands wax and wane. For precise comparison between categories at a single point in time, a stacked bar or line chart is easier to read exactly.",
+    "targetQuery": "stream graph"
+  },
+  {
+    "id": "chord",
+    "type": "chart:chord",
+    "title": "Chord diagram",
+    "metaDescription": "See when a chord diagram's arcs show bidirectional relationships well, view an illustrative live example, and copy a working dvt JSON spec.",
+    "whenToUse": "Use a chord diagram to show bidirectional relationships and their relative strength between a set of entities arranged around a circle, like trade flows between regions. It excels at showing which pairs of entities interact most, all in one compact view. For flows that are strictly one-directional, a sankey diagram represents the direction more clearly.",
+    "targetQuery": "chord diagram"
+  },
+  {
+    "id": "map",
+    "type": "chart:map",
+    "title": "Choropleth map",
+    "metaDescription": "Learn when a choropleth map's geography matters to the story, view an illustrative live example, and copy a minimal dvt JSON spec to start.",
+    "whenToUse": "Use a choropleth map to show a measure by geographic region through color intensity, like revenue by state or churn rate by country. It's the right choice whenever geography itself is part of the story a reader needs to see. When the underlying regions don't matter and only the ranked values do, a horizontal bar chart communicates the same numbers more precisely.",
+    "targetQuery": "choropleth map"
+  },
+  {
+    "id": "geo-animated",
+    "type": "chart:geo:animated",
+    "title": "Animated map",
+    "metaDescription": "See when an animated map shows geographic change over time effectively, view an illustrative live example, and copy a working dvt JSON spec.",
+    "whenToUse": "Use an animated map to show how a geographic measure changes over time, like case counts or usage spreading across regions period by period. The animation makes the pace and direction of geographic change visible in a way a single static map can't. For presentations where a viewer needs to inspect an exact value, pair it with a table or provide a static snapshot alongside the animation.",
+    "targetQuery": "animated map"
+  }
+]

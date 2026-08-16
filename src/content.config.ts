@@ -1,5 +1,5 @@
 import { defineCollection, z } from 'astro:content';
-import { glob } from 'astro/loaders';
+import { glob, file } from 'astro/loaders';
 
 // Blog posts live as Markdown in src/content/blog/.
 // The route /blog/<id> is derived from each file's name.
@@ -16,4 +16,20 @@ const blog = defineCollection({
   }),
 });
 
-export const collections = { blog };
+// Programmatic chart-type SEO pages (DVT-3004). Authored content lives in
+// src/data/chart-pages.json — one entry per approved dvt chart type. The
+// route /charts/<id> is derived from each entry's id (slug drift is
+// enforced by scripts/check-chart-pages.mjs, not by this schema).
+const chartPages = defineCollection({
+  loader: file('src/data/chart-pages.json'),
+  schema: z.object({
+    id: z.string().regex(/^[a-z0-9-]+$/),
+    type: z.string().startsWith('chart:'),
+    title: z.string().min(3),
+    metaDescription: z.string().min(80).max(180),
+    whenToUse: z.string().min(60),
+    targetQuery: z.string().min(3),
+  }),
+});
+
+export const collections = { blog, chartPages };
