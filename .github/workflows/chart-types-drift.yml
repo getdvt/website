@@ -17,7 +17,10 @@ name: Chart-type drift check
 #     job below. That job mints a short-lived GitHub App installation token and
 #     reads origin/main's schema live via `gh api`, then checks it TWICE: a
 #     set-compare of $defs.PanelType.enum against panel-types.json, and a
-#     byte-compare of the whole file against the vendored dashboard.schema.json.
+#     byte-compare of the whole file against the vendored dashboard.schema.json,
+#     after normalizing the upstream fetch with the same scripts/normalize-schema.mjs
+#     the vendored copy was produced by (this repo is public; upstream annotation
+#     prose is stripped, so a raw compare would report permanent false drift).
 #     The second is what keeps the snippet gate honest — it validates against the
 #     WHOLE schema, so a change to $defs/Panel or $defs/TableSpec (the class of
 #     change that motivated the gate) would otherwise leave every job green while
@@ -53,6 +56,9 @@ on:
       - 'scripts/check-chart-types.mjs'
       - 'scripts/check-chart-pages.mjs'
       - 'scripts/check-chart-specs.mjs'
+      # A change here changes what the vendored schema IS, and what the weekly
+      # sweep compares against — so it must re-run the gates.
+      - 'scripts/normalize-schema.mjs'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/chart-types-drift.yml'
@@ -185,12 +191,18 @@ jobs:
             echo "::error::Vendored src/data/dashboard.schema.json is missing. Fix: run ./scripts/sync-panel-types.sh and commit both vendored artifacts."
             exit 1
           fi
-          if ! cmp -s /tmp/upstream-schema.json src/data/dashboard.schema.json; then
-            echo "::error::Upstream spec/schema/dashboard.schema.json has drifted from the vendored copy in src/data/dashboard.schema.json. Fix: run ./scripts/sync-panel-types.sh and commit both vendored artifacts."
+          # Normalize the upstream fetch with the SAME script that produced the
+          # vendored copy, then compare normalized-to-normalized. The vendored copy
+          # is structure-only (this repo is public; upstream's annotation prose is
+          # internal commentary), so a raw compare would report permanent drift.
+          node scripts/normalize-schema.mjs /tmp/upstream-schema.json > /tmp/upstream-normalized.json
+
+          if ! cmp -s /tmp/upstream-normalized.json src/data/dashboard.schema.json; then
+            echo "::error::Upstream spec/schema/dashboard.schema.json has drifted STRUCTURALLY from the vendored copy in src/data/dashboard.schema.json. (Annotation-prose-only upstream edits are normalized away and will NOT trigger this.) Fix: run ./scripts/sync-panel-types.sh and commit both vendored artifacts."
             # Diff the WHOLE files — `head -50` already bounds the log. Truncating the
             # inputs instead would print an empty diff for drift past the truncation
             # point, i.e. "it drifted" with no evidence of where.
-            diff src/data/dashboard.schema.json /tmp/upstream-schema.json | head -50 || true
+            diff src/data/dashboard.schema.json /tmp/upstream-normalized.json | head -50 || true
             exit 1
           fi
           echo "OK — vendored dashboard.schema.json is byte-identical to upstream."

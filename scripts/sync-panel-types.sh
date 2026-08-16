@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
 # Sync the vendored PanelType enum into src/data/panel-types.json, AND vendor
-# the full schema verbatim into src/data/dashboard.schema.json (read by
+# the schema (NORMALIZED - structure only, annotation prose stripped, since this
+# repo is public) into src/data/dashboard.schema.json (read by
 # scripts/check-chart-specs.mjs). Both writes come from the same fetch and are
 # staged, then published together, so the two vendored artifacts cannot drift
 # from each other UNDETECTED — the publish is two `mv`s, so an interrupt between
@@ -16,13 +17,15 @@
 # CI (.github/workflows/chart-types-drift.yml) will catch a stale copy.
 #
 # Source-resolution precedence:
-#   1. DVT_REPO=/path/to/dvt (env set)  — explicit local checkout; freshness-checked.
+#   1. DVT_REPO=/path/to/dvt (env set)  — explicit local checkout; reads origin/main.
 #   2. `gh` on PATH + authed            — reads origin/main live via gh api (DEFAULT).
-#   3. ../dvt sibling checkout          — freshness-checked; hard-error if not found.
+#   3. ../dvt sibling checkout          — reads origin/main; hard-error if not found.
 #
-# Freshness check (applies to every local checkout):
-#   git fetch -q origin, then checks commits behind origin/main. Hard-errors if
-#   the checkout is stale — never vendor from an out-of-date local copy.
+# Staleness (applies to every local checkout):
+#   Paths 1 and 3 `git fetch -q origin` and then read `origin/main:<path>` — the
+#   REF, never the working tree. So a checkout parked on a feature branch, or
+#   holding uncommitted schema edits, cannot be vendored, and there is no
+#   behind-count to check: a post-fetch ref read cannot be stale.
 #   Unset DVT_REPO (or install/auth `gh`) to skip local checkouts entirely.
 #
 # Usage (from the website repo root):
@@ -163,23 +166,31 @@ const fs = require("fs");
 const schema = JSON.parse(fs.readFileSync(process.env.SCHEMA_FILE, "utf8"));
 const panelTypes = schema["$defs"]["PanelType"]["enum"];
 const out = {
-  "$comment": "VENDORED mirror of dvt'"'"'s canonical PanelType enum. Do NOT hand-edit. Refresh with: scripts/sync-panel-types.sh — gh api (origin/main) is the default refresh path; DVT_REPO or a freshness-checked sibling are fallbacks. Drift from charts.ts is caught by scripts/check-chart-types.mjs in CI (see .github/workflows/chart-types-drift.yml).",
+  "$comment": "VENDORED mirror of dvt'"'"'s canonical PanelType enum. Do NOT hand-edit. Refresh with: scripts/sync-panel-types.sh — gh api (origin/main) is the default refresh path; DVT_REPO or a sibling checkout are fallbacks, both read from origin/main. Drift from charts.ts is caught by scripts/check-chart-types.mjs in CI (see .github/workflows/chart-types-drift.yml).",
   source: "getdvt/dvt -> spec/schema/dashboard.schema.json -> $defs/PanelType.enum",
   panelTypes,
 };
 fs.writeFileSync(process.env.DST, JSON.stringify(out, null, 2) + "\n");
 '
 
-# Stage the verbatim schema copy: byte-for-byte, no reformatting, so it stays
-# diffable against upstream. Same $SCHEMA_FILE the extraction above read, so the
-# two vendored artifacts are produced from one source and cannot disagree.
-cp "$SCHEMA_FILE" "$SCHEMA_DST.tmp"
+# Stage the NORMALIZED schema copy — structure only, with `description`/`$comment`
+# annotation prose stripped. This repo is PUBLIC and the canonical schema's prose is
+# internal engineering commentary (source paths, ADR/ticket history, version-scoped
+# security notes), so it must not be published here. See scripts/normalize-schema.mjs
+# for why the strip is schema-aware rather than a recursive delete.
+#
+# The same normalizer runs on the live upstream fetch in the weekly drift check, so
+# the byte-compare stays valid; it just compares normalized forms on both sides.
+# Same $SCHEMA_FILE the extraction above read, so the two vendored artifacts are
+# still produced from one source and cannot disagree.
+node "$REPO_ROOT/scripts/normalize-schema.mjs" "$SCHEMA_FILE" > "$SCHEMA_DST.tmp"
 
 # Both artifacts produced — publish them. Each `mv` is atomic, but the PAIR is not:
-# an interrupt between the two leaves one published and one stale. The enum goes
-# first deliberately, so that window leaves the small, trivially-regenerable
-# artifact split rather than the 225KB schema — and `check-chart-types.mjs` catches
-# the split state at PR time either way.
+# an interrupt between the two leaves one published and the other stale. The order
+# does not change which side is left stale in any useful way, so it carries no
+# safety argument — what makes the split safe is that `check-chart-types.mjs`
+# set-compares the two and fails CI whenever they disagree, and re-running this
+# script repairs either direction.
 mv -f "$DST.tmp" "$DST"
 mv -f "$SCHEMA_DST.tmp" "$SCHEMA_DST"
 
