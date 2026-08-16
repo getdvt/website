@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #
-# Sync the vendored PanelType enum into src/data/panel-types.json.
+# Sync the vendored PanelType enum into src/data/panel-types.json, AND vendor
+# the full schema verbatim into src/data/dashboard.schema.json (read by
+# scripts/check-chart-specs.mjs). Both writes come from the same fetch, so
+# the two vendored artifacts can never drift from each other.
 #
 # Canonical source of truth: getdvt/dvt → spec/schema/dashboard.schema.json
 # ($defs.PanelType.enum). This repo's src/data/panel-types.json is a VENDORED
@@ -27,6 +30,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DST="$REPO_ROOT/src/data/panel-types.json"
+SCHEMA_DST="$REPO_ROOT/src/data/dashboard.schema.json"
 
 # Temp file for the gh-api path; cleaned up on exit.
 TMP_SCHEMA=""
@@ -82,18 +86,22 @@ elif command -v gh &>/dev/null && gh auth status &>/dev/null; then
     echo "error: gh api fetch failed." >&2
     exit 1
   fi
-  # Guard: must be valid JSON with a non-empty $defs.PanelType.enum.
+  # Guard: must be valid JSON with a non-empty $defs.PanelType.enum and a
+  # $defs.Panel def (the shape scripts/check-chart-specs.mjs validates
+  # against). If either is missing, an upstream shape change would silently
+  # disarm the guards that depend on it, so fail loudly here instead.
   GUARD_OK="$(TMP_SCHEMA="$TMP_SCHEMA" node -e '
 const fs = require("fs");
 try {
   const schema = JSON.parse(fs.readFileSync(process.env.TMP_SCHEMA, "utf8"));
   const arr = (schema["$defs"] || {})["PanelType"] && schema["$defs"]["PanelType"]["enum"];
   if (!Array.isArray(arr) || arr.length === 0) { process.exit(1); }
+  if (!(schema["$defs"] || {})["Panel"]) { process.exit(1); }
   process.stdout.write("ok");
 } catch(e) { process.exit(1); }
 ' 2>/dev/null || true)"
   if [[ "$GUARD_OK" != "ok" ]]; then
-    echo "error: gh api returned invalid JSON or missing \$defs.PanelType.enum." >&2
+    echo "error: gh api returned invalid JSON or missing \$defs.PanelType.enum / \$defs.Panel." >&2
     echo "       Cannot safely update the vendored file." >&2
     exit 1
   fi
@@ -125,6 +133,14 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Copy the full schema verbatim to src/data/dashboard.schema.json: byte-for-
+# byte, no reformatting, so it stays diffable against upstream. This is the
+# same $SCHEMA_FILE the enum extraction below reads, so the two vendored
+# artifacts can never drift from each other.
+# ---------------------------------------------------------------------------
+cp "$SCHEMA_FILE" "$SCHEMA_DST"
+
+# ---------------------------------------------------------------------------
 # Extract PanelType enum and write the vendored file.
 # Paths are passed via env (not string-interpolated into the JS) so a path with
 # a quote/space/newline can't break out of the eval. $defs needs no escaping here.
@@ -143,3 +159,4 @@ fs.writeFileSync(process.env.DST, JSON.stringify(out, null, 2) + "\n");
 
 echo "synced: $SCHEMA_SOURCE"
 echo "    ->: $DST"
+echo "    ->: $SCHEMA_DST"

@@ -30,7 +30,10 @@ name: Chart-type drift check
 # not run on PRs (job-level event guard) and skips when the App is unprovisioned,
 # so it would report a false green. The PR-time gate is the `drift` job only.
 #
-# No npm install required — all scripts have zero external dependencies.
+# The two enum/page guards (check-chart-types.mjs, check-chart-pages.mjs) stay
+# dependency-free and run first. The snippet-schema guard (check-chart-specs.mjs)
+# needs ajv, hence the `npm ci` step before it, ordered after the two
+# zero-dependency checks so a dependency-install failure cannot mask them.
 
 on:
   pull_request:
@@ -40,8 +43,12 @@ on:
       - 'src/data/panel-types.json'
       - 'src/data/chart-pages.json'
       - 'src/data/chart-page-extras.ts'
+      - 'src/data/dashboard.schema.json'
       - 'scripts/check-chart-types.mjs'
       - 'scripts/check-chart-pages.mjs'
+      - 'scripts/check-chart-specs.mjs'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/chart-types-drift.yml'
   schedule:
     - cron: '23 13 * * 1'   # Mondays 13:23 UTC — weekly upstream-drift sweep
@@ -60,12 +67,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
       - name: Assert all dvtType values are valid PanelType members
         run: node scripts/check-chart-types.mjs
 
       - name: Assert chart-pages.json covers every page-worthy PanelType member
         run: node scripts/check-chart-pages.mjs
+
+      - name: npm ci
+        run: npm ci
+
+      - name: Assert every chart-catalog snippet validates against dvt's Panel schema
+        run: node scripts/check-chart-specs.mjs
 
   upstream-sweep:
     name: upstream-enum-sweep

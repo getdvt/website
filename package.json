@@ -12,21 +12,24 @@
     "astro": "astro",
     "generate-types": "wrangler types",
     "check:chart-types": "node scripts/check-chart-types.mjs",
-    "check:chart-pages": "node scripts/check-chart-pages.mjs"
+    "check:chart-pages": "node scripts/check-chart-pages.mjs",
+    "check:chart-specs": "node scripts/check-chart-specs.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.1.7",
     "@astrojs/rss": "^4.0.19",
     "@astrojs/sitemap": "^3.7.3",
     "@fontsource/inter": "^5.2.8",
-    "@fontsource/space-grotesk": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
+    "@fontsource/space-grotesk": "^5.2.8",
     "astro": "^7.1.6",
     "echarts": "^6.0.0",
     "wrangler": "^4.98.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260620.1",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "typescript": "^5.9.3"
   }
 }
