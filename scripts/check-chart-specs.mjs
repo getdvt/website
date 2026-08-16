@@ -17,6 +17,17 @@
 // Both were real defects in this catalog and both passed ajv cleanly.
 // Re-run the snippets through dvt_spec_validate by hand when changing them.
 //
+// That gap is STRUCTURALLY PERMANENT, not a current-state limitation — do not
+// try to close it by tightening the vendored schema. `$defs/ChartSpec` is
+// `additionalProperties: true` by ADR-0016 design (so an unknown ECharts key can
+// never be a schema error) and `$defs/Panel.required` omits `data` (so a panel
+// with no data source can never be a schema error). No ajv gate over
+// dashboard.schema.json can catch either class, however strictly it is written.
+// The real source of truth for the echarts-key class is dvt's
+// spec/schema/echarts/chart-types.json (`status == "passthrough"`), which is
+// already codegen'd across the language boundary; rebasing this gate onto it is
+// DVT-3113.
+//
 // Zero-dependency guards (check-chart-types.mjs, check-chart-pages.mjs) run
 // before this one in CI, since this one needs `npm ci` for ajv first.
 //
@@ -81,6 +92,23 @@ function extractEntries(file) {
     });
   }
 
+  // Derived completeness guard. A catalog entry that the dvtType regex stops
+  // matching would drop out SILENTLY: its `spec:` snippet just falls inside the
+  // preceding entry's slice, where only the first snippet is read. So count the
+  // snippets independently of the dvtType regex and require one entry per
+  // snippet. `/spec:\s*`/` cannot match the TS interface field (`spec: string;`
+  // has no backtick), so this count is exactly the number of snippets in the file.
+  const snippetCount = (source.match(/spec:\s*`/g) ?? []).length;
+  if (entries.length !== snippetCount) {
+    console.error(
+      `ERROR: ${label} contains ${snippetCount} 'spec: \`...\`' snippet(s) but only ` +
+        `${entries.length} (dvtType, spec) pair(s) were extracted. An entry is being skipped, ` +
+        `which would make this check silently vacuous. Update the regexes in ` +
+        `scripts/check-chart-specs.mjs to match the current shape of ${label}.`
+    );
+    process.exit(1);
+  }
+
   return entries;
 }
 
@@ -88,11 +116,19 @@ const entries = [...extractEntries(CHARTS_FILE), ...extractEntries(EXTRAS_FILE)]
 
 // Sanity guard, mirroring check-chart-pages.mjs:40-43: a near-empty extraction
 // would make this check vacuously "pass", which is worse than a failure.
-if (entries.length < 30) {
+//
+// The per-file guard in extractEntries already catches an entry dropping out one
+// at a time (it compares against an independently-derived snippet count). This
+// floor covers the remaining case: BOTH regexes stopping at once on a wholesale
+// reshape of the source, where the derived count would agree at a much lower
+// number. Keep it just under the current catalog size (40) so it stays tight —
+// raise it when the catalog grows.
+const MIN_SNIPPETS = 39;
+if (entries.length < MIN_SNIPPETS) {
   console.error(
     `ERROR: only ${entries.length} chart-catalog snippet(s) were extracted from ${CHARTS_FILE} ` +
-      `and ${EXTRAS_FILE} (expected 30+). The file shape may have changed; update the regex in ` +
-      `scripts/check-chart-specs.mjs.`
+      `and ${EXTRAS_FILE} (expected ${MIN_SNIPPETS}+). The file shape may have changed; update ` +
+      `the regexes in scripts/check-chart-specs.mjs.`
   );
   process.exit(1);
 }

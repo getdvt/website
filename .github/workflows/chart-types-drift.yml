@@ -15,7 +15,13 @@ name: Chart-type drift check
 #   - UPSTREAM drift (a silent rename in getdvt/dvt while both local files sit
 #     unchanged) is caught by the weekly `schedule:` sweep in the `upstream-sweep`
 #     job below. That job mints a short-lived GitHub App installation token and
-#     reads origin/main's enum live via `gh api`. Auth = the `getdvt-ci-reader`
+#     reads origin/main's schema live via `gh api`, then checks it TWICE: a
+#     set-compare of $defs.PanelType.enum against panel-types.json, and a
+#     byte-compare of the whole file against the vendored dashboard.schema.json.
+#     The second is what keeps the snippet gate honest — it validates against the
+#     WHOLE schema, so a change to $defs/Panel or $defs/TableSpec (the class of
+#     change that motivated the gate) would otherwise leave every job green while
+#     the gate silently checked a stale contract. Auth = the `getdvt-ci-reader`
 #     App (Contents: read on getdvt/dvt), wired as the `DVT_SCHEMA_APP_ID` repo
 #     variable + `DVT_SCHEMA_APP_PRIVATE_KEY` repo secret. See the setup runbook:
 #     .github/github-app-ci-reader.md. The sweep is a no-op until the App is
@@ -78,7 +84,7 @@ jobs:
       - name: npm ci
         run: npm ci
 
-      - name: Assert every chart-catalog snippet validates against dvt's Panel schema
+      - name: Assert every chart-catalog snippet validates against dvt's Panel schema (structure only — not data-binding or ECharts keys)
         run: node scripts/check-chart-specs.mjs
 
   upstream-sweep:
@@ -161,3 +167,20 @@ jobs:
           }
           console.log("OK — upstream enum matches vendored copy (" + vendored.length + " types).");
           '
+
+      # HIGH-1: the enum compare above only covers $defs.PanelType.enum. The
+      # snippet gate validates against the WHOLE vendored schema, so a change to
+      # $defs/Panel or $defs/TableSpec upstream would leave both jobs green while
+      # the snippet gate silently checks a stale contract — and the two `table`
+      # bugs that motivated that gate were TableSpec violations, not enum ones.
+      # Byte-compare is valid by construction: sync-panel-types.sh copies the
+      # schema verbatim (`cp`), so any difference is real drift.
+      - name: Compare full upstream schema to vendored copy (byte-exact)
+        if: vars.DVT_SCHEMA_APP_ID != ''
+        run: |
+          if ! cmp -s /tmp/upstream-schema.json src/data/dashboard.schema.json; then
+            echo "::error::Upstream spec/schema/dashboard.schema.json has drifted from the vendored copy in src/data/dashboard.schema.json. Fix: run ./scripts/sync-panel-types.sh and commit both vendored artifacts."
+            diff <(head -c 200000 src/data/dashboard.schema.json) <(head -c 200000 /tmp/upstream-schema.json) | head -50 || true
+            exit 1
+          fi
+          echo "OK — vendored dashboard.schema.json is byte-identical to upstream."

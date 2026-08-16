@@ -206,10 +206,6 @@ const jsonLd = [
       flex: 1;
       min-width: 0;
     }
-    /* Land an anchor jump clear of the fixed site nav. */
-    .group-section {
-      scroll-margin-top: calc(60px + var(--space-6));
-    }
   }
 
   /* Astro scopes this component's styles to elements it renders; <html> is
@@ -222,6 +218,18 @@ const jsonLd = [
 
   .group-section {
     padding: var(--space-16) 0;
+    /* Land an anchor jump clear of the fixed site nav. Deliberately NOT inside the
+       1024px block: a deep link like /charts#trend has to clear the nav on mobile
+       too, where the nav's height is `auto` rather than the desktop 60px, so the
+       base uses a viewport-independent allowance. Both rules live here, in this
+       order, because they have equal specificity — the desktop override only wins
+       by coming second in source. */
+    scroll-margin-top: var(--space-16);
+  }
+  @media (min-width: 1024px) {
+    .group-section {
+      scroll-margin-top: calc(60px + var(--space-6));
+    }
   }
   .group-section:not(:last-of-type) {
     border-bottom: 1px solid var(--color-neutral-200);
@@ -307,13 +315,34 @@ const jsonLd = [
     };
 
     if (sections.length > 0) {
+      // An IO callback receives only the targets whose intersection CHANGED, not
+      // the full observed set — so scrolling out of a section can fire with a
+      // single non-intersecting entry, which would leave the highlight stuck on
+      // the section just left. Keep a running map of every section's visibility
+      // and pick the winner across the whole map each time.
+      //
+      // Compare intersected HEIGHT, not intersectionRatio: ratio is normalised by
+      // each section's own height, so under this shrunk root band it systematically
+      // favours short sections (Maps, 4 cards) over tall ones (Comparison).
+      const visibleHeight = new Map();
       const observer = new IntersectionObserver(
         (entries) => {
-          const visible = entries
-            .filter((entry) => entry.isIntersecting)
-            .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-          if (visible.length > 0) {
-            setActive(visible[0].target.id);
+          for (const entry of entries) {
+            visibleHeight.set(
+              entry.target.id,
+              entry.isIntersecting ? entry.intersectionRect.height : 0
+            );
+          }
+          let bestId = null;
+          let bestHeight = 0;
+          for (const [id, height] of visibleHeight) {
+            if (height > bestHeight) {
+              bestHeight = height;
+              bestId = id;
+            }
+          }
+          if (bestId !== null) {
+            setActive(bestId);
           }
         },
         // Treat the band just below the fixed site nav down to the vertical

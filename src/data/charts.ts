@@ -162,7 +162,9 @@ const comparison: ChartDef[] = [
       series: [{ type: 'bar', data: [120, 150, 178, 168, 212, 264], barMaxWidth: 34, itemStyle: { color: C.indigo, borderRadius: [4, 4, 0, 0] } }],
     },
     spec: `{ "type": "chart:bar",
-  "data": { "query": "SELECT month, SUM(revenue) AS revenue\\n            FROM sales GROUP BY month" },
+  "data": { "rows": [{ "month": "Jan", "revenue": 120 }, { "month": "Feb", "revenue": 150 },
+                     { "month": "Mar", "revenue": 178 }, { "month": "Apr", "revenue": 168 },
+                     { "month": "May", "revenue": 212 }, { "month": "Jun", "revenue": 264 }] },
   "spec": { "series": [{ "type": "bar", "barMaxWidth": 48 }] } }`,
   },
   {
@@ -267,7 +269,8 @@ const comparison: ChartDef[] = [
     spec: `{ "type": "chart:waterfall",
   "data": { "rows": [{ "stage": "Start", "delta": 100 },
                      { "stage": "New biz", "delta": 40 },
-                     { "stage": "End", "delta": 140 }] },
+                     { "stage": "Contraction", "delta": -10 },
+                     { "stage": "End", "delta": null }] },
   "spec": { "categoryField": "stage", "valueField": "delta" } }`,
   },
 ];
@@ -388,7 +391,10 @@ const trend: ChartDef[] = [
       }],
     },
     spec: `{ "type": "chart:calendar",
-  "data": { "query": "SELECT day, SUM(events) AS events\\n            FROM activity GROUP BY day" },
+  "data": { "rows": [{ "day": "2026-01-01", "events": 6 }, { "day": "2026-01-02", "events": 9 },
+                     { "day": "2026-01-05", "events": 4 }, { "day": "2026-01-06", "events": 8 },
+                     { "day": "2026-01-07", "events": 10 }, { "day": "2026-01-08", "events": 5 },
+                     { "day": "2026-01-09", "events": 7 }, { "day": "2026-01-12", "events": 3 }] },
   "spec": { "series": [{ "type": "heatmap", "coordinateSystem": "calendar" }] } }`,
   },
 ];
@@ -579,7 +585,13 @@ const correlation: ChartDef[] = [
     spec: `{ "type": "chart:heatmap",
   "data": { "rows": [{ "day": "Mon", "period": "Morn", "events": 6 },
                      { "day": "Mon", "period": "Aft", "events": 4 },
-                     { "day": "Tue", "period": "Eve", "events": 7 }] },
+                     { "day": "Mon", "period": "Eve", "events": 2 },
+                     { "day": "Tue", "period": "Morn", "events": 8 },
+                     { "day": "Tue", "period": "Aft", "events": 5 },
+                     { "day": "Tue", "period": "Eve", "events": 7 },
+                     { "day": "Wed", "period": "Morn", "events": 3 },
+                     { "day": "Wed", "period": "Aft", "events": 9 },
+                     { "day": "Wed", "period": "Eve", "events": 6 }] },
   "spec": { "series": [{ "type": "heatmap" }],
             "visualMap": { "min": 0, "max": 10 } } }`,
   },
@@ -811,7 +823,10 @@ const animated: ChartDef[] = [
     spec: `{ "type": "chart:bar:racing",
   "data": { "rows": [{ "month": "Jan", "plan": "Enterprise", "revenue": 320 },
                      { "month": "Jan", "plan": "Pro", "revenue": 264 },
-                     { "month": "Feb", "plan": "Enterprise", "revenue": 340 }] },
+                     { "month": "Jan", "plan": "Team", "revenue": 180 },
+                     { "month": "Feb", "plan": "Enterprise", "revenue": 340 },
+                     { "month": "Feb", "plan": "Pro", "revenue": 302 },
+                     { "month": "Feb", "plan": "Team", "revenue": 176 }] },
   "spec": { "animation": { "frameField": "month" },
             "categoryField": "plan", "valueField": "revenue" } }`,
   },
@@ -877,7 +892,7 @@ const tables: ChartDef[] = [
     ],
     "conditionalFormat": [
       { "where": { "field": "mom", "op": "lt", "value": 0 },
-        "apply": { "fill": "{danger.subtle}", "textColor": "danger", "weight": "bold" } }
+        "apply": { "fill": "{semantic.negative}", "textColor": "{semantic.negative}", "weight": "bold" } }
     ] } }`,
   },
   {
