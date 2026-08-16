@@ -11,7 +11,8 @@
     "preview": "astro preview",
     "astro": "astro",
     "generate-types": "wrangler types",
-    "check:chart-types": "node scripts/check-chart-types.mjs"
+    "check:chart-types": "node scripts/check-chart-types.mjs",
+    "check:chart-pages": "node scripts/check-chart-pages.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.1.7",

@@ -1,0 +1,300 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Nav from '../../components/Nav.astro';
+import Handraise from '../../components/Handraise.astro';
+import Footer from '../../components/Footer.astro';
+import EChart from '../../components/EChart.astro';
+import SpecReveal from '../../components/SpecReveal.astro';
+import { resolveChartDef, groupOf, siblingsFor } from '../../data/chart-page-lookup';
+
+export const prerender = true;
+
+export async function getStaticPaths() {
+  const pages = await getCollection('chartPages');
+  return pages.map((p) => ({
+    params: { slug: p.id },
+    props: { page: p },
+  }));
+}
+
+const { page } = Astro.props;
+
+const def = resolveChartDef(page.data.type);
+// Drift tripwire: every chart-pages.json entry must resolve to a real,
+// renderable ChartDef (charts.ts `families` ∪ chart-page-extras.ts). A
+// missing/renamed entry on either side must fail the build, not ship a
+// blank chart.
+if (!def || !def.option) {
+  throw new Error(
+    `charts/[slug]: chart-pages.json entry '${page.id}' (type '${page.data.type}') did not ` +
+      `resolve to a ChartDef with an 'option' — check src/data/charts.ts \`families\` and ` +
+      `src/data/chart-page-extras.ts \`chartPageExtras\`.`
+  );
+}
+
+// Margin-affordance transform (founder requirement): a named yAxis needs
+// enough top grid room + label gap that its title never collides with the
+// plot; every grid should containLabel so axis labels don't clip. Never
+// mutates the shared, imported ChartDef option.
+function ensureHeadroom(option: Record<string, unknown>): Record<string, unknown> {
+  const opt = structuredClone(option) as Record<string, any>;
+  const yAxis = Array.isArray(opt.yAxis) ? opt.yAxis[0] : opt.yAxis;
+  if (yAxis && typeof yAxis === 'object' && yAxis.name) {
+    opt.grid = opt.grid ?? {};
+    if (typeof opt.grid.top !== 'number' || opt.grid.top < 56) opt.grid.top = 56;
+    if (typeof yAxis.nameGap !== 'number' || yAxis.nameGap < 20) yAxis.nameGap = 20;
+  }
+  if (opt.grid && typeof opt.grid === 'object') opt.grid.containLabel = true;
+  return opt;
+}
+
+const option = ensureHeadroom(def.option);
+// Deliberate build-time parse: an invalid `spec` snippet must fail the
+// build rather than ship broken JSON to a reader who copies it.
+const prettySpec = JSON.stringify(JSON.parse(def.spec), null, 2);
+
+const group = groupOf(page.data.type);
+const siblings = siblingsFor(page.data.type);
+
+const pageURL = new URL(`/charts/${page.id}/`, Astro.site).href;
+
+// The three geo/flow types render an abstract, illustrative composition here
+// (the site runtime registers no GeoJSON). Honesty rule: say so on the page,
+// not just in the meta description.
+const ILLUSTRATIVE_NOTE: Record<string, string> = {
+  'chart:lines':
+    'Illustrative render on an abstract canvas: a real dvt build binds the lines series to registered GeoJSON geography.',
+  'chart:map':
+    'Illustrative render: a real dvt build binds GeoJSON regions and draws actual geography.',
+  'chart:geo:animated':
+    'Illustrative render: a real dvt build animates flows over registered GeoJSON geography.',
+};
+const illustrativeNote = ILLUSTRATIVE_NOTE[page.data.type];
+const jsonLd = [
+  {
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://dvt.dev/' },
+      { '@type': 'ListItem', position: 2, name: 'Charts', item: 'https://dvt.dev/charts/' },
+      { '@type': 'ListItem', position: 3, name: page.data.title, item: pageURL },
+    ],
+  },
+];
+---
+
+<Base
+  title={`${page.data.title} — example + JSON spec | dvt`}
+  description={page.data.metaDescription}
+  jsonLd={jsonLd}
+>
+  <Nav />
+  <main>
+    <section class="page-hero">
+      <div class="container">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a href="/">Home</a>
+          <span class="sep" aria-hidden="true">/</span>
+          <a href="/charts/">Charts</a>
+          <span class="sep" aria-hidden="true">/</span>
+          <span aria-current="page">{page.data.title}</span>
+        </nav>
+        {group && <div class="eyebrow">{group.label}</div>}
+        <h1>{page.data.title}</h1>
+        <p class="lead">{page.data.whenToUse}</p>
+      </div>
+    </section>
+
+    <section class="section chart-section">
+      <div class="container">
+        <div class="chart-card">
+          <EChart option={option} height="320px" animate={def.animate} label={page.data.title} />
+          {illustrativeNote && <p class="chart-note">{illustrativeNote}</p>}
+        </div>
+      </div>
+    </section>
+
+    <section class="section spec-section">
+      <div class="container narrow">
+        <h2>Minimal dvt spec</h2>
+        <p>
+          The panel body for a {page.data.title.toLowerCase()}. Add an <code>id</code> and <code>title</code>,
+          give it a <code>data</code> block whose <code>query</code> points at
+          your warehouse, and it drops into any dvt dashboard.
+        </p>
+        <SpecReveal code={prettySpec} lang="json" open={true} />
+      </div>
+    </section>
+
+    <section class="section outro-section">
+      <div class="container narrow">
+        <h2>Build it in dvt</h2>
+        <p>
+          Every chart type on this site is a few lines of the same declarative JSON spec. Read
+          the full <a href="/spec">spec format</a>, or connect an AI agent to your warehouse and
+          build one live in the <a href="/quickstart">quickstart</a>.
+        </p>
+      </div>
+    </section>
+
+    {siblings.length > 0 && (
+      <section class="section related-section">
+        <div class="container">
+          <h2>Related chart types</h2>
+          <div class="related-grid">
+            {siblings.map((s) => (
+              <a href={`/charts/${s.id}/`} class="related-link">{s.title}</a>
+            ))}
+          </div>
+        </div>
+      </section>
+    )}
+
+    <Handraise />
+  </main>
+  <Footer />
+</Base>
+
+<script>
+  import '../../scripts/charts.ts';
+</script>
+
+<style>
+  .page-hero {
+    padding: var(--space-12) 0 var(--space-8);
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--color-neutral-400);
+    margin-bottom: var(--space-5);
+  }
+  .breadcrumb a {
+    color: var(--color-neutral-500);
+    transition: color var(--transition-fast);
+  }
+  .breadcrumb a:hover {
+    color: var(--color-neutral-900);
+  }
+  .breadcrumb .sep {
+    color: var(--color-neutral-300);
+  }
+  .breadcrumb [aria-current='page'] {
+    color: var(--color-neutral-600);
+  }
+  .eyebrow {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-brand-mark);
+    margin-bottom: var(--space-4);
+  }
+  .page-hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(var(--text-3xl), 5vw, 48px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-5);
+    max-width: 700px;
+  }
+  .lead {
+    font-size: var(--text-lg);
+    color: var(--color-neutral-600);
+    line-height: 1.7;
+    max-width: 700px;
+  }
+
+  .section {
+    padding: var(--space-12) 0;
+  }
+  .chart-section {
+    padding-top: var(--space-12);
+    padding-bottom: var(--space-8);
+  }
+  .container.narrow {
+    max-width: 720px;
+    margin-inline: auto;
+    padding-inline: var(--space-6);
+  }
+
+  /* Chart card: generous padding so legends/axis labels never clip. */
+  .chart-card {
+    background: var(--color-white);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-8) var(--space-6) var(--space-6);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .chart-note {
+    margin-top: var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--color-neutral-500);
+    text-align: center;
+  }
+
+  .spec-section h2,
+  .outro-section h2,
+  .related-section h2 {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-3);
+  }
+  .spec-section p,
+  .outro-section p {
+    font-size: var(--text-base);
+    color: var(--color-neutral-600);
+    line-height: 1.7;
+    margin-bottom: var(--space-4);
+  }
+  .spec-section p code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    background: var(--color-neutral-50);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-sm);
+    padding: 0.1em 0.4em;
+  }
+  .outro-section a {
+    color: var(--color-brand-indigo);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .outro-section a:hover {
+    color: var(--color-brand-indigo-dark);
+  }
+
+  .related-section {
+    border-top: 1px solid var(--color-neutral-200);
+    background: var(--bg-secondary);
+  }
+  .related-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+  }
+  .related-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 10px var(--space-5);
+    background: var(--color-white);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-neutral-700);
+    transition: border-color var(--transition-fast), color var(--transition-fast);
+  }
+  .related-link:hover {
+    border-color: var(--color-brand-mark);
+    color: var(--color-neutral-900);
+  }
+</style>
