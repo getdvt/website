@@ -4,8 +4,9 @@
 # the full schema verbatim into src/data/dashboard.schema.json (read by
 # scripts/check-chart-specs.mjs). Both writes come from the same fetch and are
 # staged, then published together, so the two vendored artifacts cannot drift
-# from each other — and scripts/check-chart-types.mjs GATES that agreement in CI
-# rather than leaving it as a claim in this comment.
+# from each other UNDETECTED — the publish is two `mv`s, so an interrupt between
+# them can still split the pair. What actually guarantees agreement is the
+# set-compare gate in scripts/check-chart-types.mjs, which fails CI on a split.
 #
 # Canonical source of truth: getdvt/dvt → spec/schema/dashboard.schema.json
 # ($defs.PanelType.enum). This repo's src/data/panel-types.json is a VENDORED
@@ -45,24 +46,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# ---------------------------------------------------------------------------
-# freshness_check <dir>: ensure the local checkout is NOT behind origin/main.
-# Exits 1 with an actionable message if it is.
-# ---------------------------------------------------------------------------
-freshness_check() {
-  local dir="$1"
-  echo "Fetching origin in $dir ..." >&2
-  git -C "$dir" fetch -q origin
-  local behind
-  behind=$(git -C "$dir" rev-list --count HEAD..origin/main)
-  if [[ "$behind" != "0" ]]; then
-    echo "error: $dir is $behind commit(s) behind origin/main." >&2
-    echo "       Vendoring from a stale checkout would produce a stale enum." >&2
-    echo "       Fix: git -C \"$dir\" pull" >&2
-    echo "       Or unset DVT_REPO to use the gh api path (requires gh + auth)." >&2
-    exit 1
-  fi
-}
+# (There is no freshness_check any more. It existed to prove a local checkout was
+# not BEHIND origin/main before vendoring from its working tree — but paths 1 and 3
+# now fetch and read `origin/main:` directly, and a post-fetch ref read cannot be
+# stale, nor can it pick up a feature branch or an uncommitted edit. Reading the
+# ref subsumes the check entirely rather than complementing it.)
 
 # ---------------------------------------------------------------------------
 # Determine schema acquisition path.
@@ -71,15 +59,27 @@ freshness_check() {
 if [[ -n "${DVT_REPO:-}" ]]; then
   # --- Path 1: explicit DVT_REPO override ---
   echo "Using explicit DVT_REPO: $DVT_REPO" >&2
-  SRC="$DVT_REPO/spec/schema/dashboard.schema.json"
-  if [[ ! -f "$SRC" ]]; then
-    echo "error: canonical source not found at: $SRC" >&2
+  if ! git -C "$DVT_REPO" rev-parse --git-dir &>/dev/null; then
+    echo "error: DVT_REPO is not a git checkout: $DVT_REPO" >&2
     echo "       Check that DVT_REPO points to a valid getdvt/dvt checkout." >&2
     exit 1
   fi
-  freshness_check "$DVT_REPO"
-  SCHEMA_FILE="$SRC"
-  SCHEMA_SOURCE="$SRC"
+  # Read the REF, not the working tree. A checkout parked on a feature branch that
+  # modifies the schema — or one with uncommitted edits — would otherwise be
+  # vendored verbatim, and since the vendored copy is now byte-compared weekly,
+  # that surfaces days later as a phantom "upstream drift" pointing at getdvt/dvt
+  # instead of at the local tree. This is the workspace's "read the ref, not the
+  # working tree" rule (OS-90). A post-fetch ref read also cannot be stale, which
+  # is why no separate freshness check is needed on this path.
+  echo "Fetching origin in $DVT_REPO ..." >&2
+  git -C "$DVT_REPO" fetch -q origin
+  TMP_SCHEMA="$(mktemp)"
+  if ! git -C "$DVT_REPO" show origin/main:spec/schema/dashboard.schema.json > "$TMP_SCHEMA"; then
+    echo "error: could not read spec/schema/dashboard.schema.json from origin/main in $DVT_REPO." >&2
+    exit 1
+  fi
+  SCHEMA_FILE="$TMP_SCHEMA"
+  SCHEMA_SOURCE="$DVT_REPO -> origin/main:spec/schema/dashboard.schema.json"
 
 elif command -v gh &>/dev/null && gh auth status &>/dev/null; then
   # --- Path 2: gh api (default, always fresh) ---
@@ -106,15 +106,17 @@ else
     echo "         c) Check out getdvt/dvt at $SIBLING" >&2
     exit 1
   fi
-  SRC="$SIBLING/spec/schema/dashboard.schema.json"
-  if [[ ! -f "$SRC" ]]; then
-    echo "error: canonical source not found at: $SRC" >&2
+  # Read the REF, not the working tree — same rationale as path 1 above (OS-90).
+  echo "Fetching origin in $SIBLING ..." >&2
+  git -C "$SIBLING" fetch -q origin
+  TMP_SCHEMA="$(mktemp)"
+  if ! git -C "$SIBLING" show origin/main:spec/schema/dashboard.schema.json > "$TMP_SCHEMA"; then
+    echo "error: could not read spec/schema/dashboard.schema.json from origin/main in $SIBLING." >&2
     echo "       Check out getdvt/dvt as a sibling of this repo, or set DVT_REPO=/path/to/dvt." >&2
     exit 1
   fi
-  freshness_check "$SIBLING"
-  SCHEMA_FILE="$SRC"
-  SCHEMA_SOURCE="$SRC"
+  SCHEMA_FILE="$TMP_SCHEMA"
+  SCHEMA_SOURCE="$SIBLING -> origin/main:spec/schema/dashboard.schema.json"
 fi
 
 # ---------------------------------------------------------------------------
@@ -173,9 +175,13 @@ fs.writeFileSync(process.env.DST, JSON.stringify(out, null, 2) + "\n");
 # two vendored artifacts are produced from one source and cannot disagree.
 cp "$SCHEMA_FILE" "$SCHEMA_DST.tmp"
 
-# Both artifacts produced — publish them.
-mv -f "$SCHEMA_DST.tmp" "$SCHEMA_DST"
+# Both artifacts produced — publish them. Each `mv` is atomic, but the PAIR is not:
+# an interrupt between the two leaves one published and one stale. The enum goes
+# first deliberately, so that window leaves the small, trivially-regenerable
+# artifact split rather than the 225KB schema — and `check-chart-types.mjs` catches
+# the split state at PR time either way.
 mv -f "$DST.tmp" "$DST"
+mv -f "$SCHEMA_DST.tmp" "$SCHEMA_DST"
 
 echo "synced: $SCHEMA_SOURCE"
 echo "    ->: $DST"

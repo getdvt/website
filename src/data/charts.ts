@@ -892,7 +892,7 @@ const tables: ChartDef[] = [
     ],
     "conditionalFormat": [
       { "where": { "field": "mom", "op": "lt", "value": 0 },
-        "apply": { "fill": "{semantic.negative}", "textColor": "{semantic.negative}", "weight": "bold" } }
+        "apply": { "fill": "{semantic.negative}", "weight": "bold" } }
     ] } }`,
   },
   {

@@ -221,10 +221,15 @@ const jsonLd = [
     /* Land an anchor jump clear of the fixed site nav. Deliberately NOT inside the
        1024px block: a deep link like /charts#trend has to clear the nav on mobile
        too, where the nav's height is `auto` rather than the desktop 60px, so the
-       base uses a viewport-independent allowance. Both rules live here, in this
-       order, because they have equal specificity — the desktop override only wins
-       by coming second in source. */
-    scroll-margin-top: var(--space-16);
+       base is sized for the MOBILE nav, which is the taller of the two: at ≤768px
+       Nav.astro wraps to two rows (padding-block ×2 + the access-button row +
+       row-gap + the links row ≈ 88px), so a 64px allowance would still land an
+       <h2> under it. 104px = that ~88px plus breathing room. Both rules live here,
+       in this order, because they have equal specificity — the desktop override
+       only wins by coming second in source.
+       DVT-3118 tracks replacing both constants with a --nav-h published by
+       Nav.astro, so this file and that one can't drift. */
+    scroll-margin-top: 104px;
   }
   @media (min-width: 1024px) {
     .group-section {

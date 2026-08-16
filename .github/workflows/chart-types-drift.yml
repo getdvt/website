@@ -178,9 +178,19 @@ jobs:
       - name: Compare full upstream schema to vendored copy (byte-exact)
         if: vars.DVT_SCHEMA_APP_ID != ''
         run: |
+          # `cmp -s` also exits non-zero when a file is MISSING, which would report
+          # a deleted vendored copy as "drift". Check existence first so the error
+          # names the real cause.
+          if [[ ! -f src/data/dashboard.schema.json ]]; then
+            echo "::error::Vendored src/data/dashboard.schema.json is missing. Fix: run ./scripts/sync-panel-types.sh and commit both vendored artifacts."
+            exit 1
+          fi
           if ! cmp -s /tmp/upstream-schema.json src/data/dashboard.schema.json; then
             echo "::error::Upstream spec/schema/dashboard.schema.json has drifted from the vendored copy in src/data/dashboard.schema.json. Fix: run ./scripts/sync-panel-types.sh and commit both vendored artifacts."
-            diff <(head -c 200000 src/data/dashboard.schema.json) <(head -c 200000 /tmp/upstream-schema.json) | head -50 || true
+            # Diff the WHOLE files — `head -50` already bounds the log. Truncating the
+            # inputs instead would print an empty diff for drift past the truncation
+            # point, i.e. "it drifted" with no evidence of where.
+            diff src/data/dashboard.schema.json /tmp/upstream-schema.json | head -50 || true
             exit 1
           fi
           echo "OK — vendored dashboard.schema.json is byte-identical to upstream."

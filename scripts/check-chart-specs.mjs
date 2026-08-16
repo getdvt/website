@@ -26,7 +26,9 @@
 // The real source of truth for the echarts-key class is dvt's
 // spec/schema/echarts/chart-types.json (`status == "passthrough"`), which is
 // already codegen'd across the language boundary; rebasing this gate onto it is
-// DVT-3113.
+// DVT-3113. And note the mechanical reason, not just the design one: the weekly
+// upstream-sweep byte-compares this vendored schema against upstream, so any local
+// edit to it is permanently red by construction — not merely discouraged.
 //
 // Zero-dependency guards (check-chart-types.mjs, check-chart-pages.mjs) run
 // before this one in CI, since this one needs `npm ci` for ajv first.
@@ -101,10 +103,11 @@ function extractEntries(file) {
   const snippetCount = (source.match(/spec:\s*`/g) ?? []).length;
   if (entries.length !== snippetCount) {
     console.error(
-      `ERROR: ${label} contains ${snippetCount} 'spec: \`...\`' snippet(s) but only ` +
-        `${entries.length} (dvtType, spec) pair(s) were extracted. An entry is being skipped, ` +
-        `which would make this check silently vacuous. Update the regexes in ` +
-        `scripts/check-chart-specs.mjs to match the current shape of ${label}.`
+      `ERROR: ${label} contains ${snippetCount} 'spec: \`...\`' snippet(s) but ` +
+        `${entries.length} (dvtType, spec) pair(s) were extracted — the two disagree, so at ` +
+        `least one catalog entry is being mis-paired or skipped, which would make this check ` +
+        `silently vacuous. Update the regexes in scripts/check-chart-specs.mjs to match the ` +
+        `current shape of ${label}.`
     );
     process.exit(1);
   }
@@ -127,8 +130,9 @@ const MIN_SNIPPETS = 39;
 if (entries.length < MIN_SNIPPETS) {
   console.error(
     `ERROR: only ${entries.length} chart-catalog snippet(s) were extracted from ${CHARTS_FILE} ` +
-      `and ${EXTRAS_FILE} (expected ${MIN_SNIPPETS}+). The file shape may have changed; update ` +
-      `the regexes in scripts/check-chart-specs.mjs.`
+      `and ${EXTRAS_FILE} (expected ${MIN_SNIPPETS}+). Either the file shape changed — update ` +
+      `the regexes in scripts/check-chart-specs.mjs — or the catalog legitimately shrank, in ` +
+      `which case lower MIN_SNIPPETS to match.`
   );
   process.exit(1);
 }
