@@ -83,16 +83,34 @@ async function boot(el: HTMLElement) {
 function runAnimation(kind: string, chart: EChartsType, option: AnyOption, el: HTMLElement) {
   if (kind === 'race-bar') {
     let data = (option.series[0].data as number[]).slice();
-    setInterval(() => {
+    const tick = () => {
       if (document.hidden || !visible(el)) return;
       data = data.map((v) => Math.round(Math.max(24, Math.min(420, v + (Math.random() * 70 - 26)))));
       chart.setOption({ series: [{ type: 'bar', data }] });
-    }, 1600);
+    };
+    tick();
+    setInterval(tick, 1600);
   } else if (kind === 'progressive-line') {
-    setInterval(() => {
+    const full = (option.series[0].data as number[]).slice();
+    const seriesType = option.series[0].type;
+    let i = 2;
+    let hold = 0;
+    const tick = () => {
       if (document.hidden || !visible(el)) return;
-      chart.setOption(option, true);
-    }, 5400);
+      if (i < full.length) {
+        i++;
+        chart.setOption({
+          series: [{ type: seriesType, data: full.slice(0, i).concat(new Array(full.length - i).fill(null)) }],
+        });
+      } else if (hold < 8) {
+        hold++;
+      } else {
+        i = 2;
+        hold = 0;
+      }
+    };
+    tick();
+    setInterval(tick, 320);
   }
 }
 
