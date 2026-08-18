@@ -15,7 +15,7 @@ const specs = [
   { label: 'Runs on',                     value: 'Snowpark Container Services' },
   { label: 'Compute',                     value: 'Your warehouses' },
   { label: 'Data it can reach on its own', value: 'None', none: true },
-  { label: 'Outbound network',            value: 'None', none: true },
+  { label: 'Egress from your account',    value: 'None', none: true },
   { label: 'Agent access',                value: 'Claude and Cortex, over MCP' },
 ];
 
@@ -26,7 +26,7 @@ const questions = [
   { q: 'Which subprocessors will our data pass through?',                           a: 'None' },
   { q: 'What credentials or service accounts must we issue, and how are they rotated?', a: 'No credential' },
   { q: 'What can the vendor see if the vendor is breached?',                        a: 'Nothing of yours' },
-  { q: 'What egress must we open through our network policy?',                      a: 'None' },
+  { q: 'What outbound egress must we allow for it to work?',                      a: 'None' },
   { q: 'Which of our data does the application itself hold access to?',             a: 'No data grants' },
   { q: 'How do we revoke access, and how quickly does it take effect?',             a: 'Uninstall it' },
 ];
@@ -47,7 +47,7 @@ const lands = [
   },
   {
     name: 'An MCP server',
-    body: 'Registered in your account at install, so agents find dvt without any URL wrangling. Cortex Agents reach it from inside Snowflake, and your team can point Claude Code at it from their own machines. Agents authenticate as Snowflake identities, so there is no dvt API key to issue or rotate. Note the direction: an agent connects inward, through Snowflake\'s authentication. The app still calls nothing out.',
+    body: 'Registered in your account at install, so agents find dvt without any URL wrangling. Cortex Agents reach it from inside Snowflake, and your team can point Claude Code at it from their own machines with a Snowflake credential. Agents authenticate as Snowflake identities, so there is no dvt API key to issue or rotate. Note the direction: an agent connects inward, through Snowflake\'s authentication. The app still calls nothing out.',
   },
   {
     name: 'The app\'s own storage',
@@ -89,7 +89,7 @@ const caps = [
 
 <Base
   title="dvt for Snowflake: the native app that runs inside your account"
-  description="dvt ships as a Snowflake Native App: installed into your own account, running on your compute, holding no data grants, and making no outbound network requests. Your data never leaves."
+  description="dvt ships as a Snowflake Native App: installed into your own account, running on your compute, holding no data grants, and sending nothing outside your account. Your data never leaves."
 >
   <Nav />
   <main>
@@ -132,13 +132,14 @@ const caps = [
           <h2>Your data never leaves your account.</h2>
           <p>
             This is the reason the app exists in this shape. There is no connection to configure, no
-            credential to hand over, and no egress to audit, because there is no egress. Your rows
-            are queried and drawn where they already sit, and dvt operates no service that could
-            receive them.
+            credential to hand over, and no egress to audit, because nothing leaves your account.
+            Your rows are queried and drawn where they already sit, and dvt operates no service that
+            could receive them.
           </p>
         </div>
 
         <figure class="figure" data-reveal>
+          <div class="figure-scroll">
           <svg
             viewBox="0 0 840 424"
             role="img"
@@ -221,6 +222,7 @@ const caps = [
               no path back to dvt
             </text>
           </svg>
+          </div>
           <figcaption>
             The app sits on top of your own compute, which reads your own storage. Every arrow stays
             inside the boundary, and the only line that crosses it is the one that stops.
@@ -526,7 +528,7 @@ const caps = [
   }
   /* The absences are the argument, so they carry the weight. */
   .spec.is-none { background: rgba(13, 148, 136, 0.05); }
-  .spec.is-none dt { color: var(--color-brand-teal); }
+  .spec.is-none dt { color: var(--color-brand-teal-dark); }
   .spec.is-none dd {
     font-family: var(--font-display);
     font-size: 27px;
@@ -538,7 +540,11 @@ const caps = [
 
   /* ── Sections ─────────────────────────────────────────────────── */
   .section { padding: var(--space-section) 0; }
-  .section-alt { background: var(--bg-secondary); }
+  .section-alt {
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--color-neutral-200);
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
   .section-head {
     display: flex;
     flex-direction: column;
@@ -583,25 +589,29 @@ const caps = [
     max-width: 680px;
   }
   .band-head p {
-    color: #A9BACB;
+    color: rgba(255, 255, 255, 0.72);
     font-size: var(--text-lg);
     line-height: 1.65;
   }
 
   .figure { margin: var(--space-16) 0 var(--space-12); }
-  .figure svg { display: block; width: 100%; height: auto; }
+  /* Below ~760px the 13px diagram labels would render illegibly small, so the
+     figure scrolls horizontally instead of scaling down. */
+  .figure-scroll { overflow-x: auto; }
+  .figure svg { display: block; width: 100%; min-width: 720px; height: auto; }
   .figure figcaption {
     font-family: var(--font-mono);
     font-size: var(--text-xs);
     line-height: 1.6;
-    color: #A9BACB;
+    color: rgba(255, 255, 255, 0.72);
     margin-top: var(--space-5);
     max-width: 70ch;
   }
 
   .guarantees {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+    /* Explicit counts, never auto-fit: 4 items must land 4/2/1, never 3+1. */
+    grid-template-columns: repeat(4, 1fr);
     gap: 1px;
     background: rgba(91, 191, 186, 0.3);
     border: 1px solid rgba(91, 191, 186, 0.3);
@@ -625,7 +635,7 @@ const caps = [
   .guarantee p {
     font-size: var(--text-sm);
     line-height: 1.6;
-    color: #A9BACB;
+    color: rgba(255, 255, 255, 0.72);
   }
 
   /* ── Security-review checklist ────────────────────────────────── */
@@ -652,8 +662,8 @@ const caps = [
     font-weight: 500;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--color-brand-teal);
-    border: 1px solid var(--color-brand-teal);
+    color: var(--color-brand-teal-dark);
+    border: 1px solid var(--color-brand-teal-dark);
     border-radius: 999px;
     padding: 5px 13px;
     white-space: nowrap;
@@ -685,7 +695,7 @@ const caps = [
     font-family: var(--font-mono);
     font-size: var(--text-sm);
     font-weight: 500;
-    color: var(--color-brand-teal);
+    color: var(--color-brand-teal-dark);
     padding-top: 2px;
   }
   .land p {
@@ -698,7 +708,8 @@ const caps = [
   /* ── Capability grid ──────────────────────────────────────────── */
   .caps {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+    /* Explicit counts, never auto-fit: 6 items must land 3/2/1, never 4+2. */
+    grid-template-columns: repeat(3, 1fr);
     gap: var(--space-5);
     margin-top: var(--space-12);
   }
@@ -769,11 +780,17 @@ const caps = [
   .close-inner .hero-cta-row { margin-top: var(--space-4); }
 
   /* ── Responsive ───────────────────────────────────────────────── */
+  @media (max-width: 980px) {
+    .caps { grid-template-columns: repeat(2, 1fr); }
+  }
   @media (max-width: 860px) {
     .specsheet { grid-template-columns: repeat(2, 1fr); }
+    .guarantees { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 640px) {
     .specsheet { grid-template-columns: 1fr; }
+    .guarantees { grid-template-columns: 1fr; }
+    .caps { grid-template-columns: 1fr; }
     .land { grid-template-columns: 1fr; gap: var(--space-2); }
     .review-row { grid-template-columns: 1fr; }
     .review-a { justify-self: start; }
