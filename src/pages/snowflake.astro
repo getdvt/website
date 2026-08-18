@@ -45,7 +45,7 @@ const supply = [
   },
   {
     name: 'Two scanners, then a third party',
-    body: 'Trivy and Grype both gate the release, because each is blind to things the other catches, and any fixable finding fails the build. A malware scan gates it too. Snowflake then runs its own scan when we publish and rejects fixable high and critical CVEs, so the version that reaches you passed a check we do not control.',
+    body: 'Trivy and Grype both gate the release, because each is blind to things the other catches. Trivy fails the build on any fixable finding; Grype fails on fixable high, critical and unrated ones, and reports the rest. The exceptions are a short per-CVE allowlist in the repo, for findings whose only published fix is an unreleased interpreter beta. A malware scan gates it too. Snowflake then runs its own scan when we publish and rejects fixable high and critical CVEs, so the version that reaches you passed a check we do not control.',
   },
   {
     name: 'Nothing pulled at runtime',
@@ -330,8 +330,9 @@ const caps = [
           <h2>What is in the container, and who checked it.</h2>
           <p class="lead">
             The other half of a container review is the software itself. We do not claim the images
-            carry no vulnerabilities, because nobody can. We claim that nothing with a known fix
-            gets through the gate, and that you are not taking our word for it.
+            carry no vulnerabilities, because nobody can. We claim that nothing with an available fix
+            ships unnamed: either the gate blocks it, or it is listed by CVE with the reason no
+            stable release carries the fix yet. Scan the published image yourself and check.
           </p>
         </div>
 
