@@ -1,0 +1,781 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+
+export const prerender = true;
+
+const EARLY_ACCESS = '/#early-access';
+const BUILDER_URL = 'https://demo.dvt.dev/builder';
+
+// The app, stated plainly. Six facts, rendered in an even 3x2 grid. The two
+// absences are the argument, so they carry the visual weight (`none: true`).
+const specs = [
+  { label: 'Deployment',                  value: 'Native App, in your account' },
+  { label: 'Runs on',                     value: 'Snowpark Container Services' },
+  { label: 'Compute',                     value: 'Your warehouses' },
+  { label: 'Data it can reach on its own', value: 'None', none: true },
+  { label: 'Outbound network',            value: 'None', none: true },
+  { label: 'Agent access',                value: 'Claude and Cortex, over MCP' },
+];
+
+// The standard vendor-security questionnaire, and what it collapses to when
+// the tool runs inside the customer's own account.
+const questions = [
+  { q: 'Where does the vendor store and process our data?',                         a: 'Nowhere' },
+  { q: 'Which subprocessors will our data pass through?',                           a: 'None' },
+  { q: 'What credentials or service accounts must we issue, and how are they rotated?', a: 'No credential' },
+  { q: 'What can the vendor see if the vendor is breached?',                        a: 'Nothing of yours' },
+  { q: 'What egress must we open through our network policy?',                      a: 'None' },
+  { q: 'Which of our data does the application itself hold access to?',             a: 'No data grants' },
+  { q: 'How do we revoke access, and how quickly does it take effect?',             a: 'Uninstall it' },
+];
+
+// Every object the install creates in the consumer account.
+const lands = [
+  {
+    name: 'The application',
+    body: 'Installed from the listing you were granted. It carries a version, and you can see which one you are on at any time.',
+  },
+  {
+    name: 'A compute pool',
+    body: 'The app creates one to run its own containers. This is one of the two privileges it asks for at install time.',
+  },
+  {
+    name: 'One web endpoint',
+    body: 'A single ingress your team opens in the browser, reached at a snowflakecomputing.app address and protected by Snowflake\'s own authentication. Nothing else is exposed.',
+  },
+  {
+    name: 'An MCP server',
+    body: 'Registered in your account at install, so agents find dvt without any URL wrangling. Cortex Agents reach it from inside Snowflake, and your team can point Claude Code at it from their own machines. Agents authenticate as Snowflake identities, so there is no dvt API key to issue or rotate. Note the direction: an agent connects inward, through Snowflake\'s authentication. The app still calls nothing out.',
+  },
+  {
+    name: 'The app\'s own storage',
+    body: 'Dashboard specs, versions, comments, and org knowledge live inside the app, in your account. Even the metadata about your dashboards stays put.',
+  },
+  {
+    name: 'A connection, already made',
+    body: 'The app points at the account it is installed in from first boot. There is no host, credential, or connection string for anyone to configure.',
+  },
+];
+
+const caps = [
+  {
+    title: 'Bring your own agent, Claude included',
+    body: 'Create, edit, and audit are first-class operations over MCP, so an agent builds a dashboard from a sentence. Use Cortex Agents in the account, or connect Claude Code and work on your dashboards the way your engineers already work on code. Any write can be previewed and validated before it persists.',
+  },
+  {
+    title: 'Versioned, with real diffs',
+    body: 'Every change to a dashboard, page, or single element gets an append-only revision. Roll back to any version; elements keep their identity so later edits stay correct.',
+  },
+  {
+    title: 'Reviewed like code',
+    body: 'Leave a threaded comment pinned to a panel. An agent reads the open threads, makes the edits, replies, and resolves. Reviewers do not need edit rights.',
+  },
+  {
+    title: 'Taught your conventions',
+    body: 'Skills are versioned, org-scoped authoring docs: your metric definitions, your warehouse semantics, how your team builds charts. Agents read them before authoring.',
+  },
+  {
+    title: 'Attributed, always',
+    body: 'Every edit records whether a human, an agent, or the system made it, and which key an agent acted through. Nothing an AI does is anonymous.',
+  },
+  {
+    title: 'Yours to style',
+    body: 'No locked styles. Every visual property, down to the gap between an axis and its title, is an exposed parameter. Set your own product name, accent, and logo.',
+  },
+];
+---
+
+<Base
+  title="dvt for Snowflake: the native app that runs inside your account"
+  description="dvt ships as a Snowflake Native App: installed into your own account, running on your compute, holding no data grants, and making no outbound network requests. Your data never leaves."
+>
+  <Nav />
+  <main>
+    <!-- ── Hero ──────────────────────────────────────────────────── -->
+    <section class="page-hero">
+      <div class="container">
+        <div class="eyebrow">Snowflake Native App</div>
+        <h1>dvt, completely sealed inside <em>your</em> Snowflake account.</h1>
+        <p class="lead">
+          dvt ships as a Snowflake Native App. You install it from a listing into your own account,
+          where it runs on Snowpark Container Services, on your compute, behind your network policy.
+          It queries your data as the person using it, keeps its dashboards inside the app, and has
+          no route back to us.
+        </p>
+        <div class="hero-cta-row">
+          <a href={EARLY_ACCESS} class="hero-cta-primary">Request access</a>
+          <a href={BUILDER_URL} class="hero-cta-secondary">See the format first →</a>
+        </div>
+        <p class="hero-cta-note">
+          We set it up with you directly. If you would rather look before talking to anyone, the
+          browser builder needs no signup.
+        </p>
+
+        <dl class="specsheet" data-reveal>
+          {specs.map((s) => (
+            <div class:list={['spec', { 'is-none': s.none }]}>
+              <dt>{s.label}</dt>
+              <dd>{s.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </section>
+
+    <!-- ── The boundary ──────────────────────────────────────────── -->
+    <section class="band">
+      <div class="container">
+        <div class="band-head" data-reveal>
+          <span class="kicker">The boundary</span>
+          <h2>Your data never leaves your account.</h2>
+          <p>
+            This is the reason the app exists in this shape. There is no connection to configure, no
+            credential to hand over, and no egress to audit, because there is no egress. Your rows
+            are queried and drawn where they already sit, and dvt operates no service that could
+            receive them.
+          </p>
+        </div>
+
+        <figure class="figure" data-reveal>
+          <svg
+            viewBox="0 0 840 424"
+            role="img"
+            aria-label="Diagram: inside your Snowflake account, the dvt native app sits on top, sending SQL down to your warehouses, which read your databases underneath. A single outbound path from the app stops at the account boundary, labelled nothing leaves."
+          >
+            <defs>
+              <marker id="arw" viewBox="0 0 10 10" refX="8" refY="5"
+                      markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#5BBFBA" />
+              </marker>
+            </defs>
+
+            <rect x="26" y="54" width="556" height="342" rx="16"
+                  fill="rgba(91,191,186,0.05)" stroke="#5BBFBA" stroke-width="1.5" />
+            <text x="46" y="40" font-family="'JetBrains Mono', monospace" font-size="12.5"
+                  letter-spacing="1.7" fill="#5BBFBA">YOUR SNOWFLAKE ACCOUNT</text>
+
+            <!-- layer 1: the app, on top -->
+            <rect x="70" y="80" width="468" height="86" rx="10"
+                  fill="rgba(91,191,186,0.12)" stroke="#5BBFBA" stroke-width="1.5" />
+            <g transform="translate(94,104) scale(0.4)">
+              <polygon points="3,61 15,61 15,38 3,46" fill="#5BBFBA" />
+              <polygon points="19,61 33,61 33,23 19,31" fill="#5BBFBA" />
+              <polygon points="37,61 55,61 55,5 37,13" fill="#5BBFBA" />
+            </g>
+            <text x="126" y="113" font-family="Inter, sans-serif" font-size="16.5" font-weight="600" fill="#FAFAFA">
+              dvt, the native app
+            </text>
+            <text x="94" y="140" font-family="Inter, sans-serif" font-size="13" fill="#A9BACB">
+              Container services. The interface, the agent surface, and
+            </text>
+            <text x="94" y="157" font-family="Inter, sans-serif" font-size="13" fill="#A9BACB">
+              your dashboard specs, all held inside the app.
+            </text>
+
+            <line x1="304" y1="170" x2="304" y2="206" stroke="#5BBFBA" stroke-width="1.4"
+                  marker-start="url(#arw)" marker-end="url(#arw)" />
+            <text x="320" y="192" font-family="'JetBrains Mono', monospace" font-size="11.5" fill="#A9BACB">
+              SQL down, result rows up
+            </text>
+
+            <!-- layer 2: warehouses -->
+            <rect x="70" y="210" width="468" height="72" rx="10"
+                  fill="rgba(255,255,255,0.05)" stroke="rgba(169,186,203,0.45)" stroke-width="1" />
+            <text x="94" y="240" font-family="Inter, sans-serif" font-size="16.5" font-weight="600" fill="#FAFAFA">
+              Your warehouses
+            </text>
+            <text x="94" y="263" font-family="Inter, sans-serif" font-size="13" fill="#A9BACB">
+              Your compute, your credits, your resource monitors.
+            </text>
+
+            <line x1="304" y1="286" x2="304" y2="316" stroke="#5BBFBA" stroke-width="1.4"
+                  marker-start="url(#arw)" marker-end="url(#arw)" />
+            <text x="320" y="305" font-family="'JetBrains Mono', monospace" font-size="11.5" fill="#A9BACB">
+              reads
+            </text>
+
+            <!-- layer 3: the data, underneath -->
+            <rect x="70" y="320" width="468" height="58" rx="10"
+                  fill="rgba(255,255,255,0.05)" stroke="rgba(169,186,203,0.45)" stroke-width="1" />
+            <text x="94" y="345" font-family="Inter, sans-serif" font-size="16.5" font-weight="600" fill="#FAFAFA">
+              Your databases, schemas, and shares
+            </text>
+            <text x="94" y="366" font-family="Inter, sans-serif" font-size="13" fill="#A9BACB">
+              Read as you, under your own role. The app holds no grants.
+            </text>
+
+            <!-- the terminated outbound path -->
+            <line x1="538" y1="123" x2="574" y2="123" stroke="#A9BACB" stroke-width="1.4"
+                  stroke-dasharray="4 4" />
+            <line x1="582" y1="99" x2="582" y2="147" stroke="#EF4444" stroke-width="2.5" />
+            <text x="606" y="114" font-family="'JetBrains Mono', monospace" font-size="12.5"
+                  letter-spacing="0.4" fill="#FAFAFA">nothing</text>
+            <text x="606" y="133" font-family="'JetBrains Mono', monospace" font-size="12.5"
+                  letter-spacing="0.4" fill="#FAFAFA">leaves</text>
+            <text x="606" y="161" font-family="Inter, sans-serif" font-size="12.5" fill="#A9BACB">
+              no telemetry, no analytics,
+            </text>
+            <text x="606" y="178" font-family="Inter, sans-serif" font-size="12.5" fill="#A9BACB">
+              no path back to dvt
+            </text>
+          </svg>
+          <figcaption>
+            The app sits on top of your own compute, which reads your own storage. Every arrow stays
+            inside the boundary, and the only line that crosses it is the one that stops.
+          </figcaption>
+        </figure>
+
+        <div class="guarantees" data-reveal>
+          <div class="guarantee">
+            <span class="g-label">Egress</span>
+            <h3>Nothing leaves</h3>
+            <p>
+              No usage telemetry, no error reporting, no analytics, and no connection back to dvt. We
+              receive nothing when you use it, including when it breaks.
+            </p>
+          </div>
+          <div class="guarantee">
+            <span class="g-label">Access</span>
+            <h3>It holds no data grants</h3>
+            <p>
+              The app asks for no access to your databases at all. Dashboards run with the caller's
+              rights, so every query executes under the role of the person who asked for it.
+            </p>
+          </div>
+          <div class="guarantee">
+            <span class="g-label">Audit</span>
+            <h3>Visible in your query history</h3>
+            <p>
+              Queries the app runs land in your own account usage views, attributed to the
+              application, so you can see exactly what ran and on which warehouse.
+            </p>
+          </div>
+          <div class="guarantee">
+            <span class="g-label">Removal</span>
+            <h3>Uninstall is the off switch</h3>
+            <p>
+              Drop the application and it goes, along with everything it created, including its own
+              storage. There is no account on our side to close and no data of yours to ask back.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── The review that collapses ──────────────────────────────── -->
+    <section class="section">
+      <div class="container">
+        <div class="section-head" data-reveal>
+          <span class="kicker">Your security review</span>
+          <h2>Most of the security questionnaire does not apply.</h2>
+          <p class="lead">
+            A vendor security review is mostly a set of questions about what happens to your data
+            once it leaves. Install the tool into your own account and those questions have no
+            subject. Here is the standard list, and what it collapses to.
+          </p>
+        </div>
+
+        <div class="review" data-reveal>
+          {questions.map((row) => (
+            <div class="review-row">
+              <p class="review-q">{row.q}</p>
+              <span class="review-a">{row.a}</span>
+            </div>
+          ))}
+        </div>
+
+        <p class="review-foot">
+          What remains is the review any Snowflake Native App gets: which privileges it requests, and
+          which warehouse it may use. Your admin reads both in Snowsight before accepting, and every
+          query the app runs shows up in your own account usage views afterward. You do not have to
+          take our word for any of it, which is the point.
+        </p>
+      </div>
+    </section>
+
+    <!-- ── What lands in your account ─────────────────────────────── -->
+    <section class="section section-alt">
+      <div class="container">
+        <div class="section-head" data-reveal>
+          <span class="kicker">The install</span>
+          <h2>What actually lands in your account.</h2>
+          <p class="lead">
+            A native app is not a black box you have to trust. It is a set of objects in your account
+            that you can list, inspect, and drop. This is all of them.
+          </p>
+        </div>
+
+        <div class="lands" data-reveal>
+          {lands.map((item) => (
+            <div class="land">
+              <span class="land-name">{item.name}</span>
+              <p>{item.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- ── The product inside the container ───────────────────────── -->
+    <section class="section">
+      <div class="container">
+        <div class="section-head" data-reveal>
+          <span class="kicker">Inside the app</span>
+          <h2>It is the full dvt, not a cut-down edition.</h2>
+          <p class="lead">
+            The native app is a deployment shape, not a reduced tier. What you get inside it is the
+            whole product, which rests on one decision: a dvt dashboard is a versioned JSON spec, not
+            a pile of saved clicks.
+          </p>
+        </div>
+
+        <div class="caps" data-reveal>
+          {caps.map((c) => (
+            <div class="cap">
+              <h3>{c.title}</h3>
+              <p>{c.body}</p>
+            </div>
+          ))}
+        </div>
+
+        <p class="caps-foot">
+          The spec format and client SDKs are Apache-2.0. There is a fuller tour of the product at
+          <a href="/product">dvt.dev/product</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- ── Worth knowing ──────────────────────────────────────────── -->
+    <section class="section section-alt">
+      <div class="container">
+        <div class="section-head" data-reveal>
+          <span class="kicker">Worth knowing</span>
+          <h2>The parts we would ask about.</h2>
+        </div>
+        <div class="notes" data-reveal>
+          <div class="note">
+            <span class="rule"></span>
+            <p>
+              <strong>Zero egress cuts both ways.</strong> Because the app cannot call out, there is
+              no in-app feedback or bug reporting, and no error report ever reaches us on its own.
+              When something breaks you tell us out of band. We treat that as the cost of the
+              posture, not a gap to close.
+            </p>
+          </div>
+          <div class="note">
+            <span class="rule"></span>
+            <p>
+              <strong>It runs on your credits.</strong> The app's containers and every query it
+              issues consume your Snowflake compute. There is no dvt-hosted tier absorbing that cost
+              in this deployment.
+            </p>
+          </div>
+          <div class="note">
+            <span class="rule"></span>
+            <p>
+              <strong>We drive the upgrades, and they fail safe.</strong> New versions reach your
+              install when we publish them, the way any native app works. If a version's migration
+              fails, the upgrade aborts and the version you are already running keeps serving.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Close ──────────────────────────────────────────────────── -->
+    <section class="section close">
+      <div class="container close-inner" data-reveal>
+        <span class="kicker">Next</span>
+        <h2>Put dvt inside your account.</h2>
+        <p class="lead">
+          Tell us where it should go and we will get it there. Nothing has to leave your account for
+          any of it, including the evaluation.
+        </p>
+        <div class="hero-cta-row">
+          <a href={EARLY_ACCESS} class="hero-cta-primary">Request access</a>
+          <a href="/security" class="hero-cta-secondary">Read the security posture →</a>
+        </div>
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Base>
+
+<script>
+  import '../scripts/reveal.ts';
+</script>
+
+<style>
+  /* ── Page hero ─────────────────────────────────────────────────── */
+  .page-hero {
+    padding: var(--space-24) 0 var(--space-16);
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-brand-mark);
+    margin-bottom: var(--space-4);
+  }
+  .page-hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(var(--text-3xl), 5vw, 56px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-5);
+    max-width: 860px;
+    text-wrap: balance;
+  }
+  .page-hero h1 em {
+    font-style: normal;
+    color: var(--color-brand-teal);
+  }
+  .lead {
+    font-size: var(--text-lg);
+    color: var(--color-neutral-600);
+    line-height: 1.65;
+    max-width: 660px;
+  }
+
+  .hero-cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: var(--space-8);
+  }
+  .hero-cta-primary {
+    display: inline-flex;
+    align-items: center;
+    padding: 12px var(--space-6);
+    background: var(--color-brand-indigo);
+    color: var(--color-white);
+    border: 1px solid var(--color-brand-indigo);
+    border-radius: var(--radius-md);
+    font-size: var(--text-base);
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .hero-cta-primary:hover { background: var(--color-brand-indigo-dark); }
+  .hero-cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    padding: 12px var(--space-6);
+    background: transparent;
+    color: var(--color-neutral-700);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-md);
+    font-size: var(--text-base);
+    font-weight: 500;
+    text-decoration: none;
+    transition: border-color 200ms cubic-bezier(0.22, 1, 0.36, 1), color 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .hero-cta-secondary:hover {
+    border-color: var(--color-neutral-400);
+    color: var(--color-neutral-950);
+  }
+  .hero-cta-note {
+    margin-top: var(--space-4);
+    color: var(--color-neutral-600);
+    font-size: var(--text-sm);
+    line-height: 1.7;
+    max-width: 52ch;
+  }
+
+  /* ── Spec sheet ───────────────────────────────────────────────────
+     Six facts in an even 3x2 grid, dropping to 2x3 then 1x6. Explicit
+     column counts, never auto-fit: auto-fit orphans the final row and
+     leaves dead cells showing the container background through. */
+  .specsheet {
+    margin-top: var(--space-16);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--color-neutral-200);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .spec {
+    background: var(--color-white);
+    padding: var(--space-5) var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-height: 104px;
+  }
+  .spec dt {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--color-neutral-500);
+  }
+  .spec dd {
+    font-size: var(--text-base);
+    font-weight: 500;
+    color: var(--color-neutral-950);
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+  }
+  /* The absences are the argument, so they carry the weight. */
+  .spec.is-none { background: rgba(13, 148, 136, 0.05); }
+  .spec.is-none dt { color: var(--color-brand-teal); }
+  .spec.is-none dd {
+    font-family: var(--font-display);
+    font-size: 27px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--color-brand-teal);
+    line-height: 1.1;
+  }
+
+  /* ── Sections ─────────────────────────────────────────────────── */
+  .section { padding: var(--space-section) 0; }
+  .section-alt { background: var(--bg-secondary); }
+  .section-head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    max-width: 680px;
+  }
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-brand-teal);
+  }
+  h2 {
+    font-family: var(--font-display);
+    font-size: clamp(var(--text-2xl), 3vw, var(--text-4xl));
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+    color: var(--color-neutral-900);
+    text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--font-ui);
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--color-neutral-900);
+  }
+
+  /* ── The boundary band ────────────────────────────────────────── */
+  .band {
+    background: var(--color-brand-navy);
+    padding: var(--space-section) 0;
+  }
+  .band .kicker { color: var(--color-brand-mark); }
+  .band h2, .band h3 { color: var(--color-neutral-50); }
+  .band-head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    max-width: 680px;
+  }
+  .band-head p {
+    color: #A9BACB;
+    font-size: var(--text-lg);
+    line-height: 1.65;
+  }
+
+  .figure { margin: var(--space-16) 0 var(--space-12); }
+  .figure svg { display: block; width: 100%; height: auto; }
+  .figure figcaption {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    line-height: 1.6;
+    color: #A9BACB;
+    margin-top: var(--space-5);
+    max-width: 70ch;
+  }
+
+  .guarantees {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+    gap: 1px;
+    background: rgba(91, 191, 186, 0.3);
+    border: 1px solid rgba(91, 191, 186, 0.3);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .guarantee {
+    background: var(--color-brand-navy);
+    padding: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .g-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--color-brand-mark);
+  }
+  .guarantee p {
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    color: #A9BACB;
+  }
+
+  /* ── Security-review checklist ────────────────────────────────── */
+  .review {
+    margin-top: var(--space-12);
+    border-top: 1px solid var(--color-neutral-200);
+  }
+  .review-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--space-3) var(--space-8);
+    align-items: center;
+    padding: var(--space-5) 0;
+    border-bottom: 1px solid var(--color-neutral-200);
+  }
+  .review-q {
+    font-size: var(--text-base);
+    color: var(--color-neutral-700);
+    max-width: 54ch;
+  }
+  .review-a {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-brand-teal);
+    border: 1px solid var(--color-brand-teal);
+    border-radius: 999px;
+    padding: 5px 13px;
+    white-space: nowrap;
+  }
+  .review-foot {
+    margin-top: var(--space-6);
+    font-size: var(--text-base);
+    color: var(--color-neutral-700);
+    line-height: 1.7;
+    max-width: 66ch;
+  }
+
+  /* ── What lands in your account ───────────────────────────────── */
+  .lands {
+    margin-top: var(--space-12);
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--color-neutral-200);
+  }
+  .land {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: var(--space-2) var(--space-8);
+    padding: var(--space-6) 0;
+    border-bottom: 1px solid var(--color-neutral-200);
+    align-items: start;
+  }
+  .land-name {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-brand-teal);
+    padding-top: 2px;
+  }
+  .land p {
+    font-size: var(--text-base);
+    color: var(--color-neutral-700);
+    line-height: 1.7;
+    max-width: 62ch;
+  }
+
+  /* ── Capability grid ──────────────────────────────────────────── */
+  .caps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+    gap: var(--space-5);
+    margin-top: var(--space-12);
+  }
+  .cap {
+    background: var(--color-white);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .cap p {
+    font-size: var(--text-sm);
+    line-height: 1.65;
+    color: var(--color-neutral-700);
+  }
+  .caps-foot {
+    margin-top: var(--space-6);
+    font-size: var(--text-base);
+    color: var(--color-neutral-600);
+    max-width: 66ch;
+  }
+  .caps-foot a {
+    color: var(--color-brand-teal);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+  }
+  .caps-foot a:hover { border-bottom-color: var(--color-brand-teal); }
+
+  /* ── Worth knowing ────────────────────────────────────────────── */
+  .notes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    margin-top: var(--space-8);
+    max-width: 66ch;
+  }
+  .note {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    gap: var(--space-4);
+    align-items: start;
+  }
+  .note .rule {
+    height: 1px;
+    background: var(--color-brand-teal);
+    margin-top: 13px;
+  }
+  .note p {
+    font-size: var(--text-base);
+    color: var(--color-neutral-700);
+    line-height: 1.7;
+  }
+  .note strong {
+    color: var(--color-neutral-950);
+    font-weight: 600;
+  }
+
+  /* ── Close ────────────────────────────────────────────────────── */
+  .close { border-top: 1px solid var(--color-neutral-200); }
+  .close-inner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    max-width: 680px;
+  }
+  .close-inner .hero-cta-row { margin-top: var(--space-4); }
+
+  /* ── Responsive ───────────────────────────────────────────────── */
+  @media (max-width: 860px) {
+    .specsheet { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .specsheet { grid-template-columns: 1fr; }
+    .land { grid-template-columns: 1fr; gap: var(--space-2); }
+    .review-row { grid-template-columns: 1fr; }
+    .review-a { justify-self: start; }
+  }
+</style>
