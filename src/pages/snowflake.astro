@@ -24,7 +24,7 @@ const specs = [
 const questions = [
   { q: 'Where does the vendor store and process our data?',                         a: 'Nowhere' },
   { q: 'Which subprocessors will our data pass through?',                           a: 'None' },
-  { q: 'What credentials or service accounts must we issue, and how are they rotated?', a: 'No credential' },
+  { q: 'What credentials or service accounts must we issue, and how are they rotated?', a: 'No dvt credential' },
   { q: 'What can the vendor see if the vendor is breached?',                        a: 'Nothing of yours' },
   { q: 'What outbound egress must we allow for it to work?',                      a: 'None' },
   { q: 'Which of our data does the application itself hold access to?',             a: 'No data grants' },
@@ -39,7 +39,7 @@ const lands = [
   },
   {
     name: 'A compute pool',
-    body: 'The app creates one to run its own containers. This is one of the two privileges it asks for at install time.',
+    body: 'The app creates one to run its own containers. That plus binding its own endpoint are the only two account privileges it asks for. It also requests the Snowflake CORTEX_USER role, which powers the in-account authoring agent and which you can decline. None of the three grant access to your data.',
   },
   {
     name: 'One web endpoint',
@@ -47,7 +47,7 @@ const lands = [
   },
   {
     name: 'An MCP server',
-    body: 'Registered in your account at install, so agents find dvt without any URL wrangling. Cortex Agents reach it from inside Snowflake, and your team can point Claude Code at it from their own machines with a Snowflake credential. Agents authenticate as Snowflake identities, so there is no dvt API key to issue or rotate. Note the direction: an agent connects inward, through Snowflake\'s authentication. The app still calls nothing out.',
+    body: 'Registered in your account at install, so in-account agents can attach to dvt without hunting for a URL. Cortex Agents reach it from inside Snowflake, and your team can point Claude Code at it from their own machines with a Snowflake credential. Agents authenticate as Snowflake identities, so there is no dvt API key to issue or rotate. Note the direction: an agent connects inward, through Snowflake\'s authentication. The app still calls nothing out.',
   },
   {
     name: 'The app\'s own storage',
@@ -100,7 +100,7 @@ const caps = [
         <h1>dvt, completely sealed inside <em>your</em> Snowflake account.</h1>
         <p class="lead">
           dvt ships as a Snowflake Native App. You install it from a listing into your own account,
-          where it runs on Snowpark Container Services, on your compute, behind your network policy.
+          where it runs on Snowpark Container Services, on your compute, behind Snowflake's own authentication.
           It queries your data as the person using it, keeps its dashboards inside the app, and has
           no route back to us.
         </p>
@@ -234,32 +234,35 @@ const caps = [
             <span class="g-label">Egress</span>
             <h3>Nothing leaves</h3>
             <p>
-              No usage telemetry, no error reporting, no analytics, and no connection back to dvt. We
-              receive nothing when you use it, including when it breaks.
+              As shipped, nothing is sent to dvt. The app declares no telemetry events, so no usage
+              data and no error reports reach us. Account-level event sharing is a switch you own,
+              off unless you turn it on.
             </p>
           </div>
           <div class="guarantee">
             <span class="g-label">Access</span>
             <h3>It holds no data grants</h3>
             <p>
-              The app asks for no access to your databases at all. Dashboards run with the caller's
-              rights, so every query executes under the role of the person who asked for it.
+              The app requests no grants on your data. Dashboard queries run with the caller's
+              rights, under the role of the person who asked. Optional features you switch on, like
+              Sheet writeback, ask for their own grant.
             </p>
           </div>
           <div class="guarantee">
             <span class="g-label">Audit</span>
             <h3>Visible in your query history</h3>
             <p>
-              Queries the app runs land in your own account usage views, attributed to the
-              application, so you can see exactly what ran and on which warehouse.
+              Dashboard queries land in your own query history attributed to the person who ran
+              them, not to a shared service account. You see what ran, by whom, on which warehouse.
             </p>
           </div>
           <div class="guarantee">
             <span class="g-label">Removal</span>
             <h3>Uninstall is the off switch</h3>
             <p>
-              Drop the application and it goes, along with everything it created, including its own
-              storage. There is no account on our side to close and no data of yours to ask back.
+              Uninstall removes the app and the objects it owns. If you turned on Sheet writeback,
+              clear its tables first, and Snowflake keeps one final volume snapshot on the way out.
+              There is no account on our side to close and no data of yours to ask back.
             </p>
           </div>
         </div>
@@ -305,7 +308,8 @@ const caps = [
           <h2>What actually lands in your account.</h2>
           <p class="lead">
             A native app is not a black box you have to trust. It is a set of objects in your account
-            that you can list, inspect, and drop. This is all of them.
+            that you can list, inspect, and drop. Here is the shape of it, and
+            SHOW OBJECTS OWNED BY APPLICATION gives you the full inventory.
           </p>
         </div>
 
@@ -325,11 +329,12 @@ const caps = [
       <div class="container">
         <div class="section-head" data-reveal>
           <span class="kicker">Inside the app</span>
-          <h2>It is the full dvt, not a cut-down edition.</h2>
+          <h2>The same dvt, with Snowflake-native substitutions.</h2>
           <p class="lead">
-            The native app is a deployment shape, not a reduced tier. What you get inside it is the
-            whole product, which rests on one decision: a dvt dashboard is a versioned JSON spec, not
-            a pile of saved clicks.
+            The native app is a deployment shape, not a reduced tier. Access control is Snowflake
+            roles and grants rather than dvt's own user management, and image export and scheduled
+            delivery are not in-account yet. The rest is the product, which rests on one decision: a
+            dvt dashboard is a versioned JSON spec, not a pile of saved clicks.
           </p>
         </div>
 
