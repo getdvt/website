@@ -31,6 +31,28 @@ const questions = [
   { q: 'How do we revoke access, and how quickly does it take effect?',             a: 'Uninstall it' },
 ];
 
+// Supply-chain posture. Deliberately claims "no fixable findings get through
+// the gate", never "no vulnerabilities" — the latter would be unfalsifiable
+// and untrue.
+const supply = [
+  {
+    name: 'Three containers',
+    body: 'The app runs three images in your account: the interface and API, the query engine, and its own metadata store. No third-party service sits in the path.',
+  },
+  {
+    name: 'Rebuilt on fresh bases',
+    body: 'Every release is built from base images pulled immediately beforehand, because staleness at scan time is what actually determines whether a known fix is already in the image.',
+  },
+  {
+    name: 'Two scanners, then a third party',
+    body: 'Trivy and Grype both gate the release, because each is blind to things the other catches, and any fixable finding fails the build. A malware scan gates it too. Snowflake then runs its own scan when we publish and rejects fixable high and critical CVEs, so the version that reaches you passed a check we do not control.',
+  },
+  {
+    name: 'Nothing pulled at runtime',
+    body: 'Because the app has no route out, it cannot fetch code or packages once it is running. What was scanned at publish is what executes in your account.',
+  },
+];
+
 // Every object the install creates in the consumer account.
 const lands = [
   {
@@ -274,7 +296,7 @@ const caps = [
       <div class="container">
         <div class="section-head" data-reveal>
           <span class="kicker">Your security review</span>
-          <h2>Most of the security questionnaire does not apply.</h2>
+          <h2>Most of your security questionnaire does not apply.</h2>
           <p class="lead">
             A vendor security review is mostly a set of questions about what happens to your data
             once it leaves. Install the tool into your own account and those questions have no
@@ -300,8 +322,32 @@ const caps = [
       </div>
     </section>
 
-    <!-- ── What lands in your account ─────────────────────────────── -->
+    <!-- ── Supply chain ───────────────────────────────────────────── -->
     <section class="section section-alt">
+      <div class="container">
+        <div class="section-head" data-reveal>
+          <span class="kicker">The image</span>
+          <h2>What is in the container, and who checked it.</h2>
+          <p class="lead">
+            The other half of a container review is the software itself. We do not claim the images
+            carry no vulnerabilities, because nobody can. We claim that nothing with a known fix
+            gets through the gate, and that you are not taking our word for it.
+          </p>
+        </div>
+
+        <div class="lands" data-reveal>
+          {supply.map((item) => (
+            <div class="land">
+              <span class="land-name">{item.name}</span>
+              <p>{item.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- ── What lands in your account ─────────────────────────────── -->
+    <section class="section">
       <div class="container">
         <div class="section-head" data-reveal>
           <span class="kicker">The install</span>
@@ -325,7 +371,7 @@ const caps = [
     </section>
 
     <!-- ── The product inside the container ───────────────────────── -->
-    <section class="section">
+    <section class="section section-alt">
       <div class="container">
         <div class="section-head" data-reveal>
           <span class="kicker">Inside the app</span>
@@ -355,7 +401,7 @@ const caps = [
     </section>
 
     <!-- ── Worth knowing ──────────────────────────────────────────── -->
-    <section class="section section-alt">
+    <section class="section">
       <div class="container">
         <div class="section-head" data-reveal>
           <span class="kicker">Worth knowing</span>
