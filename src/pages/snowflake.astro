@@ -8,15 +8,16 @@ export const prerender = true;
 const EARLY_ACCESS = '/#early-access';
 const BUILDER_URL = 'https://demo.dvt.dev/builder';
 
-// The app, stated plainly. Six facts, rendered in an even 3x2 grid. The two
-// absences are the argument, so they carry the visual weight (`none: true`).
+// The app, stated plainly. Six facts, rendered in an even 3x2 grid. The
+// absences are the argument, so the whole bottom row carries the visual
+// weight (`none: true`).
 const specs = [
-  { label: 'Deployment',                  value: 'Native App, in your account' },
-  { label: 'Runs on',                     value: 'Snowpark Container Services' },
+  { label: 'Deployment',                  value: 'Native App on Snowpark Container Services, in your account' },
   { label: 'Compute',                     value: 'Your warehouses' },
+  { label: 'Agent access',                value: 'Claude and Cortex, over MCP' },
   { label: 'Data it can reach on its own', value: 'None', none: true },
   { label: 'Egress from your account',    value: 'None', none: true },
-  { label: 'Agent access',                value: 'Claude and Cortex, over MCP' },
+  { label: 'External access integrations', value: 'None', none: true },
 ];
 
 // The standard vendor-security questionnaire, and what it collapses to when
@@ -27,6 +28,7 @@ const questions = [
   { q: 'What credentials or service accounts must we issue, and how are they rotated?', a: 'No dvt credential' },
   { q: 'What can the vendor see if the vendor is breached?',                        a: 'Nothing of yours' },
   { q: 'What outbound egress must we allow for it to work?',                      a: 'None' },
+  { q: 'Which external access integrations does it ask us to approve?',           a: 'None' },
   { q: 'Which of our data does the application itself hold access to?',             a: 'No data grants' },
   { q: 'How do we revoke access, and how quickly does it take effect?',             a: 'Uninstall it' },
 ];
@@ -154,7 +156,8 @@ const caps = [
           <h2>Your data never leaves your account.</h2>
           <p>
             This is the reason the app exists in this shape. There is no connection to configure, no
-            credential to hand over, and no egress to audit, because nothing leaves your account.
+            credential to hand over, no external access integration to approve, and no egress to
+            audit, because nothing leaves your account.
             Your rows are queried and drawn where they already sit, and dvt operates no service that
             could receive them.
           </p>
