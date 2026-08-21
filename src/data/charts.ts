@@ -884,9 +884,16 @@ const tables: ChartDef[] = [
       ],
     },
     spec: `{ "type": "table",
+  "data": { "rows": [
+    { "segment": "Enterprise", "revenue": 1050000, "mom": 18, "share": 41 },
+    { "segment": "Pro",        "revenue": 735000,  "mom": 9,  "share": 29 },
+    { "segment": "Team",       "revenue": 580000,  "mom": 4,  "share": 23 },
+    { "segment": "Starter",    "revenue": 180000,  "mom": -6, "share": 7 }
+  ] },
   "spec": {
     "columns": [
-      { "field": "revenue", "format": { "type": "currency", "currency": "USD" } },
+      { "field": "segment" },
+      { "field": "revenue", "format": { "type": "currency", "currency": "USD", "compact": true } },
       { "field": "mom",     "format": { "type": "percentage" } },
       { "field": "share",   "cell": { "kind": "bar" } }
     ],
@@ -914,12 +921,21 @@ const tables: ChartDef[] = [
       ],
     },
     spec: `{ "type": "table",
+  "data": { "rows": [
+    { "metric": "ARR", "trend": 22, "m1": 12, "m2": 14, "m3": 13, "m4": 17, "m5": 19, "m6": 22,
+      "pace": 82, "quota": 75, "streak": 1, "w1": 1, "w2": 1, "w3": -1, "w4": 1, "w5": 1, "w6": 1 },
+    { "metric": "Net new logos", "trend": 11, "m1": 8, "m2": 6, "m3": 9, "m4": 7, "m5": 10, "m6": 11,
+      "pace": 61, "quota": 70, "streak": -1, "w1": 1, "w2": -1, "w3": 1, "w4": -1, "w5": 1, "w6": -1 },
+    { "metric": "Churn", "trend": 3, "m1": 5, "m2": 6, "m3": 4, "m4": 4, "m5": 3, "m6": 3,
+      "pace": 40, "quota": 50, "streak": 1, "w1": -1, "w2": 1, "w3": 1, "w4": 1, "w5": 1, "w6": 1 }
+  ] },
   "spec": { "columns": [
+    { "field": "metric" },
     { "field": "trend",  "cell": { "kind": "sparkline", "type": "area",
         "source": { "valuesFromColumns": ["m1","m2","m3","m4","m5","m6"] } } },
     { "field": "pace",   "cell": { "kind": "bullet", "targetField": "quota" } },
     { "field": "streak", "cell": { "kind": "winloss",
-        "source": { "valuesFromColumns": ["w1", "w2", "w3"] } } } ] } }`,
+        "source": { "valuesFromColumns": ["w1", "w2", "w3", "w4", "w5", "w6"] } } } ] } }`,
   },
   {
     dvtType: 'table',
@@ -945,10 +961,16 @@ const tables: ChartDef[] = [
       ],
     },
     spec: `{ "type": "table",
+  "data": { "rows": [
+    { "region": "West", "rep": "A. Rivera", "deals": 14, "revenue": 420000 },
+    { "region": "West", "rep": "J. Okafor", "deals": 11, "revenue": 330000 },
+    { "region": "East", "rep": "M. Chen",   "deals": 18, "revenue": 540000 },
+    { "region": "East", "rep": "P. Nowak",  "deals": 9,  "revenue": 260000 }
+  ] },
   "spec": { "grouping": {
     "groupBy": ["region"],
     "aggregations": [
-      { "field": "deals",   "agg": "count" },
+      { "field": "deals",   "agg": "sum" },
       { "field": "revenue", "agg": "sum" } ],
     "subtotals": true, "grandTotal": true } } }`,
   },
@@ -977,12 +999,24 @@ const tables: ChartDef[] = [
       ],
     },
     spec: `{ "type": "table",
+  "data": { "rows": [
+    { "region": "West", "quarter": "Q1", "revenue": 210000 },
+    { "region": "West", "quarter": "Q2", "revenue": 255000 },
+    { "region": "West", "quarter": "Q3", "revenue": 285000 },
+    { "region": "East", "quarter": "Q1", "revenue": 240000 },
+    { "region": "East", "quarter": "Q2", "revenue": 268000 },
+    { "region": "East", "quarter": "Q3", "revenue": 292000 },
+    { "region": "EMEA", "quarter": "Q1", "revenue": 160000 },
+    { "region": "EMEA", "quarter": "Q2", "revenue": 180000 },
+    { "region": "EMEA", "quarter": "Q3", "revenue": 205000 }
+  ] },
   "spec": { "pivot": {
     "rows": ["region"],
     "columns": ["quarter"],
     "values": [ { "field": "revenue", "agg": "sum" } ],
     "totals": { "row": true } },
     "columns": [ { "field": "revenue",
+      "format": { "type": "currency", "currency": "USD", "compact": true },
       "colorScale": { "method": "numeric", "palette": "blues" } } ] } }`,
   },
   {
@@ -1005,9 +1039,21 @@ const tables: ChartDef[] = [
       ],
     },
     spec: `{ "type": "table",
-  "spec": { "columns": [ { "field": "retention",
-    "colorScale": { "method": "quantile",
-                    "palette": "blues", "domain": [50, 100] } } ] } }`,
+  "data": { "rows": [
+    { "cohort": "Jan", "m0": 100, "m1": 82, "m2": 71, "m3": 64 },
+    { "cohort": "Feb", "m0": 100, "m1": 85, "m2": 74, "m3": 69 },
+    { "cohort": "Mar", "m0": 100, "m1": 88, "m2": 79, "m3": 72 }
+  ] },
+  "spec": { "columns": [
+    { "field": "cohort" },
+    { "field": "m0", "colorScale": { "method": "quantile",
+                      "palette": "blues", "domain": [50, 100] } },
+    { "field": "m1", "colorScale": { "method": "quantile",
+                      "palette": "blues", "domain": [50, 100] } },
+    { "field": "m2", "colorScale": { "method": "quantile",
+                      "palette": "blues", "domain": [50, 100] } },
+    { "field": "m3", "colorScale": { "method": "quantile",
+                      "palette": "blues", "domain": [50, 100] } } ] } }`,
   },
 ];
 
