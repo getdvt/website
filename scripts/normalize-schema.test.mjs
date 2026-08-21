@@ -5,8 +5,8 @@
 //
 // Covers the failure/pass modes the schema-aware, opaque-scanning walk exists to
 // distinguish:
-//   1. TRIP (enum)   — a STRIP key (description/$comment) appears INSIDE an
-//      opaque (enum/const/default/examples) value. The normalizer must refuse
+//   1. TRIP (enum)   — a STRIP key (description/$comment/title/examples) appears
+//      INSIDE an opaque (enum/const/default) value. The normalizer must refuse
 //      to normalize, write ZERO bytes to stdout, and name the exact path in
 //      stderr.
 //   2. PASS          — a real schema property literally NAMED "description"
@@ -25,6 +25,19 @@
 //   6. OPAQUE-PASS   — a violation-free opaque object value (no STRIP keys
 //      nested inside it) must survive byte-identical, alongside a sibling
 //      `description` annotation on the same node being stripped as normal.
+//   7. TITLE-STRIP   — a `title` annotation (string value, keyword position) is
+//      stripped, same as `description`.
+//   8. TITLE-PROPERTY-SURVIVES — a real schema property literally NAMED "title"
+//      (there are 5 of these in the actual vendored schema: Meta, Section,
+//      FilterBarSpec, Panel, Page). The property DEFINITION must survive
+//      (NAME_KEYED walk), and its own nested `title` annotation is stripped
+//      like any other annotation.
+//   9. EXAMPLES-STRIP — `examples` is stripped entirely, both the
+//      array-of-strings form and the array-of-objects form. Unlike
+//      `enum`/`const`/`default`, `examples` is now a STRIP key, not OPAQUE —
+//      so a STRIP key nested inside an `examples` array member must NOT trip
+//      the opaque-violation refusal (there's nothing to scan; the whole
+//      `examples` key is gone before OPAQUE is ever consulted).
 
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -211,6 +224,142 @@ try {
     'OPAQUE-PASS fixture strips the sibling description annotation',
     !!opaquePassOut?.properties?.foo && !('description' in opaquePassOut.properties.foo),
     JSON.stringify(opaquePassOut)
+  );
+
+  // --- Fixture 7: TITLE-STRIP — a `title` annotation (string value, keyword
+  // position) is stripped, same as `description`. ---
+  const titleStripFile = join(dir, 'title-strip.schema.json');
+  writeFileSync(
+    titleStripFile,
+    JSON.stringify({
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      type: 'object',
+      title: 'Dashboard Spec',
+      properties: {
+        foo: {
+          type: 'string',
+          title: 'Foo Annotation',
+        },
+      },
+    })
+  );
+  const titleStrip = spawnSync(NODE, [SCRIPT, titleStripFile], { encoding: 'utf8' });
+  ok('TITLE-STRIP fixture exits zero', titleStrip.status === 0, `exit ${titleStrip.status}, stderr: ${titleStrip.stderr}`);
+
+  let titleStripOut = null;
+  try {
+    titleStripOut = JSON.parse(titleStrip.stdout);
+  } catch (e) {
+    titleStripOut = null;
+  }
+  ok('TITLE-STRIP fixture output is valid JSON', titleStripOut !== null, titleStrip.stdout);
+  ok(
+    'TITLE-STRIP fixture strips the root title annotation',
+    titleStripOut !== null && !('title' in titleStripOut),
+    JSON.stringify(titleStripOut)
+  );
+  ok(
+    'TITLE-STRIP fixture strips the nested title annotation',
+    !!titleStripOut?.properties?.foo && !('title' in titleStripOut.properties.foo),
+    JSON.stringify(titleStripOut)
+  );
+
+  // --- Fixture 8: TITLE-PROPERTY-SURVIVES — a real schema property literally
+  // named "title" (there are 5 of these in the actual vendored schema: Meta,
+  // Section, FilterBarSpec, Panel, Page). The property DEFINITION must
+  // survive (NAME_KEYED walk preserves the key), and its own nested `title`
+  // annotation is stripped like any other annotation. ---
+  const titlePropFile = join(dir, 'title-property.schema.json');
+  writeFileSync(
+    titlePropFile,
+    JSON.stringify({
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      type: 'object',
+      properties: {
+        title: {
+          type: 'string',
+          title: 'annotation to strip',
+          description: 'annotation to strip too',
+        },
+      },
+      required: ['title'],
+    })
+  );
+  const titleProp = spawnSync(NODE, [SCRIPT, titlePropFile], { encoding: 'utf8' });
+  ok('TITLE-PROPERTY fixture exits zero', titleProp.status === 0, `exit ${titleProp.status}, stderr: ${titleProp.stderr}`);
+
+  let titlePropOut = null;
+  try {
+    titlePropOut = JSON.parse(titleProp.stdout);
+  } catch (e) {
+    titlePropOut = null;
+  }
+  ok('TITLE-PROPERTY fixture output is valid JSON', titlePropOut !== null, titleProp.stdout);
+  ok(
+    'TITLE-PROPERTY fixture keeps the "title" property definition',
+    !!titlePropOut?.properties?.title && titlePropOut.properties.title.type === 'string',
+    JSON.stringify(titlePropOut)
+  );
+  ok(
+    'TITLE-PROPERTY fixture strips the nested title annotation on the title property',
+    !!titlePropOut?.properties?.title && !('title' in titlePropOut.properties.title),
+    JSON.stringify(titlePropOut)
+  );
+  ok(
+    'TITLE-PROPERTY fixture strips the nested description annotation on the title property',
+    !!titlePropOut?.properties?.title && !('description' in titlePropOut.properties.title),
+    JSON.stringify(titlePropOut)
+  );
+  ok(
+    'TITLE-PROPERTY fixture keeps "title" inside the required array',
+    Array.isArray(titlePropOut?.required) && titlePropOut.required.includes('title'),
+    JSON.stringify(titlePropOut)
+  );
+
+  // --- Fixture 9: EXAMPLES-STRIP — `examples` is stripped entirely, both the
+  // array-of-strings form and the array-of-objects form. Unlike
+  // `enum`/`const`/`default`, `examples` is a STRIP key now, not OPAQUE, so a
+  // STRIP key nested inside an examples member must NOT trip the
+  // opaque-violation refusal — the whole `examples` key is gone before OPAQUE
+  // is ever consulted. ---
+  const examplesStripFile = join(dir, 'examples-strip.schema.json');
+  writeFileSync(
+    examplesStripFile,
+    JSON.stringify({
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      type: 'object',
+      examples: [{ foo: 'bar', description: 'this would trip if examples were still OPAQUE' }],
+      properties: {
+        foo: {
+          type: 'string',
+          examples: ['example one', 'example two'],
+        },
+      },
+    })
+  );
+  const examplesStrip = spawnSync(NODE, [SCRIPT, examplesStripFile], { encoding: 'utf8' });
+  ok(
+    'EXAMPLES-STRIP fixture exits zero',
+    examplesStrip.status === 0,
+    `exit ${examplesStrip.status}, stderr: ${examplesStrip.stderr}`
+  );
+
+  let examplesStripOut = null;
+  try {
+    examplesStripOut = JSON.parse(examplesStrip.stdout);
+  } catch (e) {
+    examplesStripOut = null;
+  }
+  ok('EXAMPLES-STRIP fixture output is valid JSON', examplesStripOut !== null, examplesStrip.stdout);
+  ok(
+    'EXAMPLES-STRIP fixture strips the root examples (array-of-objects) key entirely',
+    examplesStripOut !== null && !('examples' in examplesStripOut),
+    JSON.stringify(examplesStripOut)
+  );
+  ok(
+    'EXAMPLES-STRIP fixture strips the nested examples (array-of-strings) key entirely',
+    !!examplesStripOut?.properties?.foo && !('examples' in examplesStripOut.properties.foo),
+    JSON.stringify(examplesStripOut)
   );
 } finally {
   rmSync(dir, { recursive: true, force: true });

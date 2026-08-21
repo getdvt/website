@@ -211,11 +211,12 @@ const out = {
 fs.writeFileSync(process.env.DST, JSON.stringify(out, null, 2) + "\n");
 '
 
-# Stage the NORMALIZED schema copy — structure only, with `description`/`$comment`
-# annotation prose stripped. This repo is PUBLIC and the canonical schema's prose is
-# internal engineering commentary (source paths, ADR/ticket history, version-scoped
-# security notes), so it must not be published here. See scripts/normalize-schema.mjs
-# for why the strip is schema-aware rather than a recursive delete.
+# Stage the NORMALIZED schema copy — structure only, with `description`/`$comment`/
+# `title`/`examples` annotation prose stripped. This repo is PUBLIC and the canonical
+# schema's prose is internal engineering commentary (source paths, ADR/ticket history,
+# version-scoped security notes), so it must not be published here. See
+# scripts/normalize-schema.mjs for why the strip is schema-aware rather than a
+# recursive delete.
 #
 # The same normalizer runs on the live upstream fetch in the weekly drift check, so
 # the byte-compare stays valid; it just compares normalized forms on both sides.

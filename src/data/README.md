@@ -15,35 +15,38 @@
 ## dashboard.schema.json
 
 - **Source**: `getdvt/dvt` -> `spec/schema/dashboard.schema.json`.
-- **⚠️ NOT a verbatim copy — this is the NORMALIZED form.** `description` and `$comment` annotation
-  prose is stripped by `scripts/normalize-schema.mjs` before vendoring. **This repo is public and
+- **⚠️ NOT a verbatim copy — this is the NORMALIZED form.** `description`, `$comment`, `title`, and
+  `examples` annotation prose is stripped by `scripts/normalize-schema.mjs` before vendoring. **This repo is public and
   `getdvt/dvt` is not**: upstream's prose is internal engineering commentary (source paths, ADR and
   ticket history, version-scoped security notes), and publishing it here would be irreversible.
   Structure only.
 
 <!-- provenance:begin — maintained by scripts/sync-panel-types.sh; do not hand-edit between markers -->
-- **Vendored**: 2026-08-20, from `getdvt/dvt` `origin/main` @ `c82df2f639adcbcf26ef6a31e652d2784baa0a6f`
-  (blob sha `ddfbfba94de7dc0e21fe9ace75ecf7acb42fbd9f`, upstream sha256
-  `715ddb53f18d709db4d1f0e5c16f8c244497aa6e46e8b264058f94a86712c0e8`).
-- **Vendored (normalized) sha256**: `2337f49d7760f8d0d1d1f8e493c67a440ef47f9b429a0e723a2ada6be9511e18`.
+- **Vendored**: 2026-08-20, from `getdvt/dvt` `origin/main` @ `acd5a3375c5dd87b6dcec676718cbeda43e655de`
+  (blob sha `d346cb255c8d9a4e955419755176b599fa04d1f1`, upstream sha256
+  `f045f4c8c00215083a7cdbafd6f15e469378ebc628bf270f457773e93644f2a9`).
+- **Vendored (normalized) sha256**: `47400515b50da9ab812a25f2ccb84b8e1a86051a1b5b89fafeba61696fb898c7`.
 - **Reproduce it** — the vendored file is a deterministic function of the upstream one:
   ```
   # ?ref= pins the SAME commit this block records. Without it the fetch follows the
   # default branch, so the first upstream schema commit makes the sha mismatch and
   # read as a bug rather than as expected drift.
-  gh api "repos/getdvt/dvt/contents/spec/schema/dashboard.schema.json?ref=c82df2f639adcbcf26ef6a31e652d2784baa0a6f" \
+  gh api "repos/getdvt/dvt/contents/spec/schema/dashboard.schema.json?ref=acd5a3375c5dd87b6dcec676718cbeda43e655de" \
     -H "Accept: application/vnd.github.raw" > /tmp/upstream.json
   node scripts/normalize-schema.mjs /tmp/upstream.json | shasum -a 256   # must match the sha256 above
   ```
 <!-- provenance:end -->
 
-- **Validation is unaffected.** `description`/`$comment` are annotation keywords that ajv ignores.
-  This was verified by validating the same panels against both the verbatim and the normalized
-  schema and confirming identical accept/reject verdicts, including all three DVT-3084 defect shapes.
+- **Validation is unaffected.** `description`/`$comment`/`title`/`examples` (the DVT-3231 strip
+  scope) are annotation keywords that ajv ignores. The original `description`/`$comment` strip was
+  verified by validating the same panels against both the verbatim and the normalized schema and
+  confirming identical accept/reject verdicts, including all three DVT-3084 defect shapes; the same
+  annotation-keyword argument covers `title`/`examples`.
   The strip is schema-aware: 7 places in this schema use `description`/`$comment` as real property
   NAMES (`$defs/Meta`, `PageDoc`, `MetricItem`, `TableColumn`, `StatSpec`, `KpiSpec`, and top-level
-  `properties/$comment`), and those definitions are preserved — a naive recursive delete would have
-  silently weakened what the schema accepts.
+  `properties/$comment`), and 5 more use `title` (`$defs/Meta`, `Section`, `FilterBarSpec`, `Panel`,
+  `Page`). Those definitions are preserved — a naive recursive delete would have silently weakened
+  what the schema accepts.
 - **Why vendored**: `getdvt/dvt` is private and PR CI has no token to read it live (same reason as
   `panel-types.json`).
 - **Refresh**: `scripts/sync-panel-types.sh` — one fetch, but it maintains FOUR artifacts: this file

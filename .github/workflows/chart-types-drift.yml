@@ -63,6 +63,7 @@ on:
       # sweep compares against — so it must re-run the gates.
       - 'scripts/normalize-schema.mjs'
       - 'scripts/normalize-schema.test.mjs'
+      - 'scripts/sync-panel-types.sh'
       # check-chart-types.mjs asserts the README's provenance block matches the
       # vendored schema — so a README-only edit must re-run the gates too.
       - 'src/data/README.md'
