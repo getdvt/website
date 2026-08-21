@@ -282,6 +282,7 @@ try {
           description: 'annotation to strip too',
         },
       },
+      required: ['title'],
     })
   );
   const titleProp = spawnSync(NODE, [SCRIPT, titlePropFile], { encoding: 'utf8' });
@@ -307,6 +308,11 @@ try {
   ok(
     'TITLE-PROPERTY fixture strips the nested description annotation on the title property',
     !!titlePropOut?.properties?.title && !('description' in titlePropOut.properties.title),
+    JSON.stringify(titlePropOut)
+  );
+  ok(
+    'TITLE-PROPERTY fixture keeps "title" inside the required array',
+    Array.isArray(titlePropOut?.required) && titlePropOut.required.includes('title'),
     JSON.stringify(titlePropOut)
   );
 

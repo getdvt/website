@@ -25,14 +25,14 @@
 //
 // ─────────────────────────────────────────────────────────────────────────────
 // CRITICAL: `description` and `title` are BOTH annotation keywords AND, in this
-// schema, real property NAMEs. `description` is a property name in 7 places
-// (`$defs/Meta/properties/description`, and the same under PageDoc, MetricItem,
-// TableColumn, StatSpec, KpiSpec, plus a top-level `properties/$comment`).
+// schema, real property NAMEs. `description`/`$comment` are property names in
+// 7 places (6 `description`: `$defs/Meta/properties/description`, and the
+// same under PageDoc, MetricItem, TableColumn, StatSpec, KpiSpec; plus a
+// top-level `properties/$comment`).
 // `title` is a property name in 5 places (`$defs/Meta/properties/title`, and
 // the same under Section, FilterBarSpec, Panel, Page — VERIFIED 2026-08-20 on
-// the vendored file; the DVT-3231 ticket comment claiming "title is NOT a
-// property name anywhere" is REFUTED, do not copy that claim into this comment
-// or any other). A naive recursive delete would strip those 12 property
+// the vendored file. Do not write "title is not a property name" anywhere: it
+// is, in 5 places). A naive recursive delete would strip those 12 property
 // DEFINITIONS, silently changing what the schema accepts — the snippet gate
 // would then pass specs the real engine rejects. So the walk is schema-aware:
 // inside a keyword whose children are keyed by property NAME, the keys are

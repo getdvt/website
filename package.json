@@ -13,7 +13,8 @@
     "generate-types": "wrangler types",
     "check:chart-types": "node scripts/check-chart-types.mjs",
     "check:chart-pages": "node scripts/check-chart-pages.mjs",
-    "check:chart-specs": "node scripts/check-chart-specs.mjs"
+    "check:chart-specs": "node scripts/check-chart-specs.mjs",
+    "test:normalize": "node scripts/normalize-schema.test.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.1.7",
