@@ -17,6 +17,17 @@
 //      both exit non-zero, 0 stdout bytes.
 //   6. DETERMINISM — unsorted input type keys produce sorted output keys, and
 //      running twice on the same input is byte-identical.
+//   7. BAD-KEY-SHAPE (prose key) — a key like `"chart:internal — see DVT-9999"`
+//      fails the closed key-shape regex, so it is refused alongside an
+//      unknown-status offender: exits non-zero, 0 stdout bytes.
+//   8. BAD-KEY-SHAPE (__proto__) — a `"__proto__"` key also fails the shape
+//      regex (it does not start with a lowercase letter), so it is refused the
+//      same way: exits non-zero, 0 stdout bytes. This is a belt-and-suspenders
+//      check — the script also builds its maps with `Object.create(null)` so a
+//      `__proto__` key can never silently vanish into the prototype chain even
+//      if the shape check were ever loosened.
+//   9. OUTPUT-COUNT — on the happy path, the number of projected entries in
+//      `types` equals the number of input `types` entries.
 
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -178,6 +189,68 @@ try {
     'DETERMINISM fixture output keys are sorted',
     unsortedOut !== null && JSON.stringify(Object.keys(unsortedOut.types)) === JSON.stringify(['chart:bar', 'chart:boxplot', 'chart:scatter']),
     JSON.stringify(unsortedOut && Object.keys(unsortedOut.types))
+  );
+
+  // --- Fixture 7: BAD-KEY-SHAPE — a prose-bearing key ---
+  const proseKeyFile = join(dir, 'prose-key.json');
+  writeFileSync(
+    proseKeyFile,
+    JSON.stringify({
+      types: {
+        'chart:bar': { status: 'stable' },
+        'chart:internal — see DVT-9999': { status: 'stable' },
+      },
+    })
+  );
+  const proseKey = spawnSync(NODE, [SCRIPT, proseKeyFile], { encoding: 'utf8' });
+  ok('BAD-KEY-SHAPE (prose key) fixture exits non-zero', proseKey.status !== 0, `exit ${proseKey.status}`);
+  ok(
+    'BAD-KEY-SHAPE (prose key) fixture writes 0 bytes to stdout',
+    proseKey.stdout.length === 0,
+    `got ${proseKey.stdout.length} bytes`
+  );
+
+  // --- Fixture 8: BAD-KEY-SHAPE — a `__proto__` key ---
+  // Written as a raw JSON string, not a JS object literal: `{'__proto__': v}`
+  // in JS source sets the object's PROTOTYPE rather than a data property, so
+  // building this fixture via an object literal would silently lose the key
+  // before it ever reached the file. JSON.parse (which the script under test
+  // uses) creates `__proto__` as a genuine own data property, so the raw-text
+  // form is what actually exercises the guard.
+  const protoKeyFile = join(dir, 'proto-key.json');
+  writeFileSync(
+    protoKeyFile,
+    '{"types": {"chart:bar": {"status": "stable"}, "__proto__": {"status": "stable"}}}'
+  );
+  const protoKey = spawnSync(NODE, [SCRIPT, protoKeyFile], { encoding: 'utf8' });
+  ok('BAD-KEY-SHAPE (__proto__) fixture exits non-zero', protoKey.status !== 0, `exit ${protoKey.status}`);
+  ok(
+    'BAD-KEY-SHAPE (__proto__) fixture writes 0 bytes to stdout',
+    protoKey.stdout.length === 0,
+    `got ${protoKey.stdout.length} bytes`
+  );
+
+  // --- Fixture 9: OUTPUT-COUNT — happy-path projected entry count equals
+  // input `types` entry count. ---
+  const countFile = join(dir, 'count.json');
+  const countInputTypes = {
+    'chart:bar': { status: 'stable' },
+    'chart:boxplot': { status: 'passthrough' },
+    'chart:custom': { status: 'advanced' },
+  };
+  writeFileSync(countFile, JSON.stringify({ types: countInputTypes }));
+  const countRun = spawnSync(NODE, [SCRIPT, countFile], { encoding: 'utf8' });
+  ok('OUTPUT-COUNT fixture exits zero', countRun.status === 0, `exit ${countRun.status}, stderr: ${countRun.stderr}`);
+  let countOut = null;
+  try {
+    countOut = JSON.parse(countRun.stdout);
+  } catch (e) {
+    countOut = null;
+  }
+  ok(
+    'OUTPUT-COUNT fixture projected entry count equals input types entry count',
+    countOut !== null && Object.keys(countOut.types).length === Object.keys(countInputTypes).length,
+    `input ${Object.keys(countInputTypes).length}, output ${countOut && Object.keys(countOut.types).length}`
   );
 } finally {
   rmSync(dir, { recursive: true, force: true });

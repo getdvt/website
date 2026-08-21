@@ -304,7 +304,26 @@ jobs:
 
           if ! cmp -s /tmp/upstream-status-projected.json src/data/chart-type-status.json; then
             echo "::error::Upstream spec/schema/echarts/chart-types.json has drifted from the vendored projection in src/data/chart-type-status.json. Fix: run ./scripts/sync-panel-types.sh and commit the result."
-            diff src/data/chart-type-status.json /tmp/upstream-status-projected.json | head -50 || true
+            # Print KEY SETS only, never file contents. This projection is a
+            # PUBLIC-DISCLOSURE boundary (whitelist projection of a private
+            # upstream file) — a widened projector could make the projected
+            # output itself carry content that shouldn't be dumped into a
+            # public Actions log, so the failure path must never echo file
+            # bytes, only which type keys differ between the two sides.
+            node -e '
+            const fs = require("fs");
+            const vendored = JSON.parse(fs.readFileSync("src/data/chart-type-status.json", "utf8")).types || {};
+            const projected = JSON.parse(fs.readFileSync("/tmp/upstream-status-projected.json", "utf8")).types || {};
+            const vendoredKeys = new Set(Object.keys(vendored));
+            const projectedKeys = new Set(Object.keys(projected));
+            const onlyVendored = [...vendoredKeys].filter(k => !projectedKeys.has(k));
+            const onlyProjected = [...projectedKeys].filter(k => !vendoredKeys.has(k));
+            const changedStatus = [...vendoredKeys].filter(k => projectedKeys.has(k) && vendored[k] !== projected[k]);
+            console.error("Key set diff (chart-type-status.json vs. freshly-projected upstream):");
+            console.error("  only in vendored copy:        " + JSON.stringify(onlyVendored));
+            console.error("  only in projected upstream:   " + JSON.stringify(onlyProjected));
+            console.error("  same key, different status:   " + JSON.stringify(changedStatus));
+            '
             exit 1
           fi
           echo "OK — vendored chart-type-status.json matches upstream (projected compare)."

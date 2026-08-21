@@ -77,15 +77,19 @@
   a new prose key added upstream tomorrow sails straight through unstripped, because a strip-list only
   knows what to remove, not what is safe to keep. A *projection* (`scripts/project-chart-type-status.mjs`)
   inverts that: the output is built key-by-key from an explicit allowlist — here, just `status` per
-  type — so nothing upstream can leak by construction. **This repo is public and `getdvt/dvt` is not.**
+  type — so no upstream annotation *value* can leak by construction. The type *keys* are
+  upstream-authored strings, so the projector additionally refuses to run unless every key matches a
+  strict shape pattern. **This repo is public and `getdvt/dvt` is not.**
 - **Closed status enum, fail-closed**: every type's `status` must be one of `stable` / `passthrough` /
   `advanced`. A missing status, or a value outside that set, makes `scripts/project-chart-type-status.mjs`
   refuse to project (zero stdout bytes, non-zero exit) rather than pass an unrecognized value through —
   a new upstream status may carry a data-binding contract `scripts/check-chart-specs.mjs` has never been
   audited against, so it must be reviewed by a human before it is vendored.
-- **Consumed by**: `scripts/check-chart-specs.mjs`'s data-binding gate — `passthrough` chart types must
-  carry inline `spec.series[].data` (they have no query-bindable branch); every other chart type (and
-  every non-chart type) must carry a `data` block (`query`/`sourceId`/`rows`/`metricRef`).
+- **Consumed by**: `scripts/check-chart-specs.mjs`'s data-binding gate — a deliberately-stricter
+  gallery *house style* keyed on status alone (dvt's real lint is binder-sensitive, and `binder` is
+  not vendored): `passthrough` chart types ship with inline `spec.series[].data`; every other chart
+  type, plus the data-bearing element types (`table`/`kpi`/`stat`/`metric-strip`), carries a `data`
+  block (`query`/`sourceId`/`rows`/`metricRef`). Non-data element types are schema-validated only.
 
 <!-- chart-type-status-provenance:begin — maintained by scripts/sync-panel-types.sh; do not hand-edit between markers -->
 - **Vendored**: 2026-08-21, from `getdvt/dvt` `origin/main` @ `1b43b40dcbe7495e35fea96467df5e1f415637b7`

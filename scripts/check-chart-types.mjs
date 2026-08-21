@@ -171,10 +171,11 @@ if (onlyInSchema.length > 0 || onlyInVendored.length > 0) {
 // The THIRD vendored artifact: src/data/chart-type-status.json, a whitelist
 // PROJECTION (type -> status only) of getdvt/dvt's
 // spec/schema/echarts/chart-types.json, produced by
-// scripts/project-chart-type-status.mjs. Mirrors the schema's three checks
-// above: sha256 consistency, README-provenance staleness, and a shape check
-// (this one has no sibling artifact to set-compare against, since it's a
-// single JSON blob with no separate "enum" artifact).
+// scripts/project-chart-type-status.mjs. Mirrors the schema's checks above:
+// sha256 consistency, README-provenance staleness, a shape check, AND (below,
+// after the shape check) a set-compare against panel-types.json's `chart:*`
+// subset — the two DO have a sibling artifact to compare against, since every
+// key in the status table is a chart-type PanelType member.
 // ---------------------------------------------------------------------------
 const statusRaw = readFileSync(STATUS_FILE, 'utf8');
 const statusSha256 = createHash('sha256').update(statusRaw).digest('hex');
@@ -273,6 +274,32 @@ if (badStatusEntries.length > 0) {
   process.exit(1);
 }
 
+// Check (set-compare): the status table's key set must exactly equal the
+// `chart:*` subset of panel-types.json's panelTypes array, in both
+// directions. sync-panel-types.sh produces both artifacts from ONE fetch, so
+// they cannot drift when the script is used — but a hand-edit of either file
+// (or a stale one committed alone) can still split them, exactly like the
+// schema/enum set-compare above. Zero-dependency, reused from `panelTypes`
+// and `statusTypes` already parsed above.
+const chartPanelTypes = new Set(panelTypes.filter((t) => t.startsWith('chart:')));
+const statusTypeSet = new Set(Object.keys(statusTypes));
+const onlyInPanelTypes = [...chartPanelTypes].filter((t) => !statusTypeSet.has(t));
+const onlyInStatusTypes = [...statusTypeSet].filter((t) => !chartPanelTypes.has(t));
+if (onlyInPanelTypes.length > 0 || onlyInStatusTypes.length > 0) {
+  console.error(
+    'ERROR: the vendored artifacts disagree — src/data/chart-type-status.json is out of sync with ' +
+      "the `chart:*` subset of src/data/panel-types.json's panelTypes."
+  );
+  if (onlyInPanelTypes.length > 0) {
+    console.error(`  In panel-types.json (chart:*) but not in chart-type-status.json: ${JSON.stringify(onlyInPanelTypes)}`);
+  }
+  if (onlyInStatusTypes.length > 0) {
+    console.error(`  In chart-type-status.json but not in panel-types.json (chart:*): ${JSON.stringify(onlyInStatusTypes)}`);
+  }
+  console.error('Fix: run ./scripts/sync-panel-types.sh and commit both files.');
+  process.exit(1);
+}
+
 // Extract every dvtType string-literal value. The regex only matches quoted
 // string assignments — the TS interface field `dvtType: string;` has no quotes
 // so it never fires here.
@@ -315,5 +342,6 @@ if (offenders.length > 0) {
 
 console.log(
   `OK — all ${matches.length} chart/table types in charts.ts are valid PanelType members (${panelTypes.length} in vendored enum); ` +
-    `chart-type-status.json is consistent (${Object.keys(statusTypes).length} vendored statuses).`
+    `chart-type-status.json is consistent and set-equal to panel-types.json's chart:* subset ` +
+    `(${Object.keys(statusTypes).length} vendored statuses).`
 );

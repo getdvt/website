@@ -27,16 +27,19 @@
 // local edit to it is permanently red by construction — not merely discouraged.
 //
 // The DATA-BINDING class (a schema-valid panel that will render EMPTY for want
-// of a data source or inline series[].data) is NOW CLOSED OFFLINE (DVT-3113),
-// via src/data/chart-type-status.json — a whitelist projection of dvt's
-// spec/schema/echarts/chart-types.json (`types[*].status`; see
-// scripts/project-chart-type-status.mjs). `passthrough` chart types render
-// entirely from inline ECharts option data and have no query-bindable branch,
-// so they must carry inline `spec.series[].data`; every other chart type (and
-// every non-chart type, e.g. `table`) must carry a `data` block. The
-// echarts-key class remains open and out of scope here — it is a separate
-// surface (unknown/mistyped ECharts option keys, not a data-source contract)
-// and is not addressed by this ticket.
+// of a data source or inline series[].data) is closed here at the STATUS
+// LEVEL (DVT-3113), via src/data/chart-type-status.json — a whitelist
+// projection of dvt's spec/schema/echarts/chart-types.json (`types[*].status`;
+// see scripts/project-chart-type-status.mjs). This is a deliberately-stricter
+// gallery house style, not a reproduction of dvt's own binder-sensitive lint:
+// dvt's server-side rule (server/internal/spec/lint_binding.go) keys on
+// status AND binder, which is not vendored into this public repo, so this
+// gate keys on status alone. `passthrough` chart types must carry inline
+// `spec.series[].data`; every other chart type (and the explicit DATA_BEARING
+// non-chart types, e.g. `table`) must carry a `data` block. The echarts-key
+// class remains open and out of scope here — it is a separate surface
+// (unknown/mistyped ECharts option keys, not a data-source contract) and is
+// not addressed by this ticket.
 //
 // Zero-dependency guards (check-chart-types.mjs, check-chart-pages.mjs) run
 // before this one in CI, since this one needs `npm ci` for ajv first.
@@ -282,17 +285,37 @@ function hasInlineSeriesData(panel) {
 function hasDataBlock(panel) {
   const data = panel?.data;
   if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
-  if (typeof data.query !== 'undefined' && data.query !== null) return true;
-  if (typeof data.sourceId !== 'undefined' && data.sourceId !== null) return true;
-  if (typeof data.metricRef !== 'undefined' && data.metricRef !== null) return true;
+  // query/sourceId/metricRef must be non-empty strings after trim — a
+  // present-but-blank value (e.g. `query: ''`) is not a real binding and
+  // would let a snippet through that still renders empty.
+  const isNonEmptyString = (v) => typeof v === 'string' && v.trim() !== '';
+  if (isNonEmptyString(data.query)) return true;
+  if (isNonEmptyString(data.sourceId)) return true;
+  if (isNonEmptyString(data.metricRef)) return true;
   if (Array.isArray(data.rows) && data.rows.length > 0) return true;
   return false;
 }
+
+// The data-binding contract only applies to `chart:*` types (gated on the
+// vendored chart-type-status.json) plus this explicit set of non-chart types
+// that DO carry a real data source in the gallery. Every other non-chart
+// type (text, html, divider, hero, media, container, section, filter,
+// filter-bar…) has no data source at all — it is structural/decorative
+// chrome, not a query-bindable panel — so demanding a `data` block from it
+// would be a false red, not a real gap. Those types are still covered by the
+// schema validation above; they are simply out of scope for this
+// data-source-specific contract.
+const DATA_BEARING = new Set(['table', 'kpi', 'stat', 'metric-strip']);
 
 const bindingFailures = [];
 for (const { name, dvtType, panel } of parsed) {
   const t = dvtType;
   const isChartType = t.startsWith('chart:');
+
+  if (!isChartType && !DATA_BEARING.has(t)) {
+    // Out of scope for the data-binding contract — schema-validated only.
+    continue;
+  }
 
   if (isChartType && !(t in chartTypeStatusTypes)) {
     bindingFailures.push({
@@ -313,20 +336,24 @@ for (const { name, dvtType, panel } of parsed) {
         name,
         rule: 'passthrough-needs-inline-series-data',
         message:
-          `chart type '${t}' (status: passthrough) renders EMPTY without inline spec.series[].data ` +
-          '— passthrough types have no query-bindable branch',
+          `chart type '${t}' (status: passthrough) violates the gallery house style: a passthrough ` +
+          'snippet type must carry inline spec.series[].data — the gallery ships passthrough ' +
+          'snippets with inline series[].data',
       });
     }
     continue;
   }
 
-  // Any other status (stable/advanced), and any non-`chart:` type (e.g. `table`).
+  // Any other status (stable/advanced), and any non-chart DATA_BEARING type
+  // (e.g. `table`, `kpi`, `stat`, `metric-strip`).
   const statusLabel = status ?? '(non-chart type)';
   if (!hasDataBlock(panel)) {
     bindingFailures.push({
       name,
       rule: 'needs-data-block',
-      message: `type '${t}' (status: ${statusLabel}) renders EMPTY without a data block ` + '(query/sourceId/rows/metricRef)',
+      message:
+        `type '${t}' (status: ${statusLabel}) violates the gallery house style: non-passthrough ` +
+        'snippet types must carry a data block (query/sourceId/rows/metricRef)',
     });
   }
 }
@@ -340,14 +367,20 @@ if (bindingFailures.length > 0) {
   }
   console.error('');
   console.error(
-    'Fix hint: passthrough chart types need inline spec.series[].data; every other chart/table ' +
-      'type needs a data block (query/sourceId/rows/metricRef). If the type is genuinely missing ' +
-      'from the vendored status table, run scripts/sync-panel-types.sh.'
+    'Fix hint: passthrough chart types need inline spec.series[].data; every other chart or ' +
+      'DATA_BEARING (table/kpi/stat/metric-strip) type needs a data block ' +
+      '(query/sourceId/rows/metricRef). If the type is genuinely missing from the vendored status ' +
+      'table, run scripts/sync-panel-types.sh.'
   );
   process.exit(1);
 }
 
+const inScopeCount = parsed.filter(
+  ({ dvtType }) => dvtType.startsWith('chart:') || DATA_BEARING.has(dvtType)
+).length;
+
 console.log(
-  `OK — all ${parsed.length} chart-catalog snippets validate against dvt's Panel schema and satisfy ` +
-    'the data-binding contract (schema + data-binding).'
+  `OK — all ${parsed.length} chart-catalog snippets validate against dvt's Panel schema; ` +
+    `${inScopeCount} of them (chart:* plus DATA_BEARING: table/kpi/stat/metric-strip) also satisfy ` +
+    'the gallery data-binding house style (schema + data-binding).'
 );
