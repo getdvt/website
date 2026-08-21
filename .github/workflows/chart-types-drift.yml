@@ -27,8 +27,9 @@ name: Chart-type drift check
 #     the gate silently checked a stale contract. Auth = the `getdvt-ci-reader`
 #     App (Contents: read on getdvt/dvt), wired as the `DVT_SCHEMA_APP_ID` repo
 #     variable + `DVT_SCHEMA_APP_PRIVATE_KEY` repo secret. See the setup runbook:
-#     .github/github-app-ci-reader.md. The sweep is a no-op until the App is
-#     provisioned (gated on the DVT_SCHEMA_APP_ID variable).
+#     .github/github-app-ci-reader.md. Both are provisioned (App ID 4149101, set
+#     2026-06-26) and the sweep is LIVE — a red sweep here is real drift, not an
+#     unwired gate.
 #
 # Why a GitHub App, not a PAT: the installation token is short-lived (auto-rotated
 # per run), scoped to exactly getdvt/dvt Contents:read, and owned by the org —
@@ -36,8 +37,10 @@ name: Chart-type drift check
 # CI read; the runbook documents how to reuse it.
 #
 # Do NOT add `upstream-enum-sweep` to branch-protection required checks: it does
-# not run on PRs (job-level event guard) and skips when the App is unprovisioned,
-# so it would report a false green. The PR-time gate is the `drift` job only.
+# not run on PRs (job-level event guard), so it could never satisfy a PR-time
+# required check. The PR-time gate is the `drift` job only. (An unwired App no
+# longer skips quietly — the scheduled run now fails loudly instead; see the
+# first step of the `upstream-sweep` job below.)
 #
 # The two enum/page guards (check-chart-types.mjs, check-chart-pages.mjs) stay
 # dependency-free and run first. The snippet-schema guard (check-chart-specs.mjs)
@@ -59,6 +62,10 @@ on:
       # A change here changes what the vendored schema IS, and what the weekly
       # sweep compares against — so it must re-run the gates.
       - 'scripts/normalize-schema.mjs'
+      - 'scripts/normalize-schema.test.mjs'
+      # check-chart-types.mjs asserts the README's provenance block matches the
+      # vendored schema — so a README-only edit must re-run the gates too.
+      - 'src/data/README.md'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/chart-types-drift.yml'
@@ -86,6 +93,13 @@ jobs:
 
       - name: Assert chart-pages.json covers every page-worthy PanelType member
         run: node scripts/check-chart-pages.mjs
+
+      # Self-test the normalizer itself before trusting it in the fixed-point
+      # check below: covers the opaque-value tripwire (STRIP-key-inside-enum
+      # must refuse to normalize) and the schema-aware strip (a real property
+      # named "description" must survive). Zero-dep, so it runs before `npm ci`.
+      - name: Normalizer self-test (tripwire + schema-aware strip)
+        run: node scripts/normalize-schema.test.mjs
 
       # The vendored schema must be a FIXED POINT of the normalizer. This is the
       # PR-time half of the drift story and it needs no token and no network: it
@@ -117,12 +131,16 @@ jobs:
     permissions:
       contents: read
     steps:
-      # Loud skip when the App isn't provisioned yet — App ID lives in a repo
-      # VARIABLE (not a secret) so it can gate `if:` (secrets can't be used there).
-      - name: Notice if the getdvt-ci-reader App is not configured
+      # Hard-fail (not skip) when the App isn't provisioned — App ID lives in a
+      # repo VARIABLE (not a secret) so it can gate `if:` (secrets can't be used
+      # there). The header above asserts the sweep is LIVE, so a green run of
+      # this job must mean it actually ran; silently skipping would report a
+      # false green.
+      - name: Fail if the getdvt-ci-reader App is unwired
         if: vars.DVT_SCHEMA_APP_ID == ''
         run: |
-          echo "::notice::Upstream sweep skipped: the getdvt-ci-reader GitHub App is not configured. Set the DVT_SCHEMA_APP_ID repo variable + DVT_SCHEMA_APP_PRIVATE_KEY repo secret to enable the weekly upstream drift check. See .github/github-app-ci-reader.md."
+          echo "::error::The sweep is asserted live/provisioned in this file's header, but the DVT_SCHEMA_APP_ID repo variable is missing, so the drift contract is unwired. Restore the variable + DVT_SCHEMA_APP_PRIVATE_KEY, or consciously downgrade this file's claims. See .github/github-app-ci-reader.md."
+          exit 1
 
       # Mint a short-lived installation token scoped to getdvt/dvt Contents:read.
       # The App is installed on getdvt/dvt; owner+repositories scope the token to it.

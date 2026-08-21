@@ -93,25 +93,51 @@ const OPAQUE = new Set(['enum', 'const', 'default', 'examples']);
 
 const STRIP = new Set(['description', '$comment']);
 
-function normalize(node, keysAreNames) {
+// Paths (from the document root, e.g. `$defs/Foo/enum[2]/description`) where a
+// STRIP key was found INSIDE an opaque (data-position) value. OPAQUE values are
+// never descended by `normalize()` below — correct, since an object nested in
+// `enum`/`const`/`default`/`examples` may legitimately carry a key named
+// "description" as DATA. But if upstream ever nests real annotation prose there
+// instead, this walk would copy it verbatim to a public repo, and the fixed-point
+// gate can't catch it (normalization is idempotent on opaque values — there is
+// nothing for a byte-compare to see). So opaque values are deep-scanned
+// separately, purely to detect and refuse this, never to strip anything from them.
+const opaqueViolations = [];
+
+function scanOpaqueForStripKeys(value, path) {
+  if (value === null || typeof value !== 'object') return;
+  if (Array.isArray(value)) {
+    value.forEach((v, i) => scanOpaqueForStripKeys(v, `${path}[${i}]`));
+    return;
+  }
+  for (const [key, v] of Object.entries(value)) {
+    const childPath = `${path}/${key}`;
+    if (STRIP.has(key)) opaqueViolations.push(childPath);
+    scanOpaqueForStripKeys(v, childPath);
+  }
+}
+
+function normalize(node, keysAreNames, path) {
   if (node === null || typeof node !== 'object') return node;
-  if (Array.isArray(node)) return node.map((v) => normalize(v, false));
+  if (Array.isArray(node)) return node.map((v, i) => normalize(v, false, `${path}[${i}]`));
 
   const out = {};
   for (const [key, value] of Object.entries(node)) {
+    const childPath = path ? `${path}/${key}` : key;
     if (keysAreNames) {
       // `key` is a property name chosen by the schema author — keep it verbatim,
       // and descend into its value as a schema.
-      out[key] = normalize(value, false);
+      out[key] = normalize(value, false, childPath);
       continue;
     }
     if (!KNOWN_KEYWORDS.has(key)) unknownKeywords.add(key);
     if (STRIP.has(key)) continue; // annotation position — this is the strip
     if (OPAQUE.has(key)) {
       out[key] = value; // literal data, copied untouched
+      scanOpaqueForStripKeys(value, childPath);
       continue;
     }
-    out[key] = normalize(value, NAME_KEYED.has(key));
+    out[key] = normalize(value, NAME_KEYED.has(key), childPath);
   }
   return out;
 }
@@ -130,7 +156,11 @@ try {
   process.exit(1);
 }
 
-const normalized = normalize(parsed, false);
+const normalized = normalize(parsed, false, '');
+
+// Fail-closed: either check below must produce ZERO bytes of stdout, so both
+// run and both report BEFORE anything is written.
+let hasError = false;
 
 if (unknownKeywords.size > 0) {
   console.error(
@@ -142,8 +172,27 @@ if (unknownKeywords.size > 0) {
       'or keep prose it was meant to remove, and the weekly sweep cannot detect either because\n' +
       'it normalizes both sides. Audit the keyword, then add it to KNOWN_KEYWORDS.'
   );
-  process.exit(1);
+  hasError = true;
 }
+
+if (opaqueViolations.length > 0) {
+  console.error(
+    `ERROR: ${src} has STRIP key(s) (description/$comment) nested INSIDE an opaque ` +
+      '(enum/const/default/examples) value, at:\n' +
+      opaqueViolations.map((p) => `  ${p}`).join('\n') +
+      '\n\n' +
+      'Opaque values are copied verbatim, on the assumption their contents are literal DATA — ' +
+      'a description/$comment key found there would be published to this PUBLIC repo unstripped, ' +
+      'and the PR-time fixed-point gate cannot detect it (normalization is idempotent on opaque ' +
+      'values, so there is nothing for the byte-compare to see). Refusing to normalize.\n' +
+      'A human must decide: if this is genuinely data (a real property named "description"/"$comment" ' +
+      'inside an enum/const/default/examples member), audit it and adjust this script deliberately ' +
+      'to allow it; if it is annotation prose, it must not ship here — fix it upstream instead.'
+  );
+  hasError = true;
+}
+
+if (hasError) process.exit(1);
 
 // Stable 2-space formatting with a trailing newline. Key ORDER is preserved from
 // the source (JSON.stringify follows insertion order), so the output is a

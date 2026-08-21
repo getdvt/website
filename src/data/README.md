@@ -15,25 +15,28 @@
 ## dashboard.schema.json
 
 - **Source**: `getdvt/dvt` -> `spec/schema/dashboard.schema.json`.
-- **Vendored**: 2026-08-15, from `getdvt/dvt` `origin/main` @ `1374178aba454f5feb26ac00653e2b77f5b9dedc`
-  (blob sha `ddfbfba94de7dc0e21fe9ace75ecf7acb42fbd9f`, upstream sha256
-  `715ddb53f18d709db4d1f0e5c16f8c244497aa6e46e8b264058f94a86712c0e8`).
 - **⚠️ NOT a verbatim copy — this is the NORMALIZED form.** `description` and `$comment` annotation
   prose is stripped by `scripts/normalize-schema.mjs` before vendoring. **This repo is public and
   `getdvt/dvt` is not**: upstream's prose is internal engineering commentary (source paths, ADR and
   ticket history, version-scoped security notes), and publishing it here would be irreversible.
   Structure only.
-- **sha256 of the vendored (normalized) file**:
-  `2337f49d7760f8d0d1d1f8e493c67a440ef47f9b429a0e723a2ada6be9511e18`.
+
+<!-- provenance:begin — maintained by scripts/sync-panel-types.sh; do not hand-edit between markers -->
+- **Vendored**: 2026-08-20, from `getdvt/dvt` `origin/main` @ `c82df2f639adcbcf26ef6a31e652d2784baa0a6f`
+  (blob sha `ddfbfba94de7dc0e21fe9ace75ecf7acb42fbd9f`, upstream sha256
+  `715ddb53f18d709db4d1f0e5c16f8c244497aa6e46e8b264058f94a86712c0e8`).
+- **Vendored (normalized) sha256**: `2337f49d7760f8d0d1d1f8e493c67a440ef47f9b429a0e723a2ada6be9511e18`.
 - **Reproduce it** — the vendored file is a deterministic function of the upstream one:
   ```
   # ?ref= pins the SAME commit this block records. Without it the fetch follows the
   # default branch, so the first upstream schema commit makes the sha mismatch and
   # read as a bug rather than as expected drift.
-  gh api "repos/getdvt/dvt/contents/spec/schema/dashboard.schema.json?ref=1374178aba454f5feb26ac00653e2b77f5b9dedc" \
+  gh api "repos/getdvt/dvt/contents/spec/schema/dashboard.schema.json?ref=c82df2f639adcbcf26ef6a31e652d2784baa0a6f" \
     -H "Accept: application/vnd.github.raw" > /tmp/upstream.json
   node scripts/normalize-schema.mjs /tmp/upstream.json | shasum -a 256   # must match the sha256 above
   ```
+<!-- provenance:end -->
+
 - **Validation is unaffected.** `description`/`$comment` are annotation keywords that ajv ignores.
   This was verified by validating the same panels against both the verbatim and the normalized
   schema and confirming identical accept/reject verdicts, including all three DVT-3084 defect shapes.
@@ -43,14 +46,20 @@
   silently weakened what the schema accepts.
 - **Why vendored**: `getdvt/dvt` is private and PR CI has no token to read it live (same reason as
   `panel-types.json`).
-- **Refresh**: `scripts/sync-panel-types.sh` (it refreshes this file and `panel-types.json` from one
-  fetch). The weekly `upstream-sweep` job normalizes the live upstream with the *same* script before
-  comparing, so the two sides cannot diverge — but note it therefore does NOT detect prose-only
-  upstream edits, which by the argument above cannot affect any gate.
+- **Refresh**: `scripts/sync-panel-types.sh` — one fetch, but it maintains FOUR artifacts: this file
+  (`dashboard.schema.json`), `panel-types.json`, this README's own provenance block (between the
+  markers above), and the `EXPECTED_SHA256` constant in `scripts/check-chart-types.mjs`. The weekly
+  `upstream-sweep` job normalizes the live upstream with the *same* script before comparing, so the
+  two sides cannot diverge — but note it therefore does NOT detect prose-only upstream edits, which by
+  the argument above cannot affect any gate.
 - Do NOT hand-edit it; do NOT import it from a page or component (it would land in the client
   bundle). It is read only by `scripts/check-chart-specs.mjs` at build/CI time.
 - A hand-edit does not wait for the Monday sweep to surface: the `drift` job asserts at PR time that
   this file is a FIXED POINT of the normalizer (`normalize(vendored) == vendored`), so editing either
-  this file or `scripts/normalize-schema.mjs` without re-running the sync goes red on the PR. That
-  gate is also what makes the asymmetric weekly compare rigorous — it discharges the premise that
-  lets `cmp normalize(upstream) vendored` stand in for a normalized-to-normalized compare.
+  this file or `scripts/normalize-schema.mjs` without re-running the sync goes red on the PR. Two more
+  PR-time checks in `scripts/check-chart-types.mjs` catch a split among the OTHER artifacts the sync
+  script maintains: a sha256-consistency check (this file vs. `EXPECTED_SHA256`) and a
+  README-provenance-staleness check (this file's sha256 vs. the labeled line in this README's
+  provenance block, above) — both advisory, same as the rest of that script. The fixed-point gate is
+  also what makes the asymmetric weekly compare rigorous — it discharges the premise that lets
+  `cmp normalize(upstream) vendored` stand in for a normalized-to-normalized compare.

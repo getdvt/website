@@ -16,9 +16,12 @@
 //     unchanged) is caught by the weekly `upstream-sweep` job in
 //     .github/workflows/chart-types-drift.yml, which reads origin/main's schema
 //     live via `gh api` using a short-lived getdvt-ci-reader GitHub App token
-//     (gated on the DVT_SCHEMA_APP_ID variable) and both set-compares the enum and
-//     byte-compares the full schema. The sweep is a no-op until the App is
-//     provisioned — see .github/github-app-ci-reader.md.
+//     (gated on the DVT_SCHEMA_APP_ID variable) and set-compares the enum, then
+//     structurally compares the full schema after normalizing the upstream fetch
+//     with scripts/normalize-schema.mjs (asymmetric on purpose: only upstream is
+//     normalized, the vendored file is compared as committed). The App and its
+//     private-key secret are provisioned and the sweep is LIVE — see
+//     .github/github-app-ci-reader.md. A red sweep is real drift, not an unwired gate.
 //
 // This script also gates the two vendored artifacts (panel-types.json and the
 // full dashboard.schema.json) against each other — see the set-compare below.
@@ -27,6 +30,7 @@
 //
 
 import { readFileSync } from 'fs';
+import { createHash } from 'crypto';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
 
@@ -34,16 +38,94 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CHARTS_FILE = resolve(REPO_ROOT, 'src/data/charts.ts');
 const ENUM_FILE = resolve(REPO_ROOT, 'src/data/panel-types.json');
 const SCHEMA_FILE = resolve(REPO_ROOT, 'src/data/dashboard.schema.json');
+const README_FILE = resolve(REPO_ROOT, 'src/data/README.md');
+
+// Maintained by scripts/sync-panel-types.sh — do not hand-edit. Must equal the
+// sha256 of src/data/dashboard.schema.json AND the "Vendored (normalized) sha256"
+// line in src/data/README.md; both are asserted below.
+const EXPECTED_SHA256 = '2337f49d7760f8d0d1d1f8e493c67a440ef47f9b429a0e723a2ada6be9511e18';
 
 const chartsSource = readFileSync(CHARTS_FILE, 'utf8');
 const { panelTypes } = JSON.parse(readFileSync(ENUM_FILE, 'utf8'));
+
+// Read the vendored schema's raw bytes ONCE — reused for the consistency check
+// below and for the JSON.parse further down.
+const schemaRaw = readFileSync(SCHEMA_FILE, 'utf8');
+const schemaSha256 = createHash('sha256').update(schemaRaw).digest('hex');
+
+// Check 1 (consistency): the file actually committed at src/data/dashboard.schema.json
+// must match its recorded sha256. A mismatch here means the VENDORED file itself
+// changed — an accidental split from a hand-edit, a botched merge, a partial
+// sync — NOT that upstream drifted (that's the weekly sweep's job); this check
+// runs on every PR/build. This is NOT tamper-resistance: EXPECTED_SHA256 lives
+// in the same file (and the same diff) an attacker editing the schema would
+// touch, so a deliberate, self-consistent edit of both defeats it trivially —
+// it only catches an accidental split between the two.
+if (schemaSha256 !== EXPECTED_SHA256) {
+  console.error(
+    `ERROR: ${SCHEMA_FILE} does not match its recorded sha256.\n` +
+      `  expected: ${EXPECTED_SHA256}\n` +
+      `  actual:   ${schemaSha256}\n` +
+      'This means the VENDORED file changed, not that upstream drifted.\n' +
+      'Fix: if this is an intentional refresh, run ./scripts/sync-panel-types.sh ' +
+      '(it rewrites this constant and src/data/README.md) and commit all four files; ' +
+      'otherwise revert the edit to src/data/dashboard.schema.json.'
+  );
+  process.exit(1);
+}
+
+// Check 2 (README staleness): src/data/README.md's provenance block must record
+// the SAME sha256 as the file actually committed here, so a stale README goes red
+// in CI instead of sitting silent. Anchored on the stable label, not on any bare
+// 64-hex match — the README also records an unrelated sha256 for world.geo.json.
+// Scoped and unique, mirroring the EXPECTED_SHA256-uniqueness discipline
+// sync-panel-types.sh applies to itself: match globally and require EXACTLY one
+// occurrence of the label (zero or more than one is an error), and require that
+// occurrence to fall AFTER the `<!-- provenance:begin` marker — a stray or
+// duplicated label outside the machine-maintained block must not be mistaken
+// for the real one.
+const readmeRaw = readFileSync(README_FILE, 'utf8');
+const provenanceBeginIdx = readmeRaw.indexOf('<!-- provenance:begin');
+if (provenanceBeginIdx === -1) {
+  console.error(
+    `ERROR: could not find the "<!-- provenance:begin" marker in ${README_FILE}.\n` +
+      'Fix: run ./scripts/sync-panel-types.sh to regenerate the provenance block.'
+  );
+  process.exit(1);
+}
+const readmeShaMatches = [...readmeRaw.matchAll(/\*\*Vendored \(normalized\) sha256\*\*:\s*`([0-9a-f]{64})`/g)];
+if (readmeShaMatches.length !== 1) {
+  console.error(
+    `ERROR: expected exactly one "Vendored (normalized) sha256" provenance label in ${README_FILE}, found ${readmeShaMatches.length}.\n` +
+      'Fix: run ./scripts/sync-panel-types.sh to regenerate the provenance block.'
+  );
+  process.exit(1);
+}
+const [readmeMatch] = readmeShaMatches;
+if (readmeMatch.index < provenanceBeginIdx) {
+  console.error(
+    `ERROR: the "Vendored (normalized) sha256" provenance label in ${README_FILE} sits outside/before ` +
+      'the <!-- provenance:begin --> marker.\n' +
+      'Fix: run ./scripts/sync-panel-types.sh to regenerate the provenance block.'
+  );
+  process.exit(1);
+}
+if (readmeMatch[1] !== schemaSha256) {
+  console.error(
+    `ERROR: ${README_FILE} records a stale vendored sha256.\n` +
+      `  README says: ${readmeMatch[1]}\n` +
+      `  actual:       ${schemaSha256}\n` +
+      'Fix: run ./scripts/sync-panel-types.sh to regenerate the provenance block and commit the result.'
+  );
+  process.exit(1);
+}
 
 // Gate: the two vendored artifacts must agree. sync-panel-types.sh writes both
 // from ONE fetch, so they cannot drift when the script is used — but a hand-edit
 // of either file can still split them, and nothing else would notice. Reading the
 // enum out of the schema needs no dependency, so this script stays zero-dep and
 // keeps running BEFORE `npm ci` in CI.
-const schemaEnum = JSON.parse(readFileSync(SCHEMA_FILE, 'utf8'))?.$defs?.PanelType?.enum;
+const schemaEnum = JSON.parse(schemaRaw)?.$defs?.PanelType?.enum;
 if (!Array.isArray(schemaEnum) || schemaEnum.length === 0) {
   console.error(
     `ERROR: could not read $defs.PanelType.enum from ${SCHEMA_FILE}. The vendored schema is ` +
