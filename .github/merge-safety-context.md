@@ -19,3 +19,8 @@ Score lower (route to human review) for anything touching:
   public repo (a public-disclosure boundary); `normalize-schema.mjs` strips upstream's internal
   annotation prose before anything lands here. A diff touching any of the three must keep the strip +
   fixed-point + provenance machinery intact.
+- `src/data/chart-type-status.json` / `scripts/project-chart-type-status.mjs` — the status file is a
+  whitelist PROJECTION, not a strip: its output is built key-by-key from an explicit allowlist
+  (`status` per type, closed enum), not by removing known-bad keys from upstream. Any PR widening the
+  projector's `KNOWN_STATUSES`, its key-shape rule, or its output fields changes a public-disclosure
+  boundary and must never be scored trivially safe.
