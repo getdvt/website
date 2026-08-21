@@ -37,13 +37,16 @@
   ```
 <!-- provenance:end -->
 
-- **Validation is unaffected.** `description`/`$comment` are annotation keywords that ajv ignores.
-  This was verified by validating the same panels against both the verbatim and the normalized
-  schema and confirming identical accept/reject verdicts, including all three DVT-3084 defect shapes.
+- **Validation is unaffected.** `description`/`$comment`/`title`/`examples` (the DVT-3231 strip
+  scope) are annotation keywords that ajv ignores. The original `description`/`$comment` strip was
+  verified by validating the same panels against both the verbatim and the normalized schema and
+  confirming identical accept/reject verdicts, including all three DVT-3084 defect shapes; the same
+  annotation-keyword argument covers `title`/`examples`.
   The strip is schema-aware: 7 places in this schema use `description`/`$comment` as real property
   NAMES (`$defs/Meta`, `PageDoc`, `MetricItem`, `TableColumn`, `StatSpec`, `KpiSpec`, and top-level
-  `properties/$comment`), and those definitions are preserved — a naive recursive delete would have
-  silently weakened what the schema accepts.
+  `properties/$comment`), and 5 more use `title` (`$defs/Meta`, `Section`, `FilterBarSpec`, `Panel`,
+  `Page`). Those definitions are preserved — a naive recursive delete would have silently weakened
+  what the schema accepts.
 - **Why vendored**: `getdvt/dvt` is private and PR CI has no token to read it live (same reason as
   `panel-types.json`).
 - **Refresh**: `scripts/sync-panel-types.sh` — one fetch, but it maintains FOUR artifacts: this file

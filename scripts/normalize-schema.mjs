@@ -3,11 +3,12 @@
 // Canonicalize dvt's dashboard.schema.json for vendoring into THIS PUBLIC REPO.
 //
 // Why this exists: `getdvt/website` is public, `getdvt/dvt` is private. The
-// canonical schema's `description` / `$comment` prose is engineering commentary,
-// not user documentation — it names internal source paths, ADR/ticket history, and
-// version-scoped security notes ("this sink was OPEN before DVT-<n>"). Vendoring it
-// verbatim would publish all of that, irreversibly, to anyone reading this repo.
-// So the vendored copy carries STRUCTURE ONLY.
+// canonical schema's `description` / `$comment` / `title` / `examples` annotations
+// are engineering commentary, not user documentation — they name internal source
+// paths, ADR/ticket history, and version-scoped security notes ("this sink was
+// OPEN before DVT-<n>"). Vendoring them verbatim would publish all of that,
+// irreversibly, to anyone reading this repo. So the vendored copy carries
+// STRUCTURE ONLY.
 //
 // Reads a schema file, writes the normalized form to stdout. Used in two places
 // that MUST agree, which is exactly why it is one script rather than two copies:
@@ -17,20 +18,25 @@
 // If these two normalizations ever diverged, the weekly drift check would report
 // permanent false drift. Sharing this file makes that divergence impossible.
 //
-// Validation impact: NONE. `description` and `$comment` are annotation keywords —
-// ajv ignores both. The vendored copy validates exactly what the canonical one does.
-// What the drift check loses is sensitivity to prose-only upstream edits, which by
-// the same argument cannot affect any gate.
+// Validation impact: NONE. `description`, `$comment`, `title`, and `examples` are
+// all annotation keywords — ajv ignores all four. The vendored copy validates
+// exactly what the canonical one does. What the drift check loses is sensitivity
+// to prose-only upstream edits, which by the same argument cannot affect any gate.
 //
 // ─────────────────────────────────────────────────────────────────────────────
-// CRITICAL: `description` is BOTH an annotation keyword AND, in this schema, a
-// real property NAME in 7 places (`$defs/Meta/properties/description`, and the
-// same under PageDoc, MetricItem, TableColumn, StatSpec, KpiSpec, plus a
-// top-level `properties/$comment`). A naive recursive delete would strip those
-// 7 property DEFINITIONS, silently changing what the schema accepts — the
-// snippet gate would then pass specs the real engine rejects. So the walk is
-// schema-aware: inside a keyword whose children are keyed by property NAME, the
-// keys are data and are never stripped.
+// CRITICAL: `description` and `title` are BOTH annotation keywords AND, in this
+// schema, real property NAMEs. `description` is a property name in 7 places
+// (`$defs/Meta/properties/description`, and the same under PageDoc, MetricItem,
+// TableColumn, StatSpec, KpiSpec, plus a top-level `properties/$comment`).
+// `title` is a property name in 5 places (`$defs/Meta/properties/title`, and
+// the same under Section, FilterBarSpec, Panel, Page — VERIFIED 2026-08-20 on
+// the vendored file; the DVT-3231 ticket comment claiming "title is NOT a
+// property name anywhere" is REFUTED, do not copy that claim into this comment
+// or any other). A naive recursive delete would strip those 12 property
+// DEFINITIONS, silently changing what the schema accepts — the snippet gate
+// would then pass specs the real engine rejects. So the walk is schema-aware:
+// inside a keyword whose children are keyed by property NAME, the keys are
+// data and are never stripped.
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Zero dependencies: pure Node built-ins, so it runs in CI before `npm ci`.
@@ -87,20 +93,23 @@ const KNOWN_KEYWORDS = new Set([
 const unknownKeywords = new Set();
 
 // Keywords whose values are literal DATA, not schemas. Never descend — an object
-// inside `enum`/`const`/`default`/`examples` may legitimately carry a key called
-// "description" that is part of the value, not an annotation.
-const OPAQUE = new Set(['enum', 'const', 'default', 'examples']);
+// inside `enum`/`const`/`default` may legitimately carry a key called
+// "description" (or "title") that is part of the value, not an annotation.
+// `examples` is NOT opaque here: it is itself a STRIP key (see below), so it is
+// dropped outright before OPAQUE is ever consulted — see the `STRIP.has(key)`
+// check in `normalize()`, which runs before the `OPAQUE.has(key)` check.
+const OPAQUE = new Set(['enum', 'const', 'default']);
 
-const STRIP = new Set(['description', '$comment']);
+const STRIP = new Set(['description', '$comment', 'title', 'examples']);
 
 // Paths (from the document root, e.g. `$defs/Foo/enum[2]/description`) where a
 // STRIP key was found INSIDE an opaque (data-position) value. OPAQUE values are
 // never descended by `normalize()` below — correct, since an object nested in
-// `enum`/`const`/`default`/`examples` may legitimately carry a key named
-// "description" as DATA. But if upstream ever nests real annotation prose there
-// instead, this walk would copy it verbatim to a public repo, and the fixed-point
-// gate can't catch it (normalization is idempotent on opaque values — there is
-// nothing for a byte-compare to see). So opaque values are deep-scanned
+// `enum`/`const`/`default` may legitimately carry a key named "description" (or
+// "title"/"examples") as DATA. But if upstream ever nests real annotation prose
+// there instead, this walk would copy it verbatim to a public repo, and the
+// fixed-point gate can't catch it (normalization is idempotent on opaque values —
+// there is nothing for a byte-compare to see). So opaque values are deep-scanned
 // separately, purely to detect and refuse this, never to strip anything from them.
 const opaqueViolations = [];
 
@@ -167,26 +176,28 @@ if (unknownKeywords.size > 0) {
     `ERROR: ${src} uses keyword(s) this normalizer has not been audited against: ` +
       `${[...unknownKeywords].sort().join(', ')}.\n` +
       'Refusing to normalize. A keyword whose children are keyed by PROPERTY NAME (like\n' +
-      '`properties` or `dependentRequired`) must be added to NAME_KEYED, and one whose value is\n' +
-      'literal DATA must be added to OPAQUE — otherwise the walk will either strip real schema\n' +
-      'or keep prose it was meant to remove, and the weekly sweep cannot detect either because\n' +
-      'it normalizes both sides. Audit the keyword, then add it to KNOWN_KEYWORDS.'
+      '`properties` or `dependentRequired`) must be added to NAME_KEYED, one whose value is\n' +
+      'literal DATA must be added to OPAQUE, and one that is itself annotation prose to be\n' +
+      `removed from the public mirror must be added to STRIP (currently: ${[...STRIP].sort().join('/')}) ` +
+      '— otherwise the walk will either strip real schema or keep prose it was meant to remove, ' +
+      'and the weekly sweep cannot detect either because it normalizes both sides. Audit the ' +
+      'keyword, then add it to KNOWN_KEYWORDS.'
   );
   hasError = true;
 }
 
 if (opaqueViolations.length > 0) {
   console.error(
-    `ERROR: ${src} has STRIP key(s) (description/$comment) nested INSIDE an opaque ` +
-      '(enum/const/default/examples) value, at:\n' +
+    `ERROR: ${src} has STRIP key(s) (${[...STRIP].sort().join('/')}) nested INSIDE an opaque ` +
+      `(${[...OPAQUE].sort().join('/')}) value, at:\n` +
       opaqueViolations.map((p) => `  ${p}`).join('\n') +
       '\n\n' +
       'Opaque values are copied verbatim, on the assumption their contents are literal DATA — ' +
-      'a description/$comment key found there would be published to this PUBLIC repo unstripped, ' +
-      'and the PR-time fixed-point gate cannot detect it (normalization is idempotent on opaque ' +
-      'values, so there is nothing for the byte-compare to see). Refusing to normalize.\n' +
-      'A human must decide: if this is genuinely data (a real property named "description"/"$comment" ' +
-      'inside an enum/const/default/examples member), audit it and adjust this script deliberately ' +
+      `a ${[...STRIP].sort().join('/')} key found there would be published to this PUBLIC repo ` +
+      'unstripped, and the PR-time fixed-point gate cannot detect it (normalization is idempotent ' +
+      'on opaque values, so there is nothing for the byte-compare to see). Refusing to normalize.\n' +
+      `A human must decide: if this is genuinely data (a real property named "${[...STRIP].sort().join('"/"')}" ` +
+      `inside an ${[...OPAQUE].sort().join('/')} member), audit it and adjust this script deliberately ` +
       'to allow it; if it is annotation prose, it must not ship here — fix it upstream instead.'
   );
   hasError = true;
