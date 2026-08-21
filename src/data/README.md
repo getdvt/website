@@ -22,16 +22,16 @@
   Structure only.
 
 <!-- provenance:begin — maintained by scripts/sync-panel-types.sh; do not hand-edit between markers -->
-- **Vendored**: 2026-08-20, from `getdvt/dvt` `origin/main` @ `acd5a3375c5dd87b6dcec676718cbeda43e655de`
-  (blob sha `d346cb255c8d9a4e955419755176b599fa04d1f1`, upstream sha256
-  `f045f4c8c00215083a7cdbafd6f15e469378ebc628bf270f457773e93644f2a9`).
+- **Vendored**: 2026-08-21, from `getdvt/dvt` `origin/main` @ `7cd504b0cbec15726040d42714478f3baa581ae5`
+  (blob sha `e184a92d9301a257c4e0461c3ecc5286e90c66af`, upstream sha256
+  `ce5b9dccdf21379856086fe6a5711cb4b03dee1fa9e3d8beff4055425bb52877`).
 - **Vendored (normalized) sha256**: `47400515b50da9ab812a25f2ccb84b8e1a86051a1b5b89fafeba61696fb898c7`.
 - **Reproduce it** — the vendored file is a deterministic function of the upstream one:
   ```
   # ?ref= pins the SAME commit this block records. Without it the fetch follows the
   # default branch, so the first upstream schema commit makes the sha mismatch and
   # read as a bug rather than as expected drift.
-  gh api "repos/getdvt/dvt/contents/spec/schema/dashboard.schema.json?ref=acd5a3375c5dd87b6dcec676718cbeda43e655de" \
+  gh api "repos/getdvt/dvt/contents/spec/schema/dashboard.schema.json?ref=7cd504b0cbec15726040d42714478f3baa581ae5" \
     -H "Accept: application/vnd.github.raw" > /tmp/upstream.json
   node scripts/normalize-schema.mjs /tmp/upstream.json | shasum -a 256   # must match the sha256 above
   ```
@@ -66,3 +66,57 @@
   provenance block, above) — both advisory, same as the rest of that script. The fixed-point gate is
   also what makes the asymmetric weekly compare rigorous — it discharges the premise that lets
   `cmp normalize(upstream) vendored` stand in for a normalized-to-normalized compare.
+
+## chart-type-status.json
+
+- **Source**: `getdvt/dvt` -> `spec/schema/echarts/chart-types.json` -> `types[*].status`.
+- **⚠️ NOT a strip of upstream — this is a WHITELIST PROJECTION.** The upstream file is ~91KB and
+  saturated with internal engineering prose at every level: ticket refs, ADR citations, security
+  commentary, internal file paths, and per-entry `caveat`/`research`/`whenToUse`/`exampleSkeleton`
+  fields. A *strip* (delete known-bad keys, keep the rest) inherits the upstream author's vocabulary —
+  a new prose key added upstream tomorrow sails straight through unstripped, because a strip-list only
+  knows what to remove, not what is safe to keep. A *projection* (`scripts/project-chart-type-status.mjs`)
+  inverts that: the output is built key-by-key from an explicit allowlist — here, just `status` per
+  type — so nothing upstream can leak by construction. **This repo is public and `getdvt/dvt` is not.**
+- **Closed status enum, fail-closed**: every type's `status` must be one of `stable` / `passthrough` /
+  `advanced`. A missing status, or a value outside that set, makes `scripts/project-chart-type-status.mjs`
+  refuse to project (zero stdout bytes, non-zero exit) rather than pass an unrecognized value through —
+  a new upstream status may carry a data-binding contract `scripts/check-chart-specs.mjs` has never been
+  audited against, so it must be reviewed by a human before it is vendored.
+- **Consumed by**: `scripts/check-chart-specs.mjs`'s data-binding gate — `passthrough` chart types must
+  carry inline `spec.series[].data` (they have no query-bindable branch); every other chart type (and
+  every non-chart type) must carry a `data` block (`query`/`sourceId`/`rows`/`metricRef`).
+
+<!-- chart-type-status-provenance:begin — maintained by scripts/sync-panel-types.sh; do not hand-edit between markers -->
+- **Vendored**: 2026-08-21, from `getdvt/dvt` `origin/main` @ `1b43b40dcbe7495e35fea96467df5e1f415637b7`
+  (blob sha `cb6c52a3322e84a37eddd0bbc47557f61300d87b`, upstream sha256
+  `bbab92920a2d3c79d86183d03f4f9303163a74f6ae0354e2b8f077026142bb36`).
+- **Vendored (projected) sha256**: `ef30f3a0f054db92175974b32817ce14ec199efd059cd204299acf3483d8b317`.
+- **Reproduce it** — the vendored file is a deterministic function of the upstream one:
+  ```
+  # ?ref= pins the SAME commit this block records. Without it the fetch follows the
+  # default branch, so the first upstream chart-types commit makes the sha mismatch and
+  # read as a bug rather than as expected drift.
+  gh api "repos/getdvt/dvt/contents/spec/schema/echarts/chart-types.json?ref=1b43b40dcbe7495e35fea96467df5e1f415637b7" \
+    -H "Accept: application/vnd.github.raw" > /tmp/upstream-chart-types.json
+  node scripts/project-chart-type-status.mjs /tmp/upstream-chart-types.json | shasum -a 256   # must match the sha256 above
+  ```
+<!-- chart-type-status-provenance:end -->
+
+- **Why vendored**: `getdvt/dvt` is private and PR CI has no token to read it live (same reason as
+  `panel-types.json` and `dashboard.schema.json`).
+- **Refresh**: `scripts/sync-panel-types.sh` — one additional fetch (of `spec/schema/echarts/chart-types.json`,
+  resolved to its OWN last-touching commit, `CT_UPSTREAM_COMMIT` — distinct from the schema's
+  `UPSTREAM_COMMIT`, since the two files have different edit histories) alongside the schema fetch. It
+  maintains this file, this README's chart-type-status provenance block (between the markers above),
+  and the `EXPECTED_CHART_TYPE_STATUS_SHA256` constant in `scripts/check-chart-types.mjs`. The weekly
+  `upstream-sweep` job projects the live upstream with the *same* script before comparing, so the two
+  sides cannot diverge — but note it therefore does NOT detect prose-only or status-preserving upstream
+  edits, which by the argument above cannot affect any gate.
+- Do NOT hand-edit it; do NOT import it from a page or component (it would land in the client bundle).
+  It is read only by `scripts/check-chart-specs.mjs` at build/CI time.
+- `scripts/check-chart-types.mjs` catches a split among the artifacts the sync script maintains for
+  this file: a sha256-consistency check (this file vs. `EXPECTED_CHART_TYPE_STATUS_SHA256`), a
+  README-provenance-staleness check (this file's sha256 vs. the labeled line in the provenance block
+  above), and a shape check (non-empty `types`, every value in the closed enum) — all advisory, same as
+  the rest of that script.

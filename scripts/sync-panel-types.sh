@@ -3,29 +3,45 @@
 # Sync the vendored PanelType enum into src/data/panel-types.json, vendor the
 # schema (NORMALIZED - structure only, annotation prose stripped, since this
 # repo is public) into src/data/dashboard.schema.json (read by
-# scripts/check-chart-specs.mjs), and maintain the provenance this creates in
+# scripts/check-chart-specs.mjs), vendor the chart-type status table
+# (PROJECTED - type->status only, since this repo is public) into
+# src/data/chart-type-status.json (also read by scripts/check-chart-specs.mjs,
+# for the data-binding gate), and maintain the provenance this creates in
 # TWO more places so a refresh here can't silently go stale elsewhere:
-#   - src/data/README.md    — the provenance block between the
-#                              `<!-- provenance:begin -->` / `-end -->` markers.
-#   - scripts/check-chart-types.mjs — the EXPECTED_SHA256 constant.
-# All four writes come from the same fetch and are staged, then published
-# together — the publish is FOUR `mv`s, so an interrupt between them can still
-# split the set. What actually surfaces a split among the four is
+#   - src/data/README.md    — TWO provenance blocks: the schema's, between the
+#                              `<!-- provenance:begin -->` / `-end -->` markers,
+#                              and the chart-type-status's, between the
+#                              `<!-- chart-type-status-provenance:begin -->` /
+#                              `-end -->` markers.
+#   - scripts/check-chart-types.mjs — the EXPECTED_SHA256 constant (schema) and
+#                              the EXPECTED_CHART_TYPE_STATUS_SHA256 constant
+#                              (status table).
+# All five files come from TWO fetches (schema, chart-types) and are staged,
+# then published together — the publish is FIVE `mv`s, so an interrupt between
+# them can still split the set. What actually surfaces a split among the five is
 # scripts/check-chart-types.mjs, which goes red whenever the drift workflow (or
 # a local `npm run check:chart-types`) runs — advisory, not a required check:
-# the enum set-compare surfaces a schema/panel-types.json split, the sha256
-# consistency check surfaces a schema/EXPECTED_SHA256 split, and the
-# README-staleness check surfaces a schema/README split.
+# the enum set-compare surfaces a schema/panel-types.json split, the two
+# sha256 consistency checks surface a schema/EXPECTED_SHA256 or
+# status/EXPECTED_CHART_TYPE_STATUS_SHA256 split, and the two README-staleness
+# checks surface a schema/README or status/README split.
 #
-# Canonical source of truth: getdvt/dvt → spec/schema/dashboard.schema.json
-# ($defs.PanelType.enum). This repo's src/data/panel-types.json is a VENDORED
-# MIRROR so CI can assert that every dvtType in src/data/charts.ts resolves to
-# a real spec type, without a live network call to the private getdvt/dvt repo.
-# Do NOT hand-edit any of the four vendored/maintained files — refresh them
+# Canonical sources of truth:
+#   - getdvt/dvt → spec/schema/dashboard.schema.json ($defs.PanelType.enum) —
+#     this repo's src/data/panel-types.json is a VENDORED MIRROR so CI can
+#     assert that every dvtType in src/data/charts.ts resolves to a real spec
+#     type, without a live network call to the private getdvt/dvt repo.
+#   - getdvt/dvt → spec/schema/echarts/chart-types.json (types[*].status) —
+#     this repo's src/data/chart-type-status.json is a VENDORED WHITELIST
+#     PROJECTION (type -> status only; see scripts/project-chart-type-status.mjs
+#     for why a projection, not a strip) so scripts/check-chart-specs.mjs can
+#     enforce the data-binding contract (passthrough types need inline
+#     series[].data; everything else needs a data block) offline.
+# Do NOT hand-edit any of the five vendored/maintained files — refresh them
 # here and commit the result. CI (.github/workflows/chart-types-drift.yml)
 # will catch a stale or split copy.
 #
-# Source-resolution precedence:
+# Source-resolution precedence (applies to BOTH fetches):
 #   1. DVT_REPO=/path/to/dvt (env set)  — explicit local checkout; reads origin/main.
 #   2. `gh` on PATH + authed            — reads origin/main live via gh api (DEFAULT).
 #   3. ../dvt sibling checkout          — reads origin/main; hard-error if not found.
@@ -33,8 +49,8 @@
 # Staleness (applies to every local checkout):
 #   Paths 1 and 3 `git fetch -q origin` and then read `origin/main:<path>` — the
 #   REF, never the working tree. So a checkout parked on a feature branch, or
-#   holding uncommitted schema edits, cannot be vendored, and there is no
-#   behind-count to check: a post-fetch ref read cannot be stale.
+#   holding uncommitted schema/chart-types edits, cannot be vendored, and there
+#   is no behind-count to check: a post-fetch ref read cannot be stale.
 #   Unset DVT_REPO (or install/auth `gh`) to skip local checkouts entirely.
 #
 # Usage (from the website repo root):
@@ -49,17 +65,22 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DST="$REPO_ROOT/src/data/panel-types.json"
 SCHEMA_DST="$REPO_ROOT/src/data/dashboard.schema.json"
+STATUS_DST="$REPO_ROOT/src/data/chart-type-status.json"
 README_FILE="$REPO_ROOT/src/data/README.md"
 CCT_FILE="$REPO_ROOT/scripts/check-chart-types.mjs"
 
-# Temp file for the gh-api path, plus the staging files for the four atomic
+# Temp files for the gh-api path, plus the staging files for the five atomic
 # writes below; all cleaned up on exit.
 TMP_SCHEMA=""
+TMP_CT=""
 cleanup() {
   if [[ -n "$TMP_SCHEMA" && -f "$TMP_SCHEMA" ]]; then
     rm -f "$TMP_SCHEMA"
   fi
-  rm -f "$SCHEMA_DST.tmp" "$DST.tmp" "$README_FILE.tmp" "$CCT_FILE.tmp"
+  if [[ -n "$TMP_CT" && -f "$TMP_CT" ]]; then
+    rm -f "$TMP_CT"
+  fi
+  rm -f "$SCHEMA_DST.tmp" "$DST.tmp" "$STATUS_DST.tmp" "$README_FILE.tmp" "$CCT_FILE.tmp"
 }
 trap cleanup EXIT
 
@@ -70,11 +91,15 @@ trap cleanup EXIT
 # ref subsumes the check entirely rather than complementing it.)
 
 # ---------------------------------------------------------------------------
-# Determine schema acquisition path. Each path also resolves UPSTREAM_COMMIT —
-# the last commit that actually TOUCHED the schema, not the branch tip. That's
-# what makes it a stable, reproducible `?ref=` pin: re-running this script
-# against an unrelated upstream commit (one that doesn't touch the schema
-# path) reproduces the same UPSTREAM_COMMIT, rather than needlessly moving the
+# Determine schema + chart-types acquisition path. Each path also resolves
+# UPSTREAM_COMMIT — the last commit that actually TOUCHED the schema, not the
+# branch tip — and, separately, CT_UPSTREAM_COMMIT — the last commit that
+# touched spec/schema/echarts/chart-types.json. These are two DIFFERENT files
+# with two DIFFERENT edit histories, so UPSTREAM_COMMIT is schema-path-only BY
+# DESIGN; it must never be reused or conflated with CT_UPSTREAM_COMMIT. That's
+# what makes each a stable, reproducible `?ref=` pin: re-running this script
+# against an unrelated upstream commit (one that doesn't touch either path)
+# reproduces the same two commits, rather than needlessly moving either
 # provenance pin.
 # ---------------------------------------------------------------------------
 
@@ -108,6 +133,19 @@ if [[ -n "${DVT_REPO:-}" ]]; then
   SCHEMA_FILE="$TMP_SCHEMA"
   SCHEMA_SOURCE="$DVT_REPO -> origin/main:spec/schema/dashboard.schema.json"
 
+  CT_UPSTREAM_COMMIT="$(git -C "$DVT_REPO" log -1 --format=%H origin/main -- spec/schema/echarts/chart-types.json)"
+  if [[ -z "$CT_UPSTREAM_COMMIT" ]]; then
+    echo "error: no commit touching spec/schema/echarts/chart-types.json found on origin/main in $DVT_REPO." >&2
+    exit 1
+  fi
+  TMP_CT="$(mktemp)"
+  if ! git -C "$DVT_REPO" show origin/main:spec/schema/echarts/chart-types.json > "$TMP_CT"; then
+    echo "error: could not read spec/schema/echarts/chart-types.json from origin/main in $DVT_REPO." >&2
+    exit 1
+  fi
+  CT_FILE="$TMP_CT"
+  CT_SOURCE="$DVT_REPO -> origin/main:spec/schema/echarts/chart-types.json"
+
 elif command -v gh &>/dev/null && gh auth status &>/dev/null; then
   # --- Path 2: gh api (default, always fresh) ---
   echo "Using gh api (origin/main) ..." >&2
@@ -127,6 +165,20 @@ elif command -v gh &>/dev/null && gh auth status &>/dev/null; then
   fi
   SCHEMA_FILE="$TMP_SCHEMA"
   SCHEMA_SOURCE="gh api repos/getdvt/dvt/contents/spec/schema/dashboard.schema.json (origin/main @ $UPSTREAM_COMMIT)"
+
+  CT_UPSTREAM_COMMIT="$(gh api "repos/getdvt/dvt/commits?path=spec/schema/echarts/chart-types.json&sha=main&per_page=1" --jq '.[0].sha // empty')"
+  if [[ -z "$CT_UPSTREAM_COMMIT" ]]; then
+    echo "error: gh api could not resolve the last commit touching spec/schema/echarts/chart-types.json on main." >&2
+    exit 1
+  fi
+  TMP_CT="$(mktemp)"
+  if ! gh api "repos/getdvt/dvt/contents/spec/schema/echarts/chart-types.json?ref=$CT_UPSTREAM_COMMIT" \
+       -H "Accept: application/vnd.github.raw" > "$TMP_CT"; then
+    echo "error: gh api fetch failed for spec/schema/echarts/chart-types.json." >&2
+    exit 1
+  fi
+  CT_FILE="$TMP_CT"
+  CT_SOURCE="gh api repos/getdvt/dvt/contents/spec/schema/echarts/chart-types.json (origin/main @ $CT_UPSTREAM_COMMIT)"
 
 else
   # --- Path 3: sibling checkout fallback ---
@@ -157,6 +209,20 @@ else
   fi
   SCHEMA_FILE="$TMP_SCHEMA"
   SCHEMA_SOURCE="$SIBLING -> origin/main:spec/schema/dashboard.schema.json"
+
+  CT_UPSTREAM_COMMIT="$(git -C "$SIBLING" log -1 --format=%H origin/main -- spec/schema/echarts/chart-types.json)"
+  if [[ -z "$CT_UPSTREAM_COMMIT" ]]; then
+    echo "error: no commit touching spec/schema/echarts/chart-types.json found on origin/main in $SIBLING." >&2
+    exit 1
+  fi
+  TMP_CT="$(mktemp)"
+  if ! git -C "$SIBLING" show origin/main:spec/schema/echarts/chart-types.json > "$TMP_CT"; then
+    echo "error: could not read spec/schema/echarts/chart-types.json from origin/main in $SIBLING." >&2
+    echo "       Check out getdvt/dvt as a sibling of this repo, or set DVT_REPO=/path/to/dvt." >&2
+    exit 1
+  fi
+  CT_FILE="$TMP_CT"
+  CT_SOURCE="$SIBLING -> origin/main:spec/schema/echarts/chart-types.json"
 fi
 
 # ---------------------------------------------------------------------------
@@ -187,12 +253,31 @@ if [[ "$GUARD_OK" != "ok" ]]; then
   exit 1
 fi
 
+# Same placement rationale as the schema guard above, applied to the
+# chart-types fetch: must be valid JSON with a non-empty top-level `types`
+# object, same shape scripts/project-chart-type-status.mjs requires. Runs
+# after path selection so all three paths are guarded uniformly.
+CT_GUARD_OK="$(CT_FILE="$CT_FILE" node -e '
+const fs = require("fs");
+try {
+  const ct = JSON.parse(fs.readFileSync(process.env.CT_FILE, "utf8"));
+  const types = ct && ct.types;
+  if (!types || typeof types !== "object" || Array.isArray(types) || Object.keys(types).length === 0) { process.exit(1); }
+  process.stdout.write("ok");
+} catch(e) { process.exit(1); }
+' 2>/dev/null || true)"
+if [[ "$CT_GUARD_OK" != "ok" ]]; then
+  echo "error: $CT_SOURCE is not valid JSON, or is missing a non-empty top-level \"types\" object." >&2
+  echo "       Cannot safely update the vendored files; none are touched." >&2
+  exit 1
+fi
+
 # ---------------------------------------------------------------------------
 # Extract PanelType enum, staging to $DST.tmp.
 # Paths are passed via env (not string-interpolated into the JS) so a path with
 # a quote/space/newline can't break out of the eval. $defs needs no escaping here.
 #
-# All four artifacts are STAGED first and moved into place only once every one
+# All five files are STAGED first and moved into place only once every one
 # of them has been produced successfully. Writing the schema before extracting
 # the enum meant a failed extraction left a clobbered schema next to a stale
 # enum — the exact drift the header promises is impossible. `mv` within one
@@ -224,6 +309,15 @@ fs.writeFileSync(process.env.DST, JSON.stringify(out, null, 2) + "\n");
 # produced from one source and cannot disagree.
 node "$REPO_ROOT/scripts/normalize-schema.mjs" "$SCHEMA_FILE" > "$SCHEMA_DST.tmp"
 
+# Stage the PROJECTED chart-type status table — type -> status only, with all
+# internal commentary excluded by construction. See
+# scripts/project-chart-type-status.mjs for why this is a whitelist projection
+# rather than a strip. A projection failure (e.g. an unrecognized status value
+# upstream) must abort the WHOLE publish — `set -euo pipefail` covers this
+# (the script exits non-zero, the pipeline fails, and the trap cleans up
+# $STATUS_DST.tmp along with everything else before any `mv` below runs).
+node "$REPO_ROOT/scripts/project-chart-type-status.mjs" "$CT_FILE" > "$STATUS_DST.tmp"
+
 # ---------------------------------------------------------------------------
 # Compute the provenance values every remaining artifact needs, all from what
 # is already in hand — no extra fetch.
@@ -231,43 +325,56 @@ node "$REPO_ROOT/scripts/normalize-schema.mjs" "$SCHEMA_FILE" > "$SCHEMA_DST.tmp
 UPSTREAM_BLOB="$(git hash-object "$SCHEMA_FILE")"
 UPSTREAM_SHA256="$(shasum -a 256 "$SCHEMA_FILE" | awk '{print $1}')"
 VENDORED_SHA256="$(shasum -a 256 "$SCHEMA_DST.tmp" | awk '{print $1}')"
+CT_UPSTREAM_BLOB="$(git hash-object "$CT_FILE")"
+CT_UPSTREAM_SHA256="$(shasum -a 256 "$CT_FILE" | awk '{print $1}')"
+STATUS_SHA256="$(shasum -a 256 "$STATUS_DST.tmp" | awk '{print $1}')"
 TODAY="$(date +%Y-%m-%d)"
 
 # ---------------------------------------------------------------------------
-# Stage src/data/README.md — regenerate ONLY the region between the
-# `<!-- provenance:begin -->` / `<!-- provenance:end -->` markers (the Vendored
-# date/commit/blob/upstream-sha256 bullet, the vendored-sha256 bullet, and the
-# reproduce-command block). Everything outside the markers is hand-maintained
-# prose and is left untouched. Hard-fail if the markers are missing or
-# duplicated — silently no-op-ing would let the README go stale in a way
-# nothing else catches until check-chart-types.mjs's staleness check fires.
+# Stage src/data/README.md — regenerate ONLY the regions between the
+# `<!-- provenance:begin -->` / `<!-- provenance:end -->` markers (schema) and
+# the `<!-- chart-type-status-provenance:begin -->` /
+# `<!-- chart-type-status-provenance:end -->` markers (chart-type status).
+# Everything outside the markers is hand-maintained prose and is left
+# untouched. Hard-fail if either marker pair is missing or duplicated —
+# silently no-op-ing would let the README go stale in a way nothing else
+# catches until check-chart-types.mjs's staleness checks fire.
 # ---------------------------------------------------------------------------
 README_FILE="$README_FILE" README_TMP="$README_FILE.tmp" \
 UPSTREAM_COMMIT="$UPSTREAM_COMMIT" UPSTREAM_BLOB="$UPSTREAM_BLOB" \
-UPSTREAM_SHA256="$UPSTREAM_SHA256" VENDORED_SHA256="$VENDORED_SHA256" TODAY="$TODAY" \
+UPSTREAM_SHA256="$UPSTREAM_SHA256" VENDORED_SHA256="$VENDORED_SHA256" \
+CT_UPSTREAM_COMMIT="$CT_UPSTREAM_COMMIT" CT_UPSTREAM_BLOB="$CT_UPSTREAM_BLOB" \
+CT_UPSTREAM_SHA256="$CT_UPSTREAM_SHA256" STATUS_SHA256="$STATUS_SHA256" \
+TODAY="$TODAY" \
 node -e '
 const fs = require("fs");
 const path = process.env.README_FILE;
 const src = fs.readFileSync(path, "utf8");
-const BEGIN = "<!-- provenance:begin — maintained by scripts/sync-panel-types.sh; do not hand-edit between markers -->";
-const END = "<!-- provenance:end -->";
-const beginIdx = src.indexOf(BEGIN);
-const endIdx = src.indexOf(END);
-if (beginIdx === -1 || endIdx === -1) {
-  console.error("error: provenance markers not found in " + path + " — expected both:");
-  console.error("  " + BEGIN);
-  console.error("  " + END);
-  process.exit(1);
+
+function replaceBlock(text, beginMarker, endMarker, block) {
+  const beginIdx = text.indexOf(beginMarker);
+  const endIdx = text.indexOf(endMarker);
+  if (beginIdx === -1 || endIdx === -1) {
+    console.error("error: provenance markers not found in " + path + " — expected both:");
+    console.error("  " + beginMarker);
+    console.error("  " + endMarker);
+    process.exit(1);
+  }
+  if (text.indexOf(beginMarker, beginIdx + 1) !== -1 || text.indexOf(endMarker, endIdx + 1) !== -1) {
+    console.error("error: duplicate provenance markers in " + path + " for " + beginMarker);
+    process.exit(1);
+  }
+  return text.slice(0, beginIdx) + block + text.slice(endIdx + endMarker.length);
 }
-if (src.indexOf(BEGIN, beginIdx + 1) !== -1 || src.indexOf(END, endIdx + 1) !== -1) {
-  console.error("error: duplicate provenance markers in " + path);
-  process.exit(1);
-}
+
 const commit = process.env.UPSTREAM_COMMIT;
 const blob = process.env.UPSTREAM_BLOB;
 const upstreamSha = process.env.UPSTREAM_SHA256;
 const vendoredSha = process.env.VENDORED_SHA256;
 const today = process.env.TODAY;
+
+const BEGIN = "<!-- provenance:begin — maintained by scripts/sync-panel-types.sh; do not hand-edit between markers -->";
+const END = "<!-- provenance:end -->";
 const block =
   BEGIN + "\n" +
   "- **Vendored**: " + today + ", from `getdvt/dvt` `origin/main` @ `" + commit + "`\n" +
@@ -284,48 +391,89 @@ const block =
   "  node scripts/normalize-schema.mjs /tmp/upstream.json | shasum -a 256   # must match the sha256 above\n" +
   "  ```\n" +
   END;
-const out = src.slice(0, beginIdx) + block + src.slice(endIdx + END.length);
+
+let out = replaceBlock(src, BEGIN, END, block);
+
+const ctCommit = process.env.CT_UPSTREAM_COMMIT;
+const ctBlob = process.env.CT_UPSTREAM_BLOB;
+const ctUpstreamSha = process.env.CT_UPSTREAM_SHA256;
+const statusSha = process.env.STATUS_SHA256;
+
+const CT_BEGIN = "<!-- chart-type-status-provenance:begin — maintained by scripts/sync-panel-types.sh; do not hand-edit between markers -->";
+const CT_END = "<!-- chart-type-status-provenance:end -->";
+const ctBlock =
+  CT_BEGIN + "\n" +
+  "- **Vendored**: " + today + ", from `getdvt/dvt` `origin/main` @ `" + ctCommit + "`\n" +
+  "  (blob sha `" + ctBlob + "`, upstream sha256\n" +
+  "  `" + ctUpstreamSha + "`).\n" +
+  "- **Vendored (projected) sha256**: `" + statusSha + "`.\n" +
+  "- **Reproduce it** — the vendored file is a deterministic function of the upstream one:\n" +
+  "  ```\n" +
+  "  # ?ref= pins the SAME commit this block records. Without it the fetch follows the\n" +
+  "  # default branch, so the first upstream chart-types commit makes the sha mismatch and\n" +
+  "  # read as a bug rather than as expected drift.\n" +
+  "  gh api \"repos/getdvt/dvt/contents/spec/schema/echarts/chart-types.json?ref=" + ctCommit + "\" \\\n" +
+  "    -H \"Accept: application/vnd.github.raw\" > /tmp/upstream-chart-types.json\n" +
+  "  node scripts/project-chart-type-status.mjs /tmp/upstream-chart-types.json | shasum -a 256   # must match the sha256 above\n" +
+  "  ```\n" +
+  CT_END;
+
+out = replaceBlock(out, CT_BEGIN, CT_END, ctBlock);
+
 fs.writeFileSync(process.env.README_TMP, out);
 '
 
 # ---------------------------------------------------------------------------
-# Stage scripts/check-chart-types.mjs — rewrite ONLY the EXPECTED_SHA256
-# constant line, by pattern. Hard-fail unless exactly one line matches: zero
-# means the constant moved or was hand-edited into a different shape (this
-# script would then silently fail to keep it in sync), and more than one means
-# something is badly wrong with the file.
+# Stage scripts/check-chart-types.mjs — rewrite ONLY the EXPECTED_SHA256 and
+# EXPECTED_CHART_TYPE_STATUS_SHA256 constant lines, each by its own anchored
+# pattern. Hard-fail unless exactly one line matches each: zero means the
+# constant moved or was hand-edited into a different shape (this script would
+# then silently fail to keep it in sync), and more than one means something is
+# badly wrong with the file.
 # ---------------------------------------------------------------------------
-CCT_FILE="$CCT_FILE" CCT_TMP="$CCT_FILE.tmp" VENDORED_SHA256="$VENDORED_SHA256" node -e '
+CCT_FILE="$CCT_FILE" CCT_TMP="$CCT_FILE.tmp" VENDORED_SHA256="$VENDORED_SHA256" STATUS_SHA256="$STATUS_SHA256" node -e '
 const fs = require("fs");
 const Q = String.fromCharCode(39);
 const path = process.env.CCT_FILE;
-const src = fs.readFileSync(path, "utf8");
-const re = new RegExp("^const EXPECTED_SHA256 = " + Q + "[0-9a-f]{64}" + Q + ";$", "m");
-const matches = src.match(new RegExp(re.source, "gm"));
-if (!matches || matches.length !== 1) {
-  console.error("error: expected exactly one EXPECTED_SHA256 constant line in " + path + ", found " + (matches ? matches.length : 0));
-  process.exit(1);
+let src = fs.readFileSync(path, "utf8");
+
+function rewriteConstant(text, name, value) {
+  const re = new RegExp("^const " + name + " = " + Q + "[0-9a-f]{64}" + Q + ";$", "m");
+  const matches = text.match(new RegExp(re.source, "gm"));
+  if (!matches || matches.length !== 1) {
+    console.error("error: expected exactly one " + name + " constant line in " + path + ", found " + (matches ? matches.length : 0));
+    process.exit(1);
+  }
+  const replacement = "const " + name + " = " + Q + value + Q + ";";
+  return text.replace(re, replacement);
 }
-const replacement = "const EXPECTED_SHA256 = " + Q + process.env.VENDORED_SHA256 + Q + ";";
-const out = src.replace(re, replacement);
-fs.writeFileSync(process.env.CCT_TMP, out);
+
+src = rewriteConstant(src, "EXPECTED_SHA256", process.env.VENDORED_SHA256);
+src = rewriteConstant(src, "EXPECTED_CHART_TYPE_STATUS_SHA256", process.env.STATUS_SHA256);
+
+fs.writeFileSync(process.env.CCT_TMP, src);
 '
 
-# All four artifacts produced — publish them. Each `mv` is atomic, but the SET
+# All five files produced — publish them. Each `mv` is atomic, but the SET
 # is not: an interrupt between them can leave some published and some stale.
 # The order does not change which side is left stale in any useful way, so it
 # carries no safety argument — what makes the split visible is that
 # check-chart-types.mjs surfaces any resulting split (advisory, not a required
 # check: enum set-compare for a schema/panel-types.json split, sha256
-# consistency check for a schema/EXPECTED_SHA256 split, README-staleness check
-# for a schema/README split), and re-running this script repairs any direction.
+# consistency checks for a schema/EXPECTED_SHA256 or
+# status/EXPECTED_CHART_TYPE_STATUS_SHA256 split, README-staleness checks for a
+# schema/README or status/README split), and re-running this script repairs
+# any direction.
 mv -f "$DST.tmp" "$DST"
 mv -f "$SCHEMA_DST.tmp" "$SCHEMA_DST"
+mv -f "$STATUS_DST.tmp" "$STATUS_DST"
 mv -f "$README_FILE.tmp" "$README_FILE"
 mv -f "$CCT_FILE.tmp" "$CCT_FILE"
 
 echo "synced: $SCHEMA_SOURCE"
 echo "    ->: $DST"
 echo "    ->: $SCHEMA_DST"
-echo "    ->: $README_FILE (provenance block)"
-echo "    ->: $CCT_FILE (EXPECTED_SHA256)"
+echo "synced: $CT_SOURCE"
+echo "    ->: $STATUS_DST"
+echo "    ->: $README_FILE (both provenance blocks)"
+echo "    ->: $CCT_FILE (both EXPECTED_*_SHA256 constants)"

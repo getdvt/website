@@ -26,7 +26,14 @@
 // This script also gates the two vendored artifacts (panel-types.json and the
 // full dashboard.schema.json) against each other — see the set-compare below.
 //
-// Zero external dependencies: reads three local files, pure Node built-ins.
+// It also carries the same consistency/staleness/shape checks for the THIRD
+// vendored artifact this repo now carries: src/data/chart-type-status.json, a
+// whitelist PROJECTION of getdvt/dvt's spec/schema/echarts/chart-types.json
+// (type -> status only; see scripts/project-chart-type-status.mjs). That file
+// backs the data-binding gate in scripts/check-chart-specs.mjs. Refresh it the
+// same way, with the same script: scripts/sync-panel-types.sh.
+//
+// Zero external dependencies: reads local files, pure Node built-ins.
 //
 
 import { readFileSync } from 'fs';
@@ -38,12 +45,20 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CHARTS_FILE = resolve(REPO_ROOT, 'src/data/charts.ts');
 const ENUM_FILE = resolve(REPO_ROOT, 'src/data/panel-types.json');
 const SCHEMA_FILE = resolve(REPO_ROOT, 'src/data/dashboard.schema.json');
+const STATUS_FILE = resolve(REPO_ROOT, 'src/data/chart-type-status.json');
 const README_FILE = resolve(REPO_ROOT, 'src/data/README.md');
 
 // Maintained by scripts/sync-panel-types.sh — do not hand-edit. Must equal the
 // sha256 of src/data/dashboard.schema.json AND the "Vendored (normalized) sha256"
 // line in src/data/README.md; both are asserted below.
 const EXPECTED_SHA256 = '47400515b50da9ab812a25f2ccb84b8e1a86051a1b5b89fafeba61696fb898c7';
+
+// Maintained by scripts/sync-panel-types.sh — do not hand-edit. Must equal the
+// sha256 of src/data/chart-type-status.json AND the "Vendored (projected) sha256"
+// line in the chart-type-status.json provenance block of src/data/README.md;
+// both are asserted below. Placeholder until the first sync run rewrites it by
+// its own anchored pattern (see scripts/sync-panel-types.sh).
+const EXPECTED_CHART_TYPE_STATUS_SHA256 = 'ef30f3a0f054db92175974b32817ce14ec199efd059cd204299acf3483d8b317';
 
 const chartsSource = readFileSync(CHARTS_FILE, 'utf8');
 const { panelTypes } = JSON.parse(readFileSync(ENUM_FILE, 'utf8'));
@@ -152,6 +167,112 @@ if (onlyInSchema.length > 0 || onlyInVendored.length > 0) {
   process.exit(1);
 }
 
+// ---------------------------------------------------------------------------
+// The THIRD vendored artifact: src/data/chart-type-status.json, a whitelist
+// PROJECTION (type -> status only) of getdvt/dvt's
+// spec/schema/echarts/chart-types.json, produced by
+// scripts/project-chart-type-status.mjs. Mirrors the schema's three checks
+// above: sha256 consistency, README-provenance staleness, and a shape check
+// (this one has no sibling artifact to set-compare against, since it's a
+// single JSON blob with no separate "enum" artifact).
+// ---------------------------------------------------------------------------
+const statusRaw = readFileSync(STATUS_FILE, 'utf8');
+const statusSha256 = createHash('sha256').update(statusRaw).digest('hex');
+
+// Check (consistency): the file actually committed at src/data/chart-type-status.json
+// must match its recorded sha256 — same rationale as the schema's EXPECTED_SHA256
+// check above: this is NOT tamper-resistance (the constant lives in the same file/diff
+// an attacker editing the status table would touch), it only catches an accidental
+// split between the two (a hand-edit, a botched merge, a partial sync).
+if (statusSha256 !== EXPECTED_CHART_TYPE_STATUS_SHA256) {
+  console.error(
+    `ERROR: ${STATUS_FILE} does not match its recorded sha256.\n` +
+      `  expected: ${EXPECTED_CHART_TYPE_STATUS_SHA256}\n` +
+      `  actual:   ${statusSha256}\n` +
+      'This means the VENDORED file changed, not that upstream drifted.\n' +
+      'Fix: if this is an intentional refresh, run ./scripts/sync-panel-types.sh ' +
+      '(it rewrites this constant and src/data/README.md) and commit all affected files; ' +
+      'otherwise revert the edit to src/data/chart-type-status.json.'
+  );
+  process.exit(1);
+}
+
+// Check (README staleness): src/data/README.md's chart-type-status provenance block
+// must record the SAME sha256 as the file actually committed here. Anchored on the
+// stable label AND scoped to fall after the chart-type-status marker (not the schema's
+// `<!-- provenance:begin` marker) — this repo's README carries TWO "Vendored (...)
+// sha256" labels now (normalized schema, projected status), so an unscoped match could
+// silently compare against the wrong one.
+const ctProvenanceBeginIdx = readmeRaw.indexOf('<!-- chart-type-status-provenance:begin');
+if (ctProvenanceBeginIdx === -1) {
+  console.error(
+    `ERROR: could not find the "<!-- chart-type-status-provenance:begin" marker in ${README_FILE}.\n` +
+      'Fix: run ./scripts/sync-panel-types.sh to regenerate the provenance block.'
+  );
+  process.exit(1);
+}
+const readmeStatusShaMatches = [
+  ...readmeRaw.matchAll(/\*\*Vendored \(projected\) sha256\*\*:\s*`([0-9a-f]{64})`/g),
+];
+if (readmeStatusShaMatches.length !== 1) {
+  console.error(
+    `ERROR: expected exactly one "Vendored (projected) sha256" provenance label in ${README_FILE}, found ${readmeStatusShaMatches.length}.\n` +
+      'Fix: run ./scripts/sync-panel-types.sh to regenerate the provenance block.'
+  );
+  process.exit(1);
+}
+const [readmeStatusMatch] = readmeStatusShaMatches;
+if (readmeStatusMatch.index < ctProvenanceBeginIdx) {
+  console.error(
+    `ERROR: the "Vendored (projected) sha256" provenance label in ${README_FILE} sits outside/before ` +
+      'the <!-- chart-type-status-provenance:begin --> marker.\n' +
+      'Fix: run ./scripts/sync-panel-types.sh to regenerate the provenance block.'
+  );
+  process.exit(1);
+}
+if (readmeStatusMatch[1] !== statusSha256) {
+  console.error(
+    `ERROR: ${README_FILE} records a stale vendored chart-type-status sha256.\n` +
+      `  README says: ${readmeStatusMatch[1]}\n` +
+      `  actual:       ${statusSha256}\n` +
+      'Fix: run ./scripts/sync-panel-types.sh to regenerate the provenance block and commit the result.'
+  );
+  process.exit(1);
+}
+
+// Check (shape): a hand-edited or truncated file must go red here rather than
+// silently disarm the data-binding gate in scripts/check-chart-specs.mjs. Must
+// parse, carry a non-empty `types` object, and every value must be in the
+// closed enum — same enum scripts/project-chart-type-status.mjs enforces.
+const CHART_TYPE_STATUSES = new Set(['stable', 'passthrough', 'advanced']);
+let statusParsed;
+try {
+  statusParsed = JSON.parse(statusRaw);
+} catch (e) {
+  console.error(`ERROR: ${STATUS_FILE} is not valid JSON: ${e.message}`);
+  process.exit(1);
+}
+const statusTypes = statusParsed?.types;
+if (!statusTypes || typeof statusTypes !== 'object' || Array.isArray(statusTypes) || Object.keys(statusTypes).length === 0) {
+  console.error(
+    `ERROR: ${STATUS_FILE} has no non-empty top-level "types" object. The vendored status table is ` +
+      'malformed or truncated. Fix: run scripts/sync-panel-types.sh.'
+  );
+  process.exit(1);
+}
+const badStatusEntries = Object.entries(statusTypes).filter(([, status]) => !CHART_TYPE_STATUSES.has(status));
+if (badStatusEntries.length > 0) {
+  console.error(
+    `ERROR: ${STATUS_FILE} has type(s) with a status outside the closed enum ` +
+      `(${[...CHART_TYPE_STATUSES].sort().join('/')}):`
+  );
+  for (const [type, status] of badStatusEntries) {
+    console.error(`  ${type}: ${JSON.stringify(status)}`);
+  }
+  console.error('Fix: run scripts/sync-panel-types.sh; if this persists, the file was hand-edited.');
+  process.exit(1);
+}
+
 // Extract every dvtType string-literal value. The regex only matches quoted
 // string assignments — the TS interface field `dvtType: string;` has no quotes
 // so it never fires here.
@@ -193,5 +314,6 @@ if (offenders.length > 0) {
 }
 
 console.log(
-  `OK — all ${matches.length} chart/table types in charts.ts are valid PanelType members (${panelTypes.length} in vendored enum).`
+  `OK — all ${matches.length} chart/table types in charts.ts are valid PanelType members (${panelTypes.length} in vendored enum); ` +
+    `chart-type-status.json is consistent (${Object.keys(statusTypes).length} vendored statuses).`
 );

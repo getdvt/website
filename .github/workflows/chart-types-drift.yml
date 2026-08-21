@@ -56,6 +56,7 @@ on:
       - 'src/data/chart-pages.json'
       - 'src/data/chart-page-extras.ts'
       - 'src/data/dashboard.schema.json'
+      - 'src/data/chart-type-status.json'
       - 'scripts/check-chart-types.mjs'
       - 'scripts/check-chart-pages.mjs'
       - 'scripts/check-chart-specs.mjs'
@@ -63,6 +64,8 @@ on:
       # sweep compares against — so it must re-run the gates.
       - 'scripts/normalize-schema.mjs'
       - 'scripts/normalize-schema.test.mjs'
+      - 'scripts/project-chart-type-status.mjs'
+      - 'scripts/project-chart-type-status.test.mjs'
       - 'scripts/sync-panel-types.sh'
       # check-chart-types.mjs asserts the README's provenance block matches the
       # vendored schema — so a README-only edit must re-run the gates too.
@@ -102,6 +105,13 @@ jobs:
       - name: Normalizer self-test (tripwire + schema-aware strip)
         run: node scripts/normalize-schema.test.mjs
 
+      # Same self-test discipline as the normalizer above, for the
+      # chart-type-status whitelist projection (DVT-3113): covers the
+      # prose-scrubbing whitelist behavior, the closed-enum refusal, and
+      # determinism. Zero-dep, so it also runs before `npm ci`.
+      - name: Chart-type-status projector self-test (whitelist + closed enum)
+        run: node scripts/project-chart-type-status.test.mjs
+
       # The vendored schema must be a FIXED POINT of the normalizer. This is the
       # PR-time half of the drift story and it needs no token and no network: it
       # catches a PR that edits scripts/normalize-schema.mjs (or hand-edits the
@@ -120,7 +130,7 @@ jobs:
       - name: npm ci
         run: npm ci
 
-      - name: Assert every chart-catalog snippet validates against dvt's Panel schema (structure only — not data-binding or ECharts keys)
+      - name: Assert every chart-catalog snippet validates against dvt's Panel schema and the data-binding contract
         run: node scripts/check-chart-specs.mjs
 
   upstream-sweep:
@@ -244,3 +254,57 @@ jobs:
             exit 1
           fi
           echo "OK — vendored dashboard.schema.json matches upstream structurally (normalized compare)."
+
+      # DVT-3113: mirror the schema compare above for the THIRD vendored
+      # artifact — src/data/chart-type-status.json, a whitelist PROJECTION of
+      # spec/schema/echarts/chart-types.json (type -> status only; see
+      # scripts/project-chart-type-status.mjs). Same asymmetric-compare model
+      # as the schema: only the upstream side is projected here; the vendored
+      # file is compared as committed, so a local hand-edit to it still goes
+      # red. A projection REFUSAL (an unrecognized new upstream status value)
+      # must fail this job loudly, not silently skip the compare.
+      - name: Compare upstream chart-type status table to vendored copy (projected)
+        if: vars.DVT_SCHEMA_APP_ID != ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh api repos/getdvt/dvt/contents/spec/schema/echarts/chart-types.json \
+            -H "Accept: application/vnd.github.raw" > /tmp/upstream-chart-types.json
+
+          # Guard: result must be valid JSON with a non-empty top-level "types" object.
+          node -e '
+          const fs = require("fs");
+          try {
+            const ct = JSON.parse(fs.readFileSync("/tmp/upstream-chart-types.json", "utf8"));
+            const types = ct && ct.types;
+            if (!types || typeof types !== "object" || Array.isArray(types) || Object.keys(types).length === 0) {
+              console.error("::error::Upstream chart-types.json fetch returned invalid JSON or missing a non-empty top-level \"types\" object. Cannot verify drift.");
+              process.exit(1);
+            }
+            console.log("Upstream chart-types.json valid: " + Object.keys(types).length + " types.");
+          } catch (e) {
+            console.error("::error::Failed to parse upstream chart-types.json: " + e.message);
+            process.exit(1);
+          }
+          '
+
+          if [[ ! -f src/data/chart-type-status.json ]]; then
+            echo "::error::Vendored src/data/chart-type-status.json is missing. Fix: run ./scripts/sync-panel-types.sh and commit the result."
+            exit 1
+          fi
+
+          # Project the live upstream fetch with the SAME script that produced the
+          # vendored copy. A projection refusal here (e.g. an unrecognized new
+          # upstream status value) exits non-zero and fails this job loudly — it
+          # must be audited by a human before being vendored, not silently skipped.
+          if ! node scripts/project-chart-type-status.mjs /tmp/upstream-chart-types.json > /tmp/upstream-status-projected.json; then
+            echo "::error::Failed to project the live upstream chart-types.json — see the error above (likely an unrecognized status value that needs human audit before vendoring)."
+            exit 1
+          fi
+
+          if ! cmp -s /tmp/upstream-status-projected.json src/data/chart-type-status.json; then
+            echo "::error::Upstream spec/schema/echarts/chart-types.json has drifted from the vendored projection in src/data/chart-type-status.json. Fix: run ./scripts/sync-panel-types.sh and commit the result."
+            diff src/data/chart-type-status.json /tmp/upstream-status-projected.json | head -50 || true
+            exit 1
+          fi
+          echo "OK — vendored chart-type-status.json matches upstream (projected compare)."

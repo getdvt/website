@@ -14,7 +14,8 @@
     "check:chart-types": "node scripts/check-chart-types.mjs",
     "check:chart-pages": "node scripts/check-chart-pages.mjs",
     "check:chart-specs": "node scripts/check-chart-specs.mjs",
-    "test:normalize": "node scripts/normalize-schema.test.mjs"
+    "test:normalize": "node scripts/normalize-schema.test.mjs",
+    "test:project-status": "node scripts/project-chart-type-status.test.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.1.7",
