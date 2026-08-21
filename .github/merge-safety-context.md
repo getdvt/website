@@ -14,3 +14,8 @@ Score lower (route to human review) for anything touching:
 - D1 schema or migrations
 - Secrets, API tokens, or environment bindings
 - Build or deploy configuration (wrangler, Pages, CI)
+- `src/data/dashboard.schema.json` / `src/data/panel-types.json`, `scripts/normalize-schema.mjs`, or
+  `scripts/sync-panel-types.sh` — these vendor NORMALIZED content from private `getdvt/dvt` into this
+  public repo (a public-disclosure boundary); `normalize-schema.mjs` strips upstream's internal
+  annotation prose before anything lands here. A diff touching any of the three must keep the strip +
+  fixed-point + provenance machinery intact.
