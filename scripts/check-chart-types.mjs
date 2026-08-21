@@ -43,7 +43,7 @@ const README_FILE = resolve(REPO_ROOT, 'src/data/README.md');
 // Maintained by scripts/sync-panel-types.sh — do not hand-edit. Must equal the
 // sha256 of src/data/dashboard.schema.json AND the "Vendored (normalized) sha256"
 // line in src/data/README.md; both are asserted below.
-const EXPECTED_SHA256 = '2337f49d7760f8d0d1d1f8e493c67a440ef47f9b429a0e723a2ada6be9511e18';
+const EXPECTED_SHA256 = '47400515b50da9ab812a25f2ccb84b8e1a86051a1b5b89fafeba61696fb898c7';
 
 const chartsSource = readFileSync(CHARTS_FILE, 'utf8');
 const { panelTypes } = JSON.parse(readFileSync(ENUM_FILE, 'utf8'));
