@@ -54,10 +54,14 @@ stored replays the existing dashboard with a 200 — safe to retry after a netwo
     of the viewport. Only used when `position: "free"`; ignored otherwise.
   Example (a centered floating bar for a canvas deck):
   `"tabBar": { "position": "free", "layout": "stacked", "alignment": "center", "size": "md", "placement": { "x": 50, "y": 4 } }`
-  - A page may set **`hidden": true`** (ADR-0036): it is **excluded from the tab bar / default
-    nav** but stays fully authored and is a valid `drill`/`openOverlay` target — the way to
-    build a **detail page that only opens as an overlay** (`pages: [{ id: "region-detail",
-    title: "Region detail", hidden: true, layout, panels:[…] }]`). ⚠️ `hidden` is
+  - A page may set **`"hidden": true`** (ADR-0036, as amended 2026-08-21): it is **excluded from
+    the tab bar / default nav** but stays fully authored and is a valid **`openOverlay`** target
+    — the way to build a **detail page that only opens as an overlay** (`pages: [{ id:
+    "region-inspector", title: "Region inspector", hidden: true, layout, panels:[…] }]`).
+    ⛔ **Never `drill` at a hidden page.** A `drill` *navigates*, and a hidden page has no tab to
+    return through — the viewer is stranded with browser Back. `dvt_spec_validate` raises the
+    advisory `interaction-stranding` warning on it (DVT-3138). `drill` remains correct and
+    supported for a page that **is** visible in the tab bar. ⚠️ `hidden` is
     **presentation, not access control** — a hidden page's data is governed by the same RBAC
     as any page; never use it to "protect" sensitive data.
 - **`cache`** (optional) tunes how long this dashboard's query results may be reused
@@ -218,9 +222,12 @@ import will ALWAYS fail (never author panels directly against them). Wrap the
 shared data in an owned table, view, or model first (e.g. `CREATE VIEW
 my_db.my_schema.v AS SELECT ... FROM SNOWFLAKE.ACCOUNT_USAGE....`) and point the
 panel's query at that owned object. Owned databases additionally need CALLER grants to
-the APPLICATION at every level — database, schema, and each view (`GRANT CALLER
-USAGE ON DATABASE <db> TO APPLICATION <app>;` etc). They do NOT cascade
-(DVT-2456); a failing panel's error names the exact level still missing.
+the APPLICATION — set up once per database (not per object): `GRANT CALLER USAGE ON
+DATABASE <db> TO APPLICATION <app>; GRANT INHERITED CALLER USAGE ON ALL SCHEMAS IN
+DATABASE <db> TO APPLICATION <app>; GRANT INHERITED CALLER SELECT ON ALL TABLES IN
+DATABASE <db> TO APPLICATION <app>; GRANT INHERITED CALLER SELECT ON ALL VIEWS IN
+DATABASE <db> TO APPLICATION <app>;`. `INHERITED CALLER` cascades by containment, so
+this also covers schemas/tables/views created later — no re-grant needed.
 
 **Canonical cartesian form — author the measure as `series[].dataField`.** For the plain
 value families (`chart:bar`/`chart:line`/`chart:area`), the single authored form used by
@@ -1824,7 +1831,9 @@ is interactive-only (a no-op in a static PNG render). Six action types:
 ```
 
 The `region-detail` page's panels declare `%(region)s` + a `data.params` `region` default,
-exactly like the filter targets above. `targetPage` (required) — a `pages[].id`. `param`
+exactly like the filter targets above. It is a **regular, tab-bar-visible page** — which is
+what makes `drill` the right mechanism here; a `hidden: true` target would need `openOverlay`
+instead (see the `drill` rule below). `targetPage` (required) — a `pages[].id`. `param`
 (required unless using `bindings[]` for a compound key, see below) — the params key set
 on the target page's panels. `valueFrom`: `category`
 (default) | `value` | `seriesName` | a field name from the clicked row (use a field name
@@ -1837,11 +1846,13 @@ for tables). `valueType` — as above.
   "contextMenu": { "actions": [
     { "type": "filter", "label": "Filter page to {category}", "param": "region", "valueFrom": "category" },
     { "type": "drill",  "label": "Open {category} detail", "targetPage": "region-detail", "param": "region", "valueFrom": "category" },
-    { "type": "openOverlay", "label": "Inspect {category}", "targetPage": "region-detail", "present": "modal", "param": "region", "valueFrom": "category" },
+    { "type": "openOverlay", "label": "Inspect {category}", "targetPage": "region-inspector", "present": "modal", "param": "region", "valueFrom": "category" },
     { "type": "link",   "label": "Open {category} in CRM", "url": "https://crm.example.com/regions/{region_id}", "target": "tab" },
     { "type": "copy",   "label": "Copy value", "copy": "value" },
     { "type": "export", "label": "Export this row", "format": "csv", "scope": "row" }
   ] } }
+// drill targets region-detail (a VISIBLE tab-bar page); openOverlay targets region-inspector
+// (hidden: true). The mechanism follows the target's visibility — never drill at a hidden page.
 ```
 
 - Every action has `type` (the discriminator), `label` (required — supports `{token}`
@@ -1862,6 +1873,11 @@ for tables). `valueType` — as above.
   `bindings`), `valueFrom?`, `valueType?`. Real drill navigation is wired via this contextMenu
   action or the equivalent `onClick` action above — the bare `drill` panel property stays inert
   either way (DVT-555). One menu can hold several drill destinations.
+  ⛔ **`targetPage` must be visible in the tab bar.** `drill` *navigates*, and a `hidden: true`
+  page has no tab to return through, so the viewer is stranded with browser Back. Use
+  `openOverlay` for a hidden target. `dvt_spec_validate` raises the advisory
+  `interaction-stranding` warning on a drill at a hidden page (DVT-3138); ADR-0036 §1 as
+  amended 2026-08-21.
 - **`openOverlay`** (ADR-0036) — opens `targetPage` as a **modal or drawer overlay** *over*
   the current page (detail-on-demand), instead of navigating away. A superset of `drill`:
   `targetPage` (required), optional `param`/`valueFrom`/`valueType` (or `bindings`, the
@@ -1869,8 +1885,15 @@ for tables). `valueType` — as above.
   touches the base page; closing the overlay discards it). Presentation: `present?`
   (`modal` default | `drawer`), `size?` (`sm`|`md`|`lg`|`full`), `side?` (`left`|`right`,
   drawer only). Omit `param`/`bindings` for a context-free detail/help overlay. The target
-  is **usually a hidden page** (see below). In a renderer without overlay support it
-  degrades to a `drill` navigation.
+  is **usually a hidden page** (see below) — and for a hidden target this is the **only**
+  correct mechanism; a `drill` there strands the viewer. In a **static render or export** the
+  action is a **no-op**, like every other context action — it does *not* fall back to
+  navigating (ADR-0036 §4). **Inside an already-open overlay, a nested `openOverlay` — and a
+  nested `drill` — are inert too**: the overlay body mounts without an overlay host or a
+  navigate handler, so one overlay at a time is the shipped bound. (ADR-0036 §3 describes that
+  bound as *replacing* the open overlay; the renderer goes inert instead — DVT-3284 tracks the
+  divergence, and this skill documents the renderer.) Don't design a two-level overlay path;
+  it silently does nothing.
 - **`bindings[]`** (DVT-2104) — bind a **compound key** from one click instead of the
   scalar `param`, on `filter`/`drill`/`openOverlay`: `bindings: [{ param, valueFrom?,
   valueType? }, …]`, one entry per param, same value→query contract as the scalar form.
@@ -1912,11 +1935,12 @@ follow-up questions.
 **Default — net-new dashboards ship interactive.** Every net-new dashboard of 3+ panels ships
 with the **default interactivity package**: (a) at least one scoped `filter` (date-range or the
 primary dimension) opening the exploratory zone below the guided band; (b) a `contextMenu` on
-the hero chart and on every `table` (drill / filter / export actions); (c) a `drill` to a hidden
-detail page wherever a categorical breakdown has meaningful per-category detail. A brush
-cross-filter is optional, for 2+ panels sharing a time axis. Cut an individual control only when
-it fails the self-check below. Ship **fully flat** only for a single-question fixed readout, a
-kiosk loop, or a print/export target — and record that in `meta.decisions` as
+the hero chart and on every `table` (filter / `openOverlay` / `drill` / export actions); (c)
+**per-category detail on demand** wherever a categorical breakdown has meaningful detail behind
+it — `openOverlay` when the target page is `hidden: true`, `drill` when it is visible in the tab
+bar. A brush cross-filter is optional, for 2+ panels sharing a time axis. Cut an individual
+control only when it fails the self-check below. Ship **fully flat** only for a single-question
+fixed readout, a kiosk loop, or a print/export target — and record that in `meta.decisions` as
 `"Interactivity: none — <reason>"` so reviewers can tell a decision from an omission.
 
 **The self-check (run before adding any control).** For every interactive element, answer both:
@@ -1963,6 +1987,9 @@ triple to read `category` from, only the bound row — so name a real row field 
   "spec": { "valueField": "revenue", "agg": "sum" } }
 // kpi/stat/metric-strip bind from rows[0] only, and only via a real row field — "category"/"value"/"seriesName" are never actionable there.
 ```
+
+The target here is a **visible** page, so `drill` is the right mechanism; when the detail page
+is `hidden: true`, use `openOverlay` instead (move 4) — see the rule under `drill` above.
 
 *When NOT to use:* if the "detail" page would just repeat the same numbers, or there's only one
 category worth seeing — that's drill-to-nowhere. A drill whose target page doesn't answer the
@@ -2016,8 +2043,11 @@ story. Use when the detail is occasional and shouldn't cost a page/tab or a navi
 ```
 
 *When NOT to use:* for content the reader needs side-by-side with the base page (use a real page
-or panel), or when a plain `drill` navigation is clearer. Degrades to a `drill` in renderers
-without overlay support, so don't hide load-bearing content behind an overlay-only path.
+or panel), or when a plain `drill` navigation is clearer. In a **static render or export** an
+`openOverlay` action is a **no-op** — it does *not* fall back to navigating (ADR-0036 §4), and
+inside an already-open overlay a nested `openOverlay` or `drill` is inert as well (§3, one
+overlay at a time). So don't put load-bearing content behind an overlay-only path, and don't
+plan a second overlay level from inside one: in those contexts it is simply unreachable.
 
 **Reachability.** Whichever move you choose, the exploration leg must be **reachable from the
 intro** — a drill affordance on the panel that motivates it, a filter-bar directly under the
@@ -2635,7 +2665,10 @@ Place a format where a value renders: `"axisLabel": { "format": {…} }`, a tabl
 
 - Before authoring, classify the request — the two execution paths have very different costs.
 - **Surgical edit** — the user names an existing element and a specific change ("change the Q3 revenue KPI to red", "fix the funnel title typo", "make this axis start at zero"). Read that one element with `dvt_element_get`, then apply a `dvt_element_patch`. Do NOT run the full audit→narrative→design method and do NOT re-send the whole spec — it wastes tokens and risks rebuilding panels the user didn't ask you to touch.
-- **Page-level surgical edit** — the user names an existing page and a change to the page itself, not a panel ("rename this page", "restyle this page's existing HTML frame", "widen the hero tile on tablet", "recolor this page's background"). Read the page's current `version` with `dvt_page_list`, then apply a `dvt_page_patch` — it reaches a page's `title`, `background`, `theme`, and `layout` (htmlSlots `layout.html`, and per-breakpoint grid `layout.items.{lg,md,sm,xs}`, including adding a breakpoint that doesn't exist yet). Do NOT delete-and-recreate the page and do NOT re-send the whole spec for this — `dvt_page_patch` preserves every element's id and revision history, unlike `dvt_dashboard_apply_spec`, which fully replaces the spec and re-keys every element. It does not reach `spec.meta`/panelDocs/`keyQuestions` (dashboard-level; DVT-2678) or a page's `position` (use `dvt_pages_reorder`) or `layout.mode` (mode transitions stay full-build).
+- **Page-level surgical edit** — the user names an existing page and a change to the page itself, not a panel ("rename this page", "restyle this page's existing HTML frame", "widen the hero tile on tablet", "recolor this page's background"). Read the page's current `version` with `dvt_page_list`, then apply a `dvt_page_patch` — it reaches a page's `title`, `background`, `theme`, and `layout` (htmlSlots `layout.html`, and per-breakpoint grid `layout.items.{lg,md,sm,xs}`, including adding a breakpoint that doesn't exist yet). Do NOT delete-and-recreate the page and do NOT re-send the whole spec for this — `dvt_page_patch` preserves every element's id and revision history, unlike `dvt_dashboard_apply_spec`, which fully replaces the spec and re-keys every element. It does not reach `spec.meta`/panelDocs/`keyQuestions` — those are dashboard-level, so use `dvt_dashboard_meta_patch` (next bullet) — or a page's `position` (use `dvt_pages_reorder`) or `layout.mode` (mode transitions stay full-build).
+- **Dashboard-level surgical edit (provenance / `spec.meta`)** — the user names a change to the dashboard's *documentation*, not to a panel or a page ("update the brief", "add a key question", "record this assumption", "fix the dashboard title", "say why this panel exists", "mark the data as of yesterday"). Read the DASHBOARD's current `version` with `dvt_dashboard_get`, then apply a `dvt_dashboard_meta_patch` — an RFC 6902 JSON Patch array against `spec.meta`. It reaches `/title`, `/brief`, `/description`, `/findings`, `/readme`, `/decisions`, `/tags`, `/purpose`, `/audience`, `/keyQuestions`, `/assumptions`, `/conclusions`, `/dataAsOf`, and per-panel provenance at `/panels/{panelId}` (`purpose`/`intent`/`assumptions`/`notes`/`serves_question`). Do NOT re-send the whole spec for this — `dvt_dashboard_meta_patch` preserves every element's id and revision history, unlike `dvt_dashboard_apply_spec`, which fully replaces the spec and re-keys every element. Unlike `dvt_page_patch` it works on **both** single-page and multi-page dashboards (`meta` lives on the manifest, so there is no single-page restriction). `version` is the DASHBOARD's version, not a page's. `reason` is REQUIRED (max 280 chars) and is recorded on the new revision. Preview first (`preview=true` is the default), show the user, then apply — but note what preview does *not* do: it confirms the dashboard exists, checks your `version`, and validates `reason`; it does **not** run the forbidden-path or `documentationStale` checks, so a clean preview can still be followed by a 400 on apply.
+  - Rejected with a 400 (among others): a whole-document replace (an op on `/`); **`documentationStale`** — dashboard-level or per-panel, **including a parent-path op that would change its value** (e.g. replacing or removing `/panels`), because it is server-set (DVT-267), so patch a leaf field or restate the existing value instead; and **`/createdBy`**, which is immutable creation provenance. Every forbidden path above is also rejected as a `move`/`copy` **`from`**, not just as a `path`. A malformed or empty patch array is a 400 too.
+  - A 422 means the patched meta failed validation — `title` must stay non-empty. **Two different conditions return 409, and they need opposite reactions** — discriminate on the error `type`, not the status. Over MCP the tool hands you a short slug: `version-conflict` means re-read the dashboard's `version` and retry, while `legacy-dashboard` means the dashboard predates granular editing and retrying will *never* work — that one needs a full-spec re-apply. (Against the REST API directly, those arrive as the full problem `type` URLs under `https://docs.dvt.dev/errors/`.)
 - **Block-level reads, not full-spec reads.** If you don't already know the element's id, read the dashboard ONCE with `dvt_dashboard_get(format="concise")` (manifest + `provenanceSummary`, no heavy spec) or `dvt_dashboard_docs` (cheap doc tree) to locate the page/element id, then pull ONLY that element via `dvt_element_get`. Never load the full page spec (`dvt_dashboard_get(format="full")`) just to change one panel.
 - **Full build** — the user wants something new or exploratory ("help me understand our sales", "build a pipeline dashboard", "restructure this to tell a story"). Run the full authoring method below. **Interactive session** (a user is watching): persist via the incremental flow in "Persisting the build" (§4b) below, not a single full-spec apply. **Headless/batch run:** persist via a single full-spec `dvt_dashboard_apply_spec` call.
 - When in doubt (an edit spanning several elements, or one that changes the dashboard's story), prefer the full method. A single named property on a single named element is the clear signal for the surgical path.
@@ -2877,7 +2910,7 @@ Design and preview are unchanged: finish the staged design pass (§4a), assemble
 2. **Panel by panel.** `dvt_element_create` each panel (~1–2KB each), narrating as you go ("page 1/3: panel 4/6 — revenue trend"). **Always pass an explicit, stable `slug`** derived from the panel's title/id in the design (e.g. `revenue-trend`) — never leave it empty. An empty slug is regenerated fresh on every call, so a lost-response retry after a create that actually landed will duplicate the panel; an explicit slug makes the create idempotent (see step 4). Pass the optional per-breakpoint `layout` param when your design carries responsive (md/sm) geometry; flat x/y/w/h is fine otherwise. Create later pages with `dvt_page_create` as you reach them; fix ordering at the end with `dvt_pages_reorder`.
 3. **Render checkpoint per page — never per panel.** `dvt_dashboard_render_inline` after each page completes. The render budget is 10/hour per org; a per-panel cadence will exhaust it mid-build.
 4. **If one element fails,** surface the server's Problem `detail`/`suggestion` verbatim and retry that one element — the retry re-sends 1–2KB, not the whole spec. This retry is safe **because** step 2's explicit slug makes it idempotent: if the original create actually landed and only the response was lost, the retry gets a 409 slug-taken — treat that as success (the panel is already there) and move on, don't error out or duplicate it. A briefly incomplete dashboard is expected here; the user is watching it assemble.
-5. **Final integrity pass.** Run `dvt_spec_validate` on the full spec you assembled and applied (already in context — no need to re-fetch it) and surface any remaining `collision`, `data-binding`, and provenance warnings to the user. (`dvt_dashboard_check_overlap` is the pre-build duplicate-content search from the Authoring method's step-1 data audit — not an integrity check; don't re-run it here.) Then `dvt_dashboard_get(format="concise")` the persisted dashboard for its `layoutSummary` — the final, ground-truth layout (built page-by-page, so it may differ from what you narrated mid-build) — this is what becomes the closing table (§5).
+5. **Final integrity pass.** Run `dvt_spec_validate` on the full spec you assembled and applied (already in context — no need to re-fetch it) and surface any remaining `collision`, `data-binding`, `interaction-stranding`, and provenance warnings to the user. (`dvt_dashboard_check_overlap` is the pre-build duplicate-content search from the Authoring method's step-1 data audit — not an integrity check; don't re-run it here.) Then `dvt_dashboard_get(format="concise")` the persisted dashboard for its `layoutSummary` — the final, ground-truth layout (built page-by-page, so it may differ from what you narrated mid-build) — this is what becomes the closing table (§5).
 
 **Headless/scheduled runs (no user watching): keep the single full-spec apply** — transactional, all-or-nothing; never leave a half-built dashboard unattended.
 
@@ -2885,7 +2918,7 @@ Record which persist path you took in `meta.decisions` (e.g. `"Persist: incremen
 
 ### 5. Build, then SEE it — verify and iterate
 
-Headless/batch runs and edit flows (surgical edits, §"Choosing your approach") persist via the single-apply path below; interactive net-new builds persist via the incremental flow in §4b above.
+Headless/batch net-new builds persist via the single-apply path below; interactive net-new builds persist via the incremental flow in §4b above. **Surgical edits do not use either** — an edit scoped to one element, one page, or `spec.meta` persists through its own patch route (`dvt_element_patch` / `dvt_page_patch` / `dvt_dashboard_meta_patch`, §"Choosing your approach"), not by re-sending the spec. Re-send only when the patch route itself refuses the edit — e.g. a `layout.mode` transition, `dvt_page_patch`'s single-page restriction, or a `legacy-dashboard` 409 on a dashboard predating granular editing — which is a documented fallback, not the default. Read the refusal rather than assuming: the `legacy-dashboard` and single-page cases are 409s whose `suggestion` names the full re-apply outright, but a `layout.mode` change comes back as a **400 `invalid-patch`** whose `suggestion` merely lists which page paths *are* patchable — treat that one as "not through this route", not as "malformed patch, retry".
 
 1. Write the spec (mechanics above). Bind each panel to a fully-qualified `query`.
 2. Validate with `dvt_spec_validate` — fix field errors and heed `warnings` (typos, and panels that will render EMPTY).
@@ -3026,6 +3059,8 @@ Per-element documentation lives in the dashboard manifest at `meta.panels`, keye
 
 `serves_question` is a zero-based index into `meta.keyQuestions` — the dashboard-level list of the questions the dashboard is designed to answer. An out-of-range index logs a ProvenanceCheck WARN; omit for decoration/navigation panels.
 
+**Editing this documentation after the build** — everything on this page lives in `spec.meta`, and you can patch it in place with `dvt_dashboard_meta_patch` (see "Choosing your approach" above): dashboard-level fields at `/brief`, `/keyQuestions`, `/assumptions`, `/conclusions`, `/decisions`, `/findings`, `/readme`, `/dataAsOf`, and per-panel provenance at `/panels/{panelId}`. Reach for it whenever documentation is the only thing changing — re-applying the whole spec through `dvt_dashboard_apply_spec` just to correct a `purpose` string re-keys every element and resets its revision history, which is exactly what you want to avoid on an existing dashboard. `documentationStale` is server-set and cannot be patched at either level; `/createdBy` is immutable.
+
 ### Researching existing dashboards with `dvt_dashboard_docs`
 
 Before authoring a new dashboard that covers the same subject area as an existing one, call `dvt_dashboard_docs` to read the existing dashboard's full documentation tree. It returns:
@@ -3123,16 +3158,16 @@ view, or model first and query that:
 create view my_db.my_schema.v as select ... from snowflake.account_usage....
 ```
 
-Owned objects additionally need a CALLER grant to the APPLICATION **at every level** —
-these do **not** cascade (DVT-2456):
+Owned objects additionally need a CALLER grant to the APPLICATION — granted **once
+per database** (not per object); `INHERITED CALLER` on the `ON ALL` form cascades by
+containment, covering schemas/tables/views created later too:
 
 ```sql
 grant caller usage on database <db> to application <app>;
-grant caller usage on schema <db>.<schema> to application <app>;
-grant caller select on view <db>.<schema>.<view> to application <app>;
+grant inherited caller usage on all schemas in database <db> to application <app>;
+grant inherited caller select on all tables in database <db> to application <app>;
+grant inherited caller select on all views in database <db> to application <app>;
 ```
-
-A failing query's error names the exact level still missing.
 
 ### Execution paths and result shapes
 
